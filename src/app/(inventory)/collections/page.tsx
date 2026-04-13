@@ -1,0 +1,276 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { Plus, Search } from 'lucide-react';
+import { toast } from 'sonner';
+import { useCollectionsStore } from '@/store/collections.store';
+import { collectionsService } from '@/lib/services/collections.service';
+import { CreateCollectionDto, CollectionStatus } from '@/types';
+import CollectionForm from '@/components/shared/CollectionForm';
+
+export default function CollectionsPage() {
+  const {
+    collections,
+    total,
+    page,
+    limit,
+    totalPages,
+    isLoading,
+    setCollections,
+    setLoading,
+    setPage,
+  } = useCollectionsStore();
+
+  const [search, setSearch] = useState({
+    productName: '',
+    collectorName: '',
+  });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const fetchCollections = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await collectionsService.getAll({
+        page,
+        limit,
+        ...search,
+      });
+      setCollections(data.data, data.meta);
+    } catch {
+      toast.error('Failed to load collections');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search]);
+
+  useEffect(() => {
+    fetchCollections();
+  }, [fetchCollections]);
+
+  const handleSubmit = async (data: CreateCollectionDto) => {
+    try {
+      setSubmitting(true);
+      await collectionsService.create(data);
+      toast.success('Collection recorded successfully');
+      setModalOpen(false);
+      fetchCollections();
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || 'Something went wrong';
+      toast.error(Array.isArray(message) ? message[0] : message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStatusUpdate = async (id: string, status: CollectionStatus) => {
+    try {
+      setUpdatingId(id);
+      await collectionsService.updateStatus(id, status);
+      toast.success('Status updated successfully');
+      fetchCollections();
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const getStatusStyle = (status: CollectionStatus) => {
+    switch (status) {
+      case CollectionStatus.PAID:
+        return 'bg-green-500/10 text-green-600';
+      case CollectionStatus.RETURNED:
+        return 'bg-blue-500/10 text-blue-600';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Collections</h1>
+          <p className="text-sm text-muted-foreground">
+            Track credit collections and returns
+          </p>
+        </div>
+        <button
+          onClick={() => setModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          <Plus size={16} />
+          Record Collection
+        </button>
+      </div>
+
+      {/* Search filters */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { key: 'productName', placeholder: 'Search product name...' },
+          { key: 'collectorName', placeholder: 'Search collector name...' },
+        ].map(({ key, placeholder }) => (
+          <div key={key} className="relative">
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              placeholder={placeholder}
+              value={search[key as keyof typeof search]}
+              onChange={(e) =>
+                setSearch((prev) => ({ ...prev, [key]: e.target.value }))
+              }
+              className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr>
+              {[
+                'Date',
+                'Product',
+                'IMEI',
+                'Collector',
+                'Storage',
+                'Color',
+                'Amount',
+                'Status',
+                'Actions',
+              ].map((h) => (
+                <th
+                  key={h}
+                  className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {isLoading ? (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-4 py-8 text-center text-muted-foreground"
+                >
+                  Loading...
+                </td>
+              </tr>
+            ) : collections.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={9}
+                  className="px-4 py-8 text-center text-muted-foreground"
+                >
+                  No collections found
+                </td>
+              </tr>
+            ) : (
+              collections.map((collection) => (
+                <tr
+                  key={collection.id}
+                  className="hover:bg-muted/30 transition-colors"
+                >
+                  <td className="px-4 py-3">{collection.date}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {collection.productName}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {collection.imei}
+                  </td>
+                  <td className="px-4 py-3">{collection.collectorName}</td>
+                  <td className="px-4 py-3">{collection.storageGB}GB</td>
+                  <td className="px-4 py-3">{collection.color}</td>
+                  <td className="px-4 py-3">
+                    ₦{collection.amount.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusStyle(
+                        collection.status
+                      )}`}
+                    >
+                      {collection.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={collection.status}
+                      disabled={updatingId === collection.id}
+                      onChange={(e) =>
+                        handleStatusUpdate(
+                          collection.id,
+                          e.target.value as CollectionStatus
+                        )
+                      }
+                      className="text-xs rounded-md border bg-background px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                    >
+                      <option value={CollectionStatus.PAID}>Paid</option>
+                      <option value={CollectionStatus.RETURNED}>
+                        Returned
+                      </option>
+                    </select>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {collections.length} of {total} collections
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(page - 1)}
+              disabled={page === 1}
+              className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
+            >
+              Previous
+            </button>
+            <span className="text-sm">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage(page + 1)}
+              disabled={page === totalPages}
+              className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold mb-4">
+              Record New Collection
+            </h2>
+            <CollectionForm
+              onSubmit={handleSubmit}
+              isLoading={submitting}
+              onCancel={() => setModalOpen(false)}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
