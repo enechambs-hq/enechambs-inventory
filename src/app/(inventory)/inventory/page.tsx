@@ -18,7 +18,7 @@ export default function InventoryPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [stockLevels, setStockLevels] = useState<any>(null);
+  const [stockLevels, setStockLevels] = useState<Record<string, number> | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
 
   const fetchInventory = useCallback(async () => {
@@ -31,7 +31,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, limit, search, setItems, setLoading]);
 
   const fetchStockLevels = async () => {
     try {
@@ -55,6 +55,7 @@ export default function InventoryPage() {
   useEffect(() => {
     fetchStockLevels();
     fetchLowStock();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (data: CreateInventoryDto) => {
@@ -70,8 +71,10 @@ export default function InventoryPage() {
       setModalOpen(false);
       setEditItem(null);
       fetchInventory();
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Something went wrong';
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string | string[] } } })
+          .response?.data?.message || 'Something went wrong';
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setSubmitting(false);

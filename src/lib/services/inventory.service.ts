@@ -60,7 +60,7 @@ export const inventoryService = {
   },
 
   getStockLevels: async () => {
-    const response = await api.get<SuccessResponse<any>>(
+    const response = await api.get<SuccessResponse<Record<string, number>>>(
       '/inventory/stock-levels'
     );
     return response.data;

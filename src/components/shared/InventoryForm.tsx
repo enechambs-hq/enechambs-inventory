@@ -20,7 +20,8 @@ const inventorySchema = z.object({
   thresholdPrice: z.coerce.number().min(0, 'Required'),
 });
 
-type InventoryFormData = z.infer<typeof inventorySchema>;
+type InventoryFormInput = z.input<typeof inventorySchema>;
+type InventoryFormOutput = z.output<typeof inventorySchema>;
 
 interface Props {
   defaultValues?: InventoryItem;
@@ -29,7 +30,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const fields: { name: keyof InventoryFormData; label: string; type?: string }[] = [
+const fields: { name: keyof InventoryFormInput; label: string; type?: string }[] = [
   { name: 'serialNumber', label: 'Serial Number' },
   { name: 'dateAdded', label: 'Date Added', type: 'date' },
   { name: 'productName', label: 'Product Name' },
@@ -48,7 +49,7 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<InventoryFormData>({
+  } = useForm<InventoryFormInput, unknown, InventoryFormOutput>({
     resolver: zodResolver(inventorySchema),
     defaultValues: defaultValues
       ? {

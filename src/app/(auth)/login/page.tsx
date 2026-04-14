@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -19,8 +19,14 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setAuth } = useAuthStore();
+  const { setAuth, isAuthenticated, user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      router.replace(user.role === UserRole.ADMIN ? "/dashboard" : "/inventory");
+    }
+  }, [isAuthenticated, user, router]);
 
   const {
     register,
@@ -41,8 +47,10 @@ export default function LoginPage() {
       } else {
         router.push("/inventory");
       }
-    } catch (error: any) {
-      const message = error.response?.data?.message || "Invalid credentials";
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string | string[] } } })
+          .response?.data?.message || "Invalid credentials";
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setIsLoading(false);

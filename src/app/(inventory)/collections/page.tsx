@@ -43,7 +43,7 @@ export default function CollectionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, limit, search, setCollections, setLoading]);
 
   useEffect(() => {
     fetchCollections();
@@ -56,9 +56,10 @@ export default function CollectionsPage() {
       toast.success('Collection recorded successfully');
       setModalOpen(false);
       fetchCollections();
-    } catch (error: any) {
+    } catch (error) {
       const message =
-        error.response?.data?.message || 'Something went wrong';
+        (error as { response?: { data?: { message?: string | string[] } } })
+          .response?.data?.message || 'Something went wrong';
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setSubmitting(false);

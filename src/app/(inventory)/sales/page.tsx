@@ -29,7 +29,7 @@ export default function SalesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, limit, search, setLoading, setSales]);
 
   const fetchMySales = useCallback(async () => {
     try {
@@ -41,7 +41,7 @@ export default function SalesPage() {
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, limit, setLoading, setMySales]);
 
   useEffect(() => {
     if (activeTab === 'all') {
@@ -58,8 +58,10 @@ export default function SalesPage() {
       toast.success('Sale recorded successfully');
       setModalOpen(false);
       fetchSales();
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Something went wrong';
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string | string[] } } })
+          .response?.data?.message || 'Something went wrong';
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setSubmitting(false);

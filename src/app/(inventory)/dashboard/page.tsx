@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { format, subDays } from 'date-fns';
+import { useEffect, useState } from "react";
+import { format, subDays } from "date-fns";
 import {
   BarChart,
   Bar,
@@ -10,30 +10,33 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-} from 'recharts';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { dashboardService, DashboardStats, StaffPerformance, RevenueDataPoint } from '@/lib/services/dashboard.service';
-import { ActivityLog, UserRole } from '@/types';
-import { toast } from 'sonner';
+} from "recharts";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+
+import { ActivityLog, UserRole } from "@/types";
+import { toast } from "sonner";
+import { Package, ShoppingCart, Wallet, BarChart2 } from "lucide-react";
 import {
-  Package,
-  ShoppingCart,
-  Wallet,
-  BarChart2,
-} from 'lucide-react';
+  dashboardService,
+  DashboardStats,
+  RevenueDataPoint,
+  StaffPerformance,
+} from "@/lib/services/dashboard.sservice";
 
 export default function DashboardPage() {
   useAuthGuard(UserRole.ADMIN);
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>([]);
+  const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>(
+    [],
+  );
   const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [dateRange, setDateRange] = useState({
-    startDate: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
-    endDate: format(new Date(), 'yyyy-MM-dd'),
+    startDate: format(subDays(new Date(), 30), "yyyy-MM-dd"),
+    endDate: format(new Date(), "yyyy-MM-dd"),
   });
 
   const fetchStats = async () => {
@@ -41,7 +44,7 @@ export default function DashboardPage() {
       const data = await dashboardService.getStats();
       setStats(data.data);
     } catch {
-      toast.error('Failed to load stats');
+      toast.error("Failed to load stats");
     }
   };
 
@@ -50,7 +53,7 @@ export default function DashboardPage() {
       const data = await dashboardService.getStaffPerformance();
       setStaffPerformance(data.data);
     } catch {
-      toast.error('Failed to load staff performance');
+      toast.error("Failed to load staff performance");
     }
   };
 
@@ -58,11 +61,11 @@ export default function DashboardPage() {
     try {
       const data = await dashboardService.getRevenueChart(
         dateRange.startDate,
-        dateRange.endDate
+        dateRange.endDate,
       );
       setRevenueData(data.data);
     } catch {
-      toast.error('Failed to load revenue data');
+      toast.error("Failed to load revenue data");
     }
   };
 
@@ -71,7 +74,7 @@ export default function DashboardPage() {
       const data = await dashboardService.getRecentActivity();
       setRecentActivity(data.data);
     } catch {
-      toast.error('Failed to load recent activity');
+      toast.error("Failed to load recent activity");
     }
   };
 
@@ -87,36 +90,48 @@ export default function DashboardPage() {
       setIsLoading(false);
     };
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    fetchRevenueChart();
-  }, [dateRange]);
+    const doFetch = async () => {
+      try {
+        const data = await dashboardService.getRevenueChart(
+          dateRange.startDate,
+          dateRange.endDate,
+        );
+        setRevenueData(data.data);
+      } catch {
+        toast.error("Failed to load revenue data");
+      }
+    };
+    doFetch();
+  }, [dateRange.startDate, dateRange.endDate]);
 
   const statCards = stats
     ? [
         {
-          label: 'Total Inventory',
+          label: "Total Inventory",
           value: stats.totalInventory,
           icon: Package,
         },
         {
-          label: 'Total Sales',
+          label: "Total Sales",
           value: stats.totalSales,
           icon: ShoppingCart,
         },
         {
-          label: 'Total Revenue',
+          label: "Total Revenue",
           value: `₦${stats.totalRevenue.toLocaleString()}`,
           icon: Wallet,
         },
         {
-          label: 'Available Stock',
+          label: "Available Stock",
           value: stats.availableStock,
           icon: BarChart2,
         },
         {
-          label: 'Sold Stock',
+          label: "Sold Stock",
           value: stats.soldStock,
           icon: BarChart2,
         },
@@ -209,12 +224,16 @@ export default function DashboardPage() {
                 tickFormatter={(v) => `₦${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
-                formatter={(value: number) => [
-                  `₦${value.toLocaleString()}`,
-                  'Revenue',
+                formatter={(value) => [
+                  `₦${Number(value).toLocaleString()}`,
+                  "Revenue",
                 ]}
               />
-              <Bar dataKey="totalRevenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="totalRevenue"
+                fill="hsl(var(--primary))"
+                radius={[4, 4, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -231,7 +250,7 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  {['Name', 'Sales', 'Revenue', 'Collections'].map((h) => (
+                  {["Name", "Sales", "Revenue", "Collections"].map((h) => (
                     <th
                       key={h}
                       className="pb-2 text-left text-xs font-medium text-muted-foreground"
@@ -243,10 +262,15 @@ export default function DashboardPage() {
               </thead>
               <tbody className="divide-y">
                 {staffPerformance.map((staff) => (
-                  <tr key={staff.userId} className="hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={staff.userId}
+                    className="hover:bg-muted/30 transition-colors"
+                  >
                     <td className="py-2 font-medium">{staff.name}</td>
                     <td className="py-2">{staff.totalSales}</td>
-                    <td className="py-2">₦{staff.totalRevenue.toLocaleString()}</td>
+                    <td className="py-2">
+                      ₦{staff.totalRevenue.toLocaleString()}
+                    </td>
                     <td className="py-2">{staff.totalCollections}</td>
                   </tr>
                 ))}
@@ -269,7 +293,7 @@ export default function DashboardPage() {
                     {log.description}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(log.timestamp), 'MMM d, yyyy · h:mm a')}
+                    {format(new Date(log.timestamp), "MMM d, yyyy · h:mm a")}
                   </p>
                 </li>
               ))}

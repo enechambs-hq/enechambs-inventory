@@ -23,7 +23,8 @@ const saleSchema = z.object({
   accountPaidTo: z.string().min(1, 'Required'),
 });
 
-type SaleFormData = z.infer<typeof saleSchema>;
+type SaleFormInput = z.input<typeof saleSchema>;
+type SaleFormOutput = z.output<typeof saleSchema>;
 
 interface Props {
   onSubmit: (data: CreateSaleDto) => Promise<void>;
@@ -36,7 +37,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SaleFormData>({
+  } = useForm<SaleFormInput, unknown, SaleFormOutput>({
     resolver: zodResolver(saleSchema),
     defaultValues: {
       date: format(new Date(), 'yyyy-MM-dd'),
@@ -65,13 +66,13 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           <div key={name} className="space-y-1">
             <label className="text-sm font-medium">{label}</label>
             <input
-              {...register(name as keyof SaleFormData)}
+              {...register(name as keyof SaleFormInput)}
               type={type || 'text'}
               className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            {errors[name as keyof SaleFormData] && (
+            {errors[name as keyof SaleFormInput] && (
               <p className="text-xs text-destructive">
-                {errors[name as keyof SaleFormData]?.message}
+                {errors[name as keyof SaleFormInput]?.message}
               </p>
             )}
           </div>
