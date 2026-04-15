@@ -7,7 +7,6 @@ import { CreateInventoryDto, InventoryItem } from '@/types';
 import { format } from 'date-fns';
 
 const inventorySchema = z.object({
-  serialNumber: z.string().min(1, 'Required'),
   dateAdded: z.string().min(1, 'Required'),
   productName: z.string().min(1, 'Required'),
   imei: z.string().min(1, 'Required'),
@@ -31,7 +30,6 @@ interface Props {
 }
 
 const fields: { name: keyof InventoryFormInput; label: string; type?: string }[] = [
-  { name: 'serialNumber', label: 'Serial Number' },
   { name: 'dateAdded', label: 'Date Added', type: 'date' },
   { name: 'productName', label: 'Product Name' },
   { name: 'imei', label: 'IMEI' },
@@ -62,19 +60,30 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        {fields.map(({ name, label, type }) => (
-          <div key={name} className="space-y-1">
-            <label className="text-sm font-medium">{label}</label>
-            <input
-              {...register(name)}
-              type={type || 'text'}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {errors[name] && (
-              <p className="text-xs text-destructive">{errors[name]?.message}</p>
-            )}
-          </div>
-        ))}
+        {fields.map(({ name, label, type }) => {
+          const isReadOnly = name === 'imei' && !!defaultValues;
+          return (
+            <div key={name} className="space-y-1">
+              <label className="text-sm font-medium">
+                {label}
+                {isReadOnly && (
+                  <span className="ml-1 text-xs text-muted-foreground font-normal">(cannot be changed)</span>
+                )}
+              </label>
+              <input
+                {...register(name)}
+                type={type || 'text'}
+                readOnly={isReadOnly}
+                className={`w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring ${
+                  isReadOnly ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+              />
+              {errors[name] && (
+                <p className="text-xs text-destructive">{errors[name]?.message}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

@@ -3,7 +3,6 @@ import {
   Collection,
   CreateCollectionDto,
   CollectionStatus,
-  SuccessResponse,
   PaginatedResponse,
 } from '@/types';
 
@@ -11,6 +10,7 @@ export interface CollectionFilters {
   page?: number;
   limit?: number;
   productName?: string;
+  imei?: string;
   collectorName?: string;
 }
 
@@ -29,22 +29,17 @@ export const collectionsService = {
   },
 
   getById: async (id: string) => {
-    const response = await api.get<SuccessResponse<Collection>>(
-      `/collections/${id}`
-    );
+    const response = await api.get<Collection>(`/collections/${id}`);
     return response.data;
   },
 
   create: async (data: CreateCollectionDto) => {
-    const response = await api.post<SuccessResponse<Collection>>(
-      '/collections',
-      data
-    );
+    const response = await api.post<Collection>('/collections', data);
     return response.data;
   },
 
   updateStatus: async (id: string, status: CollectionStatus) => {
-    const response = await api.patch<SuccessResponse<Collection>>(
+    const response = await api.patch<Collection>(
       `/collections/${id}/status`,
       { status }
     );

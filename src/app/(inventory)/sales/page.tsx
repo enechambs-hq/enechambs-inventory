@@ -15,7 +15,7 @@ export default function SalesPage() {
     useSalesStore();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('all');
-  const [search, setSearch] = useState({ customerName: '', customerPhone: '' });
+  const [search, setSearch] = useState({ productName: '', imei: '', customerName: '', customerPhone: '' });
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -119,6 +119,8 @@ export default function SalesPage() {
       {activeTab === 'all' && (
         <div className="grid grid-cols-2 gap-3">
           {[
+            { key: 'productName', placeholder: 'Search product name...' },
+            { key: 'imei', placeholder: 'Search IMEI...' },
             { key: 'customerName', placeholder: 'Search customer name...' },
             { key: 'customerPhone', placeholder: 'Search customer phone...' },
           ].map(({ key, placeholder }) => (

@@ -1,25 +1,21 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CreateSaleDto, SaleCondition } from '@/types';
+import { CreateSaleDto, SaleCondition, InventoryItem } from '@/types';
+import { inventoryService } from '@/lib/services/inventory.service';
 import { format } from 'date-fns';
 
 const saleSchema = z.object({
-  serialNumber: z.string().min(1, 'Required'),
+  inventoryId: z.string().min(1, 'Select an inventory item'),
   date: z.string().min(1, 'Required'),
-  productName: z.string().min(1, 'Required'),
-  imei: z.string().min(1, 'Required'),
-  storageGB: z.string().min(1, 'Required'),
-  color: z.string().min(1, 'Required'),
   amount: z.coerce.number().min(0, 'Required'),
-  costPrice: z.coerce.number().min(0, 'Required'),
-  thresholdPrice: z.coerce.number().min(0, 'Required'),
-  condition: z.nativeEnum(SaleCondition),
+  condition: z.enum(SaleCondition),
   customerName: z.string().min(1, 'Required'),
   customerPhone: z.string().min(1, 'Required'),
-  customerEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  customerEmail: z.email('Invalid email').optional().or(z.literal('')),
   accountPaidTo: z.string().min(1, 'Required'),
 });
 
@@ -33,6 +29,17 @@ interface Props {
 }
 
 export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(true);
+
+  useEffect(() => {
+    inventoryService
+      .getAvailableForSale()
+      .then((items) => setInventory(items ?? []))
+      .catch(() => setInventory([]))
+      .finally(() => setLoadingInventory(false));
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -48,37 +55,57 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        {[
-          { name: 'serialNumber', label: 'Serial Number' },
-          { name: 'date', label: 'Date', type: 'date' },
-          { name: 'productName', label: 'Product Name' },
-          { name: 'imei', label: 'IMEI' },
-          { name: 'storageGB', label: 'Storage (GB)' },
-          { name: 'color', label: 'Color' },
-          { name: 'amount', label: 'Amount', type: 'number' },
-          { name: 'costPrice', label: 'Cost Price', type: 'number' },
-          { name: 'thresholdPrice', label: 'Threshold Price', type: 'number' },
-          { name: 'customerName', label: 'Customer Name' },
-          { name: 'customerPhone', label: 'Customer Phone' },
-          { name: 'customerEmail', label: 'Customer Email (optional)' },
-          { name: 'accountPaidTo', label: 'Account Paid To' },
-        ].map(({ name, label, type }) => (
-          <div key={name} className="space-y-1">
-            <label className="text-sm font-medium">{label}</label>
-            <input
-              {...register(name as keyof SaleFormInput)}
-              type={type || 'text'}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {errors[name as keyof SaleFormInput] && (
-              <p className="text-xs text-destructive">
-                {errors[name as keyof SaleFormInput]?.message}
-              </p>
-            )}
-          </div>
-        ))}
+        {/* Inventory picker */}
+        <div className="col-span-2 space-y-1">
+          <label className="text-sm font-medium">Inventory Item</label>
+          <select
+            {...register('inventoryId')}
+            disabled={loadingInventory}
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+          >
+            <option value="">
+              {loadingInventory ? 'Loading...' : 'Select an item'}
+            </option>
+            {inventory.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.productName} — {item.serialNumber} ({item.imei})
+              </option>
+            ))}
+          </select>
+          {errors.inventoryId && (
+            <p className="text-xs text-destructive">
+              {errors.inventoryId.message}
+            </p>
+          )}
+        </div>
 
-        {/* Condition select */}
+        {/* Date */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Date</label>
+          <input
+            {...register('date')}
+            type="date"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.date && (
+            <p className="text-xs text-destructive">{errors.date.message}</p>
+          )}
+        </div>
+
+        {/* Amount */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Amount</label>
+          <input
+            {...register('amount')}
+            type="number"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.amount && (
+            <p className="text-xs text-destructive">{errors.amount.message}</p>
+          )}
+        </div>
+
+        {/* Condition */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Condition</label>
           <select
@@ -89,7 +116,72 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
             <option value={SaleCondition.USED}>Used</option>
           </select>
           {errors.condition && (
-            <p className="text-xs text-destructive">{errors.condition.message}</p>
+            <p className="text-xs text-destructive">
+              {errors.condition.message}
+            </p>
+          )}
+        </div>
+
+        {/* Customer Name */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Customer Name</label>
+          <input
+            {...register('customerName')}
+            type="text"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.customerName && (
+            <p className="text-xs text-destructive">
+              {errors.customerName.message}
+            </p>
+          )}
+        </div>
+
+        {/* Customer Phone */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Customer Phone</label>
+          <input
+            {...register('customerPhone')}
+            type="text"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.customerPhone && (
+            <p className="text-xs text-destructive">
+              {errors.customerPhone.message}
+            </p>
+          )}
+        </div>
+
+        {/* Customer Email (optional) */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">
+            Customer Email{' '}
+            <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <input
+            {...register('customerEmail')}
+            type="email"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.customerEmail && (
+            <p className="text-xs text-destructive">
+              {errors.customerEmail.message}
+            </p>
+          )}
+        </div>
+
+        {/* Account Paid To */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Account Paid To</label>
+          <input
+            {...register('accountPaidTo')}
+            type="text"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.accountPaidTo && (
+            <p className="text-xs text-destructive">
+              {errors.accountPaidTo.message}
+            </p>
           )}
         </div>
       </div>

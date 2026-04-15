@@ -6,7 +6,8 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { inventoryService } from '@/lib/services/inventory.service';
-import { InventoryItem, CreateInventoryDto, UserRole } from '@/types';
+import { collectionsService } from '@/lib/services/collections.service';
+import { InventoryItem, CreateInventoryDto, UserRole, CollectionStatus } from '@/types';
 import InventoryForm from '@/components/shared/InventoryForm';
 
 export default function InventoryPage() {
@@ -20,6 +21,7 @@ export default function InventoryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [stockLevels, setStockLevels] = useState<Record<string, number> | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
+  const [inCollectionImeis, setInCollectionImeis] = useState<Set<string>>(new Set());
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -55,6 +57,16 @@ export default function InventoryPage() {
   useEffect(() => {
     fetchStockLevels();
     fetchLowStock();
+    collectionsService.getAll({ limit: 100 })
+      .then((data) => {
+        const imeis = new Set(
+          data.data
+            .filter((c) => c.status === CollectionStatus.PENDING)
+            .map((c) => c.imei)
+        );
+        setInCollectionImeis(imeis);
+      })
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -62,7 +74,10 @@ export default function InventoryPage() {
     try {
       setSubmitting(true);
       if (editItem) {
-        await inventoryService.update(editItem.id, data);
+        // IMEI is a device identifier — exclude it from updates
+        const { dateAdded: _d, imei: _i, ...updateData } = data;
+        void _d; void _i;
+        await inventoryService.update(editItem.id, updateData);
         toast.success('Product updated successfully');
       } else {
         await inventoryService.create(data);
@@ -72,10 +87,15 @@ export default function InventoryPage() {
       setEditItem(null);
       fetchInventory();
     } catch (error) {
-      const message =
-        (error as { response?: { data?: { message?: string | string[] } } })
-          .response?.data?.message || 'Something went wrong';
-      toast.error(Array.isArray(message) ? message[0] : message);
+      const err = error as { response?: { status?: number; data?: { message?: string | string[] } } };
+      const status = err.response?.status;
+      const backendMsg = err.response?.data?.message;
+      if (status === 500) {
+        toast.error('Failed to save product. The IMEI may already exist — please use a unique one.');
+      } else {
+        const message = backendMsg || 'Something went wrong';
+        toast.error(Array.isArray(message) ? message[0] : message);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -170,7 +190,7 @@ export default function InventoryPage() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {['Serial No.', 'Product', 'IMEI', 'Company', 'Color', 'Storage', 'Selling Price', 'Status', 'Actions'].map(
+              {['Product', 'IMEI', 'Company', 'Color', 'Storage', 'Selling Price', 'Status', 'Actions'].map(
                 (h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                     {h}
@@ -182,20 +202,19 @@ export default function InventoryPage() {
           <tbody className="divide-y">
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   Loading...
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No products found
                 </td>
               </tr>
             ) : (
               items.map((item) => (
                 <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">{item.serialNumber}</td>
                   <td className="px-4 py-3 font-medium">{item.productName}</td>
                   <td className="px-4 py-3 text-muted-foreground">{item.imei}</td>
                   <td className="px-4 py-3">{item.companyName}</td>
@@ -203,13 +222,19 @@ export default function InventoryPage() {
                   <td className="px-4 py-3">{item.storageGB}GB</td>
                   <td className="px-4 py-3">₦{item.sellingPrice.toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      item.isAvailable
-                        ? 'bg-green-500/10 text-green-600'
-                        : 'bg-red-500/10 text-red-600'
-                    }`}>
-                      {item.isAvailable ? 'Available' : 'Sold'}
-                    </span>
+                    {item.isAvailable ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-600">
+                        Available
+                      </span>
+                    ) : inCollectionImeis.has(item.imei) ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-600">
+                        In Collection
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
+                        Sold
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -265,7 +290,15 @@ export default function InventoryPage() {
       {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {submitting && (
+              <div className="absolute inset-0 bg-card/80 rounded-xl flex items-center justify-center z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span className="text-sm font-medium">Saving...</span>
+                </div>
+              </div>
+            )}
             <h2 className="text-lg font-semibold mb-4">
               {editItem ? 'Edit Product' : 'Add Product'}
             </h2>

@@ -1,21 +1,18 @@
-"use client";
+'use client';
 
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { CreateCollectionDto, CollectionStatus } from "@/types";
-import { format } from "date-fns";
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { CreateCollectionDto, InventoryItem } from '@/types';
+import { inventoryService } from '@/lib/services/inventory.service';
+import { format } from 'date-fns';
 
 const collectionSchema = z.object({
-  serialNumber: z.string().min(1, "Required"),
-  date: z.string().min(1, "Required"),
-  productName: z.string().min(1, "Required"),
-  imei: z.string().min(1, "Required"),
-  storageGB: z.string().min(1, "Required"),
-  color: z.string().min(1, "Required"),
-  amount: z.coerce.number().min(0, "Required").pipe(z.number()),
-  collectorName: z.string().min(1, "Required"),
-  status: z.nativeEnum(CollectionStatus),
+  inventoryId: z.string().min(1, 'Select an inventory item'),
+  date: z.string().min(1, 'Required'),
+  amount: z.coerce.number().min(0, 'Required').pipe(z.number()),
+  collectorName: z.string().min(1, 'Required'),
 });
 
 type CollectionFormInput = z.input<typeof collectionSchema>;
@@ -32,6 +29,17 @@ export default function CollectionForm({
   isLoading,
   onCancel,
 }: Props) {
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loadingInventory, setLoadingInventory] = useState(true);
+
+  useEffect(() => {
+    inventoryService
+      .getAvailableForSale()
+      .then((items) => setInventory(items))
+      .catch(() => setInventory([]))
+      .finally(() => setLoadingInventory(false));
+  }, []);
+
   const {
     register,
     handleSubmit,
@@ -39,51 +47,75 @@ export default function CollectionForm({
   } = useForm<CollectionFormInput, unknown, CollectionFormOutput>({
     resolver: zodResolver(collectionSchema),
     defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
-      status: CollectionStatus.PAID,
+      date: format(new Date(), 'yyyy-MM-dd'),
     },
   });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        {[
-          { name: "serialNumber", label: "Serial Number" },
-          { name: "date", label: "Date", type: "date" },
-          { name: "productName", label: "Product Name" },
-          { name: "imei", label: "IMEI" },
-          { name: "storageGB", label: "Storage (GB)" },
-          { name: "color", label: "Color" },
-          { name: "amount", label: "Amount", type: "number" },
-          { name: "collectorName", label: "Collector Name" },
-        ].map(({ name, label, type }) => (
-          <div key={name} className="space-y-1">
-            <label className="text-sm font-medium">{label}</label>
-            <input
-              {...register(name as keyof CollectionFormInput)}
-              type={type || "text"}
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {errors[name as keyof CollectionFormInput] && (
-              <p className="text-xs text-destructive">
-                {errors[name as keyof CollectionFormInput]?.message}
-              </p>
-            )}
-          </div>
-        ))}
-
-        {/* Status select */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Status</label>
+        {/* Inventory picker */}
+        <div className="col-span-2 space-y-1">
+          <label className="text-sm font-medium">Inventory Item</label>
           <select
-            {...register("status")}
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            {...register('inventoryId')}
+            disabled={loadingInventory}
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
           >
-            <option value={CollectionStatus.PAID}>Paid</option>
-            <option value={CollectionStatus.RETURNED}>Returned</option>
+            <option value="">
+              {loadingInventory ? 'Loading...' : 'Select an item'}
+            </option>
+            {inventory.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.productName} — {item.serialNumber} ({item.imei})
+              </option>
+            ))}
           </select>
-          {errors.status && (
-            <p className="text-xs text-destructive">{errors.status.message}</p>
+          {errors.inventoryId && (
+            <p className="text-xs text-destructive">
+              {errors.inventoryId.message}
+            </p>
+          )}
+        </div>
+
+        {/* Date */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Date</label>
+          <input
+            {...register('date')}
+            type="date"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.date && (
+            <p className="text-xs text-destructive">{errors.date.message}</p>
+          )}
+        </div>
+
+        {/* Amount */}
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Amount</label>
+          <input
+            {...register('amount')}
+            type="number"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.amount && (
+            <p className="text-xs text-destructive">{errors.amount.message}</p>
+          )}
+        </div>
+
+        {/* Collector Name */}
+        <div className="col-span-2 space-y-1">
+          <label className="text-sm font-medium">Collector Name</label>
+          <input
+            {...register('collectorName')}
+            type="text"
+            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {errors.collectorName && (
+            <p className="text-xs text-destructive">
+              {errors.collectorName.message}
+            </p>
           )}
         </div>
       </div>
@@ -101,7 +133,7 @@ export default function CollectionForm({
           disabled={isLoading}
           className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
-          {isLoading ? "Saving..." : "Record Collection"}
+          {isLoading ? 'Saving...' : 'Record Collection'}
         </button>
       </div>
     </form>

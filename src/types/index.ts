@@ -10,6 +10,7 @@ export enum SaleCondition {
 }
 
 export enum CollectionStatus {
+  PENDING = 'pending',
   PAID = 'paid',
   RETURNED = 'returned',
 }
@@ -74,7 +75,6 @@ export interface InventoryItem {
 }
 
 export interface CreateInventoryDto {
-  serialNumber: string;
   dateAdded: string;
   productName: string;
   imei: string;
@@ -85,6 +85,18 @@ export interface CreateInventoryDto {
   costPrice: number;
   sellingPrice: number;
   thresholdPrice: number;
+}
+
+export interface UpdateInventoryDto {
+  productName?: string;
+  imei?: string;
+  storageGB?: number;
+  color?: string;
+  productType?: string;
+  companyName?: string;
+  costPrice?: number;
+  sellingPrice?: number;
+  thresholdPrice?: number;
 }
 
 // ==================== SALES ====================
@@ -109,15 +121,9 @@ export interface Sale {
 }
 
 export interface CreateSaleDto {
-  serialNumber: string;
-  date: string;
-  productName: string;
-  imei: string;
-  storageGB: string;
-  color: string;
+  inventoryId: string;
+  date?: string;
   amount: number;
-  costPrice: number;
-  thresholdPrice: number;
   condition: SaleCondition;
   customerName: string;
   customerPhone: string;
@@ -142,15 +148,10 @@ export interface Collection {
 }
 
 export interface CreateCollectionDto {
-  serialNumber: string;
-  date: string;
-  productName: string;
-  imei: string;
-  storageGB: string;
-  color: string;
+  inventoryId: string;
+  date?: string;
   amount: number;
   collectorName: string;
-  status: CollectionStatus;
 }
 
 // ==================== ACTIVITY LOGS ====================

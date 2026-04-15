@@ -23,6 +23,7 @@ export default function CollectionsPage() {
 
   const [search, setSearch] = useState({
     productName: '',
+    imei: '',
     collectorName: '',
   });
   const [modalOpen, setModalOpen] = useState(false);
@@ -66,7 +67,11 @@ export default function CollectionsPage() {
     }
   };
 
-  const handleStatusUpdate = async (id: string, status: CollectionStatus) => {
+  const handleStatusUpdate = async (id: string, status: CollectionStatus, current: CollectionStatus) => {
+    if (current === status) {
+      toast.error(`Status is already set to ${status}`);
+      return;
+    }
     try {
       setUpdatingId(id);
       await collectionsService.updateStatus(id, status);
@@ -85,6 +90,8 @@ export default function CollectionsPage() {
         return 'bg-green-500/10 text-green-600';
       case CollectionStatus.RETURNED:
         return 'bg-blue-500/10 text-blue-600';
+      case CollectionStatus.PENDING:
+        return 'bg-yellow-500/10 text-yellow-600';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -113,6 +120,7 @@ export default function CollectionsPage() {
       <div className="grid grid-cols-2 gap-3">
         {[
           { key: 'productName', placeholder: 'Search product name...' },
+          { key: 'imei', placeholder: 'Search IMEI...' },
           { key: 'collectorName', placeholder: 'Search collector name...' },
         ].map(({ key, placeholder }) => (
           <div key={key} className="relative">
@@ -205,22 +213,33 @@ export default function CollectionsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                    {updatingId === collection.id && (
+                      <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
+                    )}
                     <select
-                      value={collection.status}
-                      disabled={updatingId === collection.id}
+                      value=""
+                      disabled={updatingId === collection.id || collection.status === CollectionStatus.PAID || collection.status === CollectionStatus.RETURNED}
                       onChange={(e) =>
                         handleStatusUpdate(
                           collection.id,
-                          e.target.value as CollectionStatus
+                          e.target.value as CollectionStatus,
+                          collection.status,
                         )
                       }
-                      className="text-xs rounded-md border bg-background px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                      className={`text-xs rounded-md border bg-background px-2 py-1 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60 ${
+                        (collection.status === CollectionStatus.PAID || collection.status === CollectionStatus.RETURNED) ? 'cursor-not-allowed' : ''
+                      }`}
                     >
+                      <option value="" disabled>
+                        {collection.status ? collection.status.charAt(0).toUpperCase() + collection.status.slice(1) : 'Set status'}
+                      </option>
                       <option value={CollectionStatus.PAID}>Paid</option>
                       <option value={CollectionStatus.RETURNED}>
                         Returned
                       </option>
                     </select>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -260,7 +279,15 @@ export default function CollectionsPage() {
       {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {submitting && (
+              <div className="absolute inset-0 bg-card/80 rounded-xl flex items-center justify-center z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span className="text-sm font-medium">Recording collection...</span>
+                </div>
+              </div>
+            )}
             <h2 className="text-lg font-semibold mb-4">
               Record New Collection
             </h2>

@@ -21,7 +21,7 @@ import {
   DashboardStats,
   RevenueDataPoint,
   StaffPerformance,
-} from "@/lib/services/dashboard.sservice";
+} from "@/lib/services/dashboard.service";
 
 export default function DashboardPage() {
   useAuthGuard(UserRole.ADMIN);

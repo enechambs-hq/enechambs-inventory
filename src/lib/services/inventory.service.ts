@@ -2,6 +2,7 @@ import api from '@/lib/api';
 import {
   InventoryItem,
   CreateInventoryDto,
+  UpdateInventoryDto,
   SuccessResponse,
   PaginatedResponse,
 } from '@/types';
@@ -44,7 +45,7 @@ export const inventoryService = {
     return response.data;
   },
 
-  update: async (id: string, data: Partial<CreateInventoryDto>) => {
+  update: async (id: string, data: UpdateInventoryDto) => {
     const response = await api.patch<SuccessResponse<InventoryItem>>(
       `/inventory/${id}`,
       data
@@ -71,5 +72,13 @@ export const inventoryService = {
       '/inventory/alerts/low-stock'
     );
     return response.data;
+  },
+
+  getAvailableForSale: async () => {
+    const response = await api.get<SuccessResponse<InventoryItem[]> | InventoryItem[]>(
+      '/inventory/available-for-sale'
+    );
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 };
