@@ -10,7 +10,7 @@ export interface DashboardStats {
 }
 
 export interface StaffPerformance {
-  userId: string;
+  userId?: string;
   name: string;
   totalSales: number;
   totalRevenue: number;
@@ -24,31 +24,35 @@ export interface RevenueDataPoint {
 }
 
 export const dashboardService = {
-  getStats: async () => {
-    const response = await api.get<SuccessResponse<DashboardStats>>(
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get<SuccessResponse<DashboardStats> | DashboardStats>(
       '/dashboard/stats'
     );
-    return response.data;
+    const payload = response.data;
+    return ('data' in payload && payload.data !== undefined ? payload.data : payload) as DashboardStats;
   },
 
-  getStaffPerformance: async () => {
-    const response = await api.get<SuccessResponse<StaffPerformance[]>>(
+  getStaffPerformance: async (): Promise<StaffPerformance[]> => {
+    const response = await api.get<SuccessResponse<StaffPerformance[]> | StaffPerformance[]>(
       '/dashboard/staff-performance'
     );
-    return response.data;
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 
-  getRevenueChart: async (startDate: string, endDate: string) => {
-    const response = await api.get<SuccessResponse<RevenueDataPoint[]>>(
+  getRevenueChart: async (startDate: string, endDate: string): Promise<RevenueDataPoint[]> => {
+    const response = await api.get<SuccessResponse<RevenueDataPoint[]> | RevenueDataPoint[]>(
       `/dashboard/revenue-chart?startDate=${startDate}&endDate=${endDate}`
     );
-    return response.data;
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 
-  getRecentActivity: async (limit = 10) => {
-    const response = await api.get<SuccessResponse<ActivityLog[]>>(
+  getRecentActivity: async (limit = 10): Promise<ActivityLog[]> => {
+    const response = await api.get<SuccessResponse<ActivityLog[]> | ActivityLog[]>(
       `/activity-logs/recent?limit=${limit}`
     );
-    return response.data;
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 };

@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { LoginDto, LoginResponse, SetupPasswordDto } from '@/types';
+import { LoginDto, LoginResponse, SetupPasswordDto, RegisterStaffDto } from '@/types';
 
 export const authService = {
   login: async (data: LoginDto): Promise<LoginResponse> => {
@@ -18,5 +18,9 @@ export const authService = {
   validateToken: async (token: string): Promise<boolean> => {
     const response = await api.post('/auth/validate-token', { token });
     return response.data;
+  },
+
+  registerStaff: async (data: RegisterStaffDto): Promise<void> => {
+    await api.post('/auth/register-staff', data);
   },
 };

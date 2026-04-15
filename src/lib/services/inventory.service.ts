@@ -61,17 +61,18 @@ export const inventoryService = {
   },
 
   getStockLevels: async () => {
-    const response = await api.get<SuccessResponse<Record<string, number>>>(
+    const response = await api.get<{ total: number; available: number; sold: number }>(
       '/inventory/stock-levels'
     );
     return response.data;
   },
 
-  getLowStockAlerts: async () => {
-    const response = await api.get<SuccessResponse<InventoryItem[]>>(
+  getLowStockAlerts: async (): Promise<InventoryItem[]> => {
+    const response = await api.get<SuccessResponse<InventoryItem[]> | InventoryItem[]>(
       '/inventory/alerts/low-stock'
     );
-    return response.data;
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 
   getAvailableForSale: async () => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -31,10 +32,12 @@ export default function Sidebar() {
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
 
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const links = user?.role === UserRole.ADMIN ? adminLinks : staffLinks;
 
   const handleLogout = async () => {
     try {
+      setIsLoggingOut(true);
       await authService.logout();
     } catch {
       // fail silently, clear anyway
@@ -82,10 +85,15 @@ export default function Sidebar() {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          <LogOut size={16} />
-          Logout
+          {isLoggingOut ? (
+            <div className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+          ) : (
+            <LogOut size={16} />
+          )}
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
         </button>
       </div>
     </aside>

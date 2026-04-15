@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { format, subDays } from "date-fns";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   BarChart,
   Bar,
@@ -12,19 +15,58 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-
-import { ActivityLog, UserRole } from "@/types";
+import { ActivityLog, UserRole, RegisterStaffDto } from "@/types";
 import { toast } from "sonner";
-import { Package, ShoppingCart, Wallet, BarChart2 } from "lucide-react";
+import { Package, ShoppingCart, Wallet, BarChart2, UserPlus } from "lucide-react";
 import {
   dashboardService,
   DashboardStats,
   RevenueDataPoint,
   StaffPerformance,
 } from "@/lib/services/dashboard.service";
+import { authService } from "@/lib/services/auth.service";
+
+const registerStaffSchema = z.object({
+  email: z.email("Invalid email address"),
+  firstName: z.string().min(1, "Required"),
+  lastName: z.string().min(1, "Required"),
+  role: z.enum([UserRole.ADMIN, UserRole.STAFF]),
+});
+
+type RegisterStaffForm = z.output<typeof registerStaffSchema>;
 
 export default function DashboardPage() {
   useAuthGuard(UserRole.ADMIN);
+
+  const [registerModalOpen, setRegisterModalOpen] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+
+  const {
+    register: registerField,
+    handleSubmit: handleRegisterSubmit,
+    reset: resetRegisterForm,
+    formState: { errors: registerErrors },
+  } = useForm<RegisterStaffForm>({
+    resolver: zodResolver(registerStaffSchema),
+    defaultValues: { role: UserRole.STAFF },
+  });
+
+  const handleRegisterStaff = async (data: RegisterStaffDto) => {
+    try {
+      setIsRegistering(true);
+      await authService.registerStaff(data);
+      toast.success(`Staff account created. A setup email has been sent to ${data.email}.`);
+      setRegisterModalOpen(false);
+      resetRegisterForm();
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string | string[] } } })
+          .response?.data?.message || 'Failed to register staff';
+      toast.error(Array.isArray(message) ? message[0] : message);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>(
@@ -42,7 +84,7 @@ export default function DashboardPage() {
   const fetchStats = async () => {
     try {
       const data = await dashboardService.getStats();
-      setStats(data.data);
+      setStats(data);
     } catch {
       toast.error("Failed to load stats");
     }
@@ -51,7 +93,7 @@ export default function DashboardPage() {
   const fetchStaffPerformance = async () => {
     try {
       const data = await dashboardService.getStaffPerformance();
-      setStaffPerformance(data.data);
+      setStaffPerformance(data);
     } catch {
       toast.error("Failed to load staff performance");
     }
@@ -63,7 +105,7 @@ export default function DashboardPage() {
         dateRange.startDate,
         dateRange.endDate,
       );
-      setRevenueData(data.data);
+      setRevenueData(data);
     } catch {
       toast.error("Failed to load revenue data");
     }
@@ -72,7 +114,7 @@ export default function DashboardPage() {
   const fetchRecentActivity = async () => {
     try {
       const data = await dashboardService.getRecentActivity();
-      setRecentActivity(data.data);
+      setRecentActivity(data);
     } catch {
       toast.error("Failed to load recent activity");
     }
@@ -100,7 +142,7 @@ export default function DashboardPage() {
           dateRange.startDate,
           dateRange.endDate,
         );
-        setRevenueData(data.data);
+        setRevenueData(data);
       } catch {
         toast.error("Failed to load revenue data");
       }
@@ -122,7 +164,7 @@ export default function DashboardPage() {
         },
         {
           label: "Total Revenue",
-          value: `₦${stats.totalRevenue.toLocaleString()}`,
+          value: `₦${(stats.totalRevenue ?? 0).toLocaleString()}`,
           icon: Wallet,
         },
         {
@@ -149,11 +191,20 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Business overview and performance
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Business overview and performance
+          </p>
+        </div>
+        <button
+          onClick={() => setRegisterModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+        >
+          <UserPlus size={16} />
+          Register Staff
+        </button>
       </div>
 
       {/* Stats cards */}
@@ -261,15 +312,15 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {staffPerformance.map((staff) => (
+                {staffPerformance.map((staff, i) => (
                   <tr
-                    key={staff.userId}
+                    key={staff.userId ?? staff.name ?? i}
                     className="hover:bg-muted/30 transition-colors"
                   >
                     <td className="py-2 font-medium">{staff.name}</td>
                     <td className="py-2">{staff.totalSales}</td>
                     <td className="py-2">
-                      ₦{staff.totalRevenue.toLocaleString()}
+                      ₦{(staff.totalRevenue ?? 0).toLocaleString()}
                     </td>
                     <td className="py-2">{staff.totalCollections}</td>
                   </tr>
@@ -301,6 +352,95 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      {/* Register Staff Modal — admin only */}
+      {registerModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="relative bg-card rounded-xl border p-6 w-full max-w-md">
+            {isRegistering && (
+              <div className="absolute inset-0 bg-card/80 rounded-xl flex items-center justify-center z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span className="text-sm font-medium">Registering staff...</span>
+                </div>
+              </div>
+            )}
+            <h2 className="text-lg font-semibold mb-1">Register Staff</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              A setup email will be sent to the provided address.
+            </p>
+            <form
+              onSubmit={handleRegisterSubmit(handleRegisterStaff)}
+              className="space-y-4"
+            >
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Email</label>
+                <input
+                  {...registerField('email')}
+                  type="email"
+                  placeholder="staff@example.com"
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {registerErrors.email && (
+                  <p className="text-xs text-destructive">{registerErrors.email.message}</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">First Name</label>
+                  <input
+                    {...registerField('firstName')}
+                    type="text"
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {registerErrors.firstName && (
+                    <p className="text-xs text-destructive">{registerErrors.firstName.message}</p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Last Name</label>
+                  <input
+                    {...registerField('lastName')}
+                    type="text"
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  {registerErrors.lastName && (
+                    <p className="text-xs text-destructive">{registerErrors.lastName.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Role</label>
+                <select
+                  {...registerField('role')}
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value={UserRole.STAFF}>Staff</option>
+                  <option value={UserRole.ADMIN}>Admin</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setRegisterModalOpen(false); resetRegisterForm(); }}
+                  className="px-4 py-2 rounded-md border text-sm hover:bg-muted transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isRegistering}
+                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {isRegistering ? 'Registering...' : 'Register'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

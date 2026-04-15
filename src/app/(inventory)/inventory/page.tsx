@@ -19,9 +19,16 @@ export default function InventoryPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [stockLevels, setStockLevels] = useState<Record<string, number> | null>(null);
+  const [stockLevels, setStockLevels] = useState<{
+    total: number;
+    available: number;
+    sold: number;
+  } | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
-  const [inCollectionImeis, setInCollectionImeis] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<'all' | 'available' | 'sold' | 'in-collection'>('all');
+  const [collectionSerials, setCollectionSerials] = useState<Set<string>>(new Set());
+  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(null);
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -38,7 +45,7 @@ export default function InventoryPage() {
   const fetchStockLevels = async () => {
     try {
       const data = await inventoryService.getStockLevels();
-      setStockLevels(data.data);
+      setStockLevels(data);
     } catch {}
   };
 
@@ -46,7 +53,7 @@ export default function InventoryPage() {
     if (user?.role !== UserRole.ADMIN) return;
     try {
       const data = await inventoryService.getLowStockAlerts();
-      setLowStock(data.data);
+      setLowStock(data);
     } catch {}
   };
 
@@ -54,21 +61,40 @@ export default function InventoryPage() {
     fetchInventory();
   }, [fetchInventory]);
 
+  const fetchCollectionSerials = async () => {
+    try {
+      const data = await collectionsService.getAll({ limit: 100 });
+      const serials = new Set(
+        data.data
+          .filter((c) => c.status === CollectionStatus.PENDING)
+          .map((c) => c.imei)
+      );
+      setCollectionSerials(serials);
+    } catch {}
+  };
+
   useEffect(() => {
     fetchStockLevels();
     fetchLowStock();
-    collectionsService.getAll({ limit: 100 })
-      .then((data) => {
-        const imeis = new Set(
-          data.data
-            .filter((c) => c.status === CollectionStatus.PENDING)
-            .map((c) => c.imei)
-        );
-        setInCollectionImeis(imeis);
-      })
-      .catch(() => {});
+    fetchCollectionSerials();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When a non-"all" filter is active, fetch the full dataset (limit=100)
+  // so filtering is applied across all records, not just the current page.
+  useEffect(() => {
+    if (activeFilter === 'all') {
+      setFilterSnapshot(null);
+      return;
+    }
+    setIsFilterLoading(true);
+    inventoryService.getAll({ limit: 100, ...search })
+      .then((data) => setFilterSnapshot(data.data))
+      .catch(() => setFilterSnapshot([]))
+      .finally(() => setIsFilterLoading(false));
+  // search is intentionally included so the snapshot refreshes on search changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFilter, search]);
 
   const handleSubmit = async (data: CreateInventoryDto) => {
     try {
@@ -86,6 +112,7 @@ export default function InventoryPage() {
       setModalOpen(false);
       setEditItem(null);
       fetchInventory();
+      fetchStockLevels();
     } catch (error) {
       const err = error as { response?: { status?: number; data?: { message?: string | string[] } } };
       const status = err.response?.status;
@@ -107,6 +134,7 @@ export default function InventoryPage() {
       await inventoryService.delete(id);
       toast.success('Product deleted');
       fetchInventory();
+      fetchStockLevels();
     } catch {
       toast.error('Failed to delete product');
     }
@@ -116,6 +144,15 @@ export default function InventoryPage() {
     setEditItem(item);
     setModalOpen(true);
   };
+
+  // For non-"all" filters use the full snapshot; for "all" use the paginated page.
+  const baseItems = filterSnapshot !== null ? filterSnapshot : items;
+  const filteredItems = baseItems.filter((item) => {
+    if (activeFilter === 'available') return item.isAvailable && !collectionSerials.has(item.imei);
+    if (activeFilter === 'sold') return !item.isAvailable && !collectionSerials.has(item.imei);
+    if (activeFilter === 'in-collection') return collectionSerials.has(item.imei);
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -137,10 +174,14 @@ export default function InventoryPage() {
       {/* Stock level cards */}
       {stockLevels && (
         <div className="grid grid-cols-3 gap-4">
-          {Object.entries(stockLevels).map(([key, value]) => (
-            <div key={key} className="rounded-xl border bg-card p-4">
-              <p className="text-xs text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
-              <p className="text-2xl font-bold mt-1">{String(value)}</p>
+          {[
+            { label: 'Total Stock', value: stockLevels.total },
+            { label: 'Available', value: stockLevels.available },
+            { label: 'Sold', value: stockLevels.sold },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-xl border bg-card p-4">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="text-2xl font-bold mt-1">{value}</p>
             </div>
           ))}
         </div>
@@ -164,6 +205,23 @@ export default function InventoryPage() {
           </ul>
         </div>
       )}
+
+      {/* Filter tabs */}
+      <div className="flex gap-1 border-b">
+        {(['all', 'available', 'sold', 'in-collection'] as const).map((filter) => (
+          <button
+            key={filter}
+            onClick={() => { setActiveFilter(filter); setPage(1); }}
+            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+              activeFilter === filter
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {filter === 'in-collection' ? 'In Collection' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+          </button>
+        ))}
+      </div>
 
       {/* Search filters */}
       <div className="grid grid-cols-4 gap-3">
@@ -200,20 +258,20 @@ export default function InventoryPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {isLoading ? (
+            {isLoading || isFilterLoading ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   Loading...
                 </td>
               </tr>
-            ) : items.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   No products found
                 </td>
               </tr>
             ) : (
-              items.map((item) => (
+              filteredItems.map((item) => (
                 <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{item.productName}</td>
                   <td className="px-4 py-3 text-muted-foreground">{item.imei}</td>
@@ -222,19 +280,19 @@ export default function InventoryPage() {
                   <td className="px-4 py-3">{item.storageGB}GB</td>
                   <td className="px-4 py-3">₦{item.sellingPrice.toLocaleString()}</td>
                   <td className="px-4 py-3">
-                    {item.isAvailable ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-600">
-                        Available
-                      </span>
-                    ) : inCollectionImeis.has(item.imei) ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-600">
-                        In Collection
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600">
-                        Sold
-                      </span>
-                    )}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      collectionSerials.has(item.imei)
+                        ? 'bg-yellow-500/10 text-yellow-600'
+                        : item.isAvailable
+                        ? 'bg-green-500/10 text-green-600'
+                        : 'bg-red-500/10 text-red-600'
+                    }`}>
+                      {collectionSerials.has(item.imei)
+                        ? 'In Collection'
+                        : item.isAvailable
+                        ? 'Available'
+                        : 'Sold'}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -259,32 +317,38 @@ export default function InventoryPage() {
         </table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {items.length} of {total} products
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={page === 1}
-              className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
-            >
-              Previous
-            </button>
-            <span className="text-sm">
-              {page} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={page === totalPages}
-              className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
-            >
-              Next
-            </button>
+      {/* Pagination — only for the "all" view; filtered views show full count */}
+      {activeFilter === 'all' ? (
+        totalPages > 1 && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {items.length} of {total} products
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage(page - 1)}
+                disabled={page === 1}
+                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-sm">
+                {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage(page + 1)}
+                disabled={page === totalPages}
+                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
+              >
+                Next
+              </button>
+            </div>
           </div>
-        </div>
+        )
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Showing {filteredItems.length} {filteredItems.length === 1 ? 'product' : 'products'}
+        </p>
       )}
 
       {/* Modal */}
