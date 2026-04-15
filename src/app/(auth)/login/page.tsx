@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { UserRole } from "@/types";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
+  email: z.email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
@@ -26,7 +26,8 @@ export default function LoginPage() {
     if (isAuthenticated && user) {
       router.replace(user.role === UserRole.ADMIN ? "/dashboard" : "/inventory");
     }
-  }, [isAuthenticated, user, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Mount only — handles already-authenticated users visiting /login; post-login redirect is in onSubmit
 
   const {
     register,

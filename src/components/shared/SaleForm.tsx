@@ -15,7 +15,10 @@ const saleSchema = z.object({
   condition: z.enum(SaleCondition),
   customerName: z.string().min(1, 'Required'),
   customerPhone: z.string().min(1, 'Required'),
-  customerEmail: z.email('Invalid email').optional().or(z.literal('')),
+  customerEmail: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.email('Invalid email').optional()
+  ),
   accountPaidTo: z.string().min(1, 'Required'),
 });
 

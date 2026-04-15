@@ -220,7 +220,15 @@ export default function SalesPage() {
       {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {submitting && (
+              <div className="absolute inset-0 bg-card/80 rounded-xl flex items-center justify-center z-10">
+                <div className="flex items-center gap-3">
+                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  <span className="text-sm font-medium">Recording sale...</span>
+                </div>
+              </div>
+            )}
             <h2 className="text-lg font-semibold mb-4">Record New Sale</h2>
             <SaleForm
               onSubmit={handleSubmit}

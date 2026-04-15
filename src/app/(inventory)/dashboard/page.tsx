@@ -84,7 +84,7 @@ export default function DashboardPage() {
   const fetchStats = async () => {
     try {
       const data = await dashboardService.getStats();
-      setStats(data.data);
+      setStats(data);
     } catch {
       toast.error("Failed to load stats");
     }
@@ -93,7 +93,7 @@ export default function DashboardPage() {
   const fetchStaffPerformance = async () => {
     try {
       const data = await dashboardService.getStaffPerformance();
-      setStaffPerformance(data.data);
+      setStaffPerformance(data);
     } catch {
       toast.error("Failed to load staff performance");
     }
@@ -105,7 +105,7 @@ export default function DashboardPage() {
         dateRange.startDate,
         dateRange.endDate,
       );
-      setRevenueData(data.data);
+      setRevenueData(data);
     } catch {
       toast.error("Failed to load revenue data");
     }
@@ -114,7 +114,7 @@ export default function DashboardPage() {
   const fetchRecentActivity = async () => {
     try {
       const data = await dashboardService.getRecentActivity();
-      setRecentActivity(data.data);
+      setRecentActivity(data);
     } catch {
       toast.error("Failed to load recent activity");
     }
@@ -142,7 +142,7 @@ export default function DashboardPage() {
           dateRange.startDate,
           dateRange.endDate,
         );
-        setRevenueData(data.data);
+        setRevenueData(data);
       } catch {
         toast.error("Failed to load revenue data");
       }
@@ -164,7 +164,7 @@ export default function DashboardPage() {
         },
         {
           label: "Total Revenue",
-          value: `₦${stats.totalRevenue.toLocaleString()}`,
+          value: `₦${(stats.totalRevenue ?? 0).toLocaleString()}`,
           icon: Wallet,
         },
         {
@@ -312,15 +312,15 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {staffPerformance.map((staff) => (
+                {staffPerformance.map((staff, i) => (
                   <tr
-                    key={staff.userId}
+                    key={staff.userId ?? staff.name ?? i}
                     className="hover:bg-muted/30 transition-colors"
                   >
                     <td className="py-2 font-medium">{staff.name}</td>
                     <td className="py-2">{staff.totalSales}</td>
                     <td className="py-2">
-                      ₦{staff.totalRevenue.toLocaleString()}
+                      ₦{(staff.totalRevenue ?? 0).toLocaleString()}
                     </td>
                     <td className="py-2">{staff.totalCollections}</td>
                   </tr>
