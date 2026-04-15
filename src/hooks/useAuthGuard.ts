@@ -17,7 +17,7 @@ export const useAuthGuard = (requiredRole?: UserRole) => {
     if (requiredRole && user?.role !== requiredRole) {
       router.push('/inventory');
     }
-  }, [isAuthenticated, user, requiredRole]);
+  }, [isAuthenticated, user, requiredRole, router]);
 
   return { user, isAuthenticated };
 };

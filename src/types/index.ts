@@ -39,6 +39,13 @@ export interface SetupPasswordDto {
   password: string;
 }
 
+export interface RegisterStaffDto {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+}
+
 // ==================== USER ====================
 export interface User {
   id: string;
