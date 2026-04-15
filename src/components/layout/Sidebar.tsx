@@ -8,6 +8,7 @@ import {
   Package,
   ShoppingCart,
   Wallet,
+  Users,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
@@ -25,6 +26,7 @@ const staffLinks = [
 const adminLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   ...staffLinks,
+  { href: '/users', label: 'Users', icon: Users },
 ];
 
 export default function Sidebar() {
