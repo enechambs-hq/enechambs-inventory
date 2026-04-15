@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { User, PaginatedResponse } from '@/types';
+import { User, UpdateUserDto, UserPerformance, PaginatedResponse, SuccessResponse } from '@/types';
 
 export interface UserFilters {
   page?: number;
@@ -19,5 +19,29 @@ export const usersService = {
       `/users?${params.toString()}`
     );
     return response.data;
+  },
+
+  getById: async (id: string): Promise<User> => {
+    const response = await api.get<SuccessResponse<User> | User>(`/users/${id}`);
+    const payload = response.data;
+    return ('data' in payload && payload.data !== undefined ? payload.data : payload) as User;
+  },
+
+  update: async (id: string, data: UpdateUserDto): Promise<User> => {
+    const response = await api.patch<SuccessResponse<User> | User>(`/users/${id}`, data);
+    const payload = response.data;
+    return ('data' in payload && payload.data !== undefined ? payload.data : payload) as User;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/users/${id}`);
+  },
+
+  getPerformance: async (): Promise<UserPerformance[]> => {
+    const response = await api.get<SuccessResponse<UserPerformance[]> | UserPerformance[]>(
+      '/users/performance'
+    );
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 };

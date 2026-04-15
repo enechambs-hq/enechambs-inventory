@@ -14,16 +14,17 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { ActivityLog, UserRole, RegisterStaffDto } from "@/types";
+import { ActivityLog, UserRole, RegisterStaffDto, UserPerformance } from "@/types";
 import { toast } from "sonner";
 import { Package, ShoppingCart, Wallet, BarChart2, UserPlus } from "lucide-react";
 import {
   dashboardService,
   DashboardStats,
   RevenueDataPoint,
-  StaffPerformance,
 } from "@/lib/services/dashboard.service";
+import { usersService } from "@/lib/services/users.service";
 import { authService } from "@/lib/services/auth.service";
 
 const registerStaffSchema = z.object({
@@ -68,10 +69,9 @@ export default function DashboardPage() {
     }
   };
 
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [staffPerformance, setStaffPerformance] = useState<StaffPerformance[]>(
-    [],
-  );
+  const [staffPerformance, setStaffPerformance] = useState<UserPerformance[]>([]);
   const [revenueData, setRevenueData] = useState<RevenueDataPoint[]>([]);
   const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,8 +92,11 @@ export default function DashboardPage() {
 
   const fetchStaffPerformance = async () => {
     try {
-      const data = await dashboardService.getStaffPerformance();
-      setStaffPerformance(data);
+      const data = await usersService.getPerformance();
+      const top2 = [...data]
+        .sort((a, b) => Number(b.totalrevenue) - Number(a.totalrevenue))
+        .slice(0, 2);
+      setStaffPerformance(top2);
     } catch {
       toast.error("Failed to load staff performance");
     }
@@ -294,14 +297,22 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 gap-6">
         {/* Staff performance */}
         <div className="rounded-xl border bg-card p-6">
-          <h2 className="text-base font-semibold mb-4">Staff Performance</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold">Top Staff</h2>
+            <button
+              onClick={() => router.push('/users?tab=performance')}
+              className="text-xs text-primary hover:underline"
+            >
+              View all
+            </button>
+          </div>
           {staffPerformance.length === 0 ? (
             <p className="text-sm text-muted-foreground">No data available</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  {["Name", "Sales", "Revenue", "Collections"].map((h) => (
+                  {["Name", "Sales", "Revenue"].map((h) => (
                     <th
                       key={h}
                       className="pb-2 text-left text-xs font-medium text-muted-foreground"
@@ -312,17 +323,19 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {staffPerformance.map((staff, i) => (
+                {staffPerformance.map((staff) => (
                   <tr
-                    key={staff.userId ?? staff.name ?? i}
-                    className="hover:bg-muted/30 transition-colors"
+                    key={staff.user_id}
+                    onClick={() => router.push('/users?tab=performance')}
+                    className="hover:bg-muted/30 transition-colors cursor-pointer"
                   >
-                    <td className="py-2 font-medium">{staff.name}</td>
-                    <td className="py-2">{staff.totalSales}</td>
-                    <td className="py-2">
-                      ₦{(staff.totalRevenue ?? 0).toLocaleString()}
+                    <td className="py-2 font-medium">
+                      {staff.user_firstName} {staff.user_lastName}
                     </td>
-                    <td className="py-2">{staff.totalCollections}</td>
+                    <td className="py-2">{staff.totalsales}</td>
+                    <td className="py-2">
+                      ₦{Number(staff.totalrevenue).toLocaleString()}
+                    </td>
                   </tr>
                 ))}
               </tbody>
