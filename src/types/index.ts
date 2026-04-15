@@ -61,6 +61,22 @@ export interface User {
   updatedAt: string;
 }
 
+export interface UpdateUserDto {
+  firstName?: string;
+  lastName?: string;
+  role?: UserRole;
+  isActive?: boolean;
+}
+
+export interface UserPerformance {
+  user_id: string;
+  user_email: string;
+  user_firstName: string;
+  user_lastName: string;
+  totalsales: string;
+  totalrevenue: string;
+}
+
 // ==================== INVENTORY ====================
 export interface InventoryItem {
   id: string;
