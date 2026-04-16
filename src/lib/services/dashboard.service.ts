@@ -1,12 +1,21 @@
 import api from '@/lib/api';
-import { SuccessResponse, ActivityLog } from '@/types';
+import { SuccessResponse, ActivityLog, DailySummary, WeeklySummary, MonthlySummary, TopProduct, ProfitReport, CollectionsStats, CreditStats } from '@/types';
 
 export interface DashboardStats {
   totalInventory: number;
   totalSales: number;
   totalRevenue: number;
-  availableStock: number;
-  soldStock: number;
+  availableInventory: number;
+  totalCollections: number;
+  lowStockAlerts: number;
+  credits: {
+    total: number;
+    paid: number;
+    outstanding: number;
+    overdue: number;
+  };
+  recentActivities: import('@/types').ActivityLog[];
+  recentSales: import('@/types').Sale[];
 }
 
 export interface StaffPerformance {
@@ -19,8 +28,7 @@ export interface StaffPerformance {
 
 export interface RevenueDataPoint {
   date: string;
-  totalRevenue: number;
-  salesCount: number;
+  total: string;
 }
 
 export const dashboardService = {
@@ -54,5 +62,44 @@ export const dashboardService = {
     );
     const payload = response.data;
     return Array.isArray(payload) ? payload : (payload.data ?? []);
+  },
+
+  getDaily: async (): Promise<DailySummary> => {
+    const response = await api.get<DailySummary>('/dashboard/daily');
+    return response.data;
+  },
+
+  getWeekly: async (): Promise<WeeklySummary> => {
+    const response = await api.get<WeeklySummary>('/dashboard/weekly');
+    return response.data;
+  },
+
+  getMonthly: async (): Promise<MonthlySummary> => {
+    const response = await api.get<MonthlySummary>('/dashboard/monthly');
+    return response.data;
+  },
+
+  getCreditStats: async (): Promise<CreditStats> => {
+    const response = await api.get<CreditStats>('/dashboard/credit-stats');
+    return response.data;
+  },
+
+  getCollectionsStats: async (): Promise<CollectionsStats> => {
+    const response = await api.get<CollectionsStats>('/dashboard/collections-stats');
+    return response.data;
+  },
+
+  getProfitReport: async (startDate: string, endDate: string): Promise<ProfitReport> => {
+    const response = await api.get<ProfitReport>(
+      `/dashboard/profit-report?startDate=${startDate}&endDate=${endDate}`
+    );
+    return response.data;
+  },
+
+  getTopProducts: async (): Promise<TopProduct[]> => {
+    const response = await api.get<TopProduct[]>('/dashboard/top-products', {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    return Array.isArray(response.data) ? response.data : [];
   },
 };

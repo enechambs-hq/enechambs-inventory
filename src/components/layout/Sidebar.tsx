@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Wallet,
   Users,
+  TrendingUp,
   LogOut,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
@@ -27,6 +28,7 @@ const adminLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   ...staffLinks,
   { href: '/users', label: 'Users', icon: Users },
+  { href: '/profit-report', label: 'Profit Report', icon: TrendingUp },
 ];
 
 export default function Sidebar() {
