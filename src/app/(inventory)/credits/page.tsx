@@ -18,7 +18,48 @@ const STATUS_STYLES: Record<CreditStatus, string> = {
 
 type ActiveTab = 'all' | 'mine' | 'overdue';
 
-function CreditDetailModal({ credit, onClose }: { credit: Credit; onClose: () => void }) {
+function CreditDetailModal({ credit, onClose, onPaymentRecorded }: { credit: Credit; onClose: () => void; onPaymentRecorded: (updated: Credit) => void }) {
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentNote, setPaymentNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [currentCredit, setCurrentCredit] = useState(credit);
+
+  const canPay = !['paid', 'defaulted'].includes(currentCredit.status);
+
+  const handleStatusChange = async (status: string) => {
+    try {
+      setUpdatingStatus(true);
+      const updated = await creditsService.updateStatus(currentCredit.id, status);
+      setCurrentCredit(updated);
+      toast.success(`Status updated to ${status}`);
+      onPaymentRecorded(updated);
+    } catch {
+      toast.error('Failed to update status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    const amount = Number(paymentAmount);
+    if (!amount || amount <= 0) return;
+    try {
+      setSubmitting(true);
+      const updated = await creditsService.recordPayment(currentCredit.id, amount, paymentNote || undefined);
+      setCurrentCredit(updated);
+      setPaymentAmount('');
+      setPaymentNote('');
+      toast.success('Payment recorded');
+      onPaymentRecorded(updated);
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string | string[] } } }).response?.data?.message || 'Failed to record payment';
+      toast.error(Array.isArray(message) ? message[0] : message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 h-screen bg-black/50 flex items-center justify-center z-50">
       <div className="bg-card rounded-xl border p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in duration-300">
@@ -30,31 +71,44 @@ function CreditDetailModal({ credit, onClose }: { credit: Credit; onClose: () =>
         </div>
 
         {/* Status */}
-        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize mb-5 ${STATUS_STYLES[credit.status]}`}>
-          {credit.status}
-        </span>
+        <div className="flex items-center gap-3 mb-5">
+          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium capitalize ${STATUS_STYLES[currentCredit.status]}`}>
+            {currentCredit.status}
+          </span>
+          <select
+            value={currentCredit.status}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            disabled={updatingStatus}
+            className="text-xs px-2 py-1 rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+          >
+            {(['pending', 'partial', 'paid', 'overdue', 'defaulted'] as CreditStatus[]).map((s) => (
+              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            ))}
+          </select>
+          {updatingStatus && <span className="text-xs text-muted-foreground">Updating...</span>}
+        </div>
 
         {/* Product */}
         <div className="rounded-lg border bg-muted/30 p-4 mb-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Product</p>
-          <p className="font-semibold">{credit.productName}</p>
-          <p className="text-sm text-muted-foreground">{credit.color} · {credit.storageGB}GB · IMEI: {credit.imei}</p>
+          <p className="font-semibold">{currentCredit.productName}</p>
+          <p className="text-sm text-muted-foreground">{currentCredit.color} · {currentCredit.storageGB}GB · IMEI: {currentCredit.imei}</p>
         </div>
 
         {/* Customer */}
         <div className="rounded-lg border bg-muted/30 p-4 mb-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Customer</p>
-          <p className="font-semibold">{credit.customerName}</p>
-          <p className="text-sm text-muted-foreground">{credit.customerPhone}</p>
-          {credit.customerEmail && <p className="text-sm text-muted-foreground">{credit.customerEmail}</p>}
+          <p className="font-semibold">{currentCredit.customerName}</p>
+          <p className="text-sm text-muted-foreground">{currentCredit.customerPhone}</p>
+          {currentCredit.customerEmail && <p className="text-sm text-muted-foreground">{currentCredit.customerEmail}</p>}
         </div>
 
         {/* Financials */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           {[
-            { label: 'Amount', value: `₦${Number(credit.amount).toLocaleString()}` },
-            { label: 'Paid', value: `₦${Number(credit.amountPaid).toLocaleString()}` },
-            { label: 'Balance', value: `₦${Number(credit.remainingBalance).toLocaleString()}` },
+            { label: 'Amount', value: `₦${Number(currentCredit.amount).toLocaleString()}` },
+            { label: 'Paid', value: `₦${Number(currentCredit.amountPaid).toLocaleString()}` },
+            { label: 'Balance', value: `₦${Number(currentCredit.remainingBalance).toLocaleString()}` },
           ].map(({ label, value }) => (
             <div key={label} className="rounded-lg border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">{label}</p>
@@ -66,8 +120,8 @@ function CreditDetailModal({ credit, onClose }: { credit: Credit; onClose: () =>
         {/* Dates */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {[
-            { label: 'Sale Date', value: format(new Date(credit.date), 'MMM d, yyyy') },
-            { label: 'Due Date', value: format(new Date(credit.dueDate), 'MMM d, yyyy') },
+            { label: 'Sale Date', value: format(new Date(currentCredit.date), 'MMM d, yyyy') },
+            { label: 'Due Date', value: format(new Date(currentCredit.dueDate), 'MMM d, yyyy') },
           ].map(({ label, value }) => (
             <div key={label} className="rounded-lg border bg-muted/30 p-3">
               <p className="text-xs text-muted-foreground">{label}</p>
@@ -76,12 +130,43 @@ function CreditDetailModal({ credit, onClose }: { credit: Credit; onClose: () =>
           ))}
         </div>
 
+        {/* Record Payment */}
+        {canPay && (
+          <div className="rounded-lg border p-4 mb-4 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Record Payment</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                placeholder="Amount (₦)"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                min={1}
+                className="px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <input
+                type="text"
+                placeholder="Note (optional)"
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                className="px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <button
+              onClick={handlePayment}
+              disabled={submitting || !paymentAmount}
+              className="w-full px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {submitting ? 'Recording...' : 'Record Payment'}
+            </button>
+          </div>
+        )}
+
         {/* Payment history */}
-        {credit.paymentHistory.length > 0 && (
+        {currentCredit.paymentHistory.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Payment History</p>
             <div className="space-y-2">
-              {credit.paymentHistory.map((p, i) => (
+              {currentCredit.paymentHistory.map((p, i) => (
                 <div key={i} className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-2.5 text-sm">
                   <div>
                     <p className="font-medium">₦{Number(p.amount).toLocaleString()}</p>
@@ -294,7 +379,14 @@ export default function CreditsPage() {
 
       {/* Detail Modal */}
       {selectedCredit && (
-        <CreditDetailModal credit={selectedCredit} onClose={() => setSelectedCredit(null)} />
+        <CreditDetailModal
+          credit={selectedCredit}
+          onClose={() => setSelectedCredit(null)}
+          onPaymentRecorded={(updated) => {
+            setCredits((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+            setSelectedCredit(updated);
+          }}
+        />
       )}
     </div>
   );

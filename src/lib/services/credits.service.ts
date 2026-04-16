@@ -25,6 +25,16 @@ export const creditsService = {
     return response.data;
   },
 
+  updateStatus: async (id: string, status: string): Promise<Credit> => {
+    const response = await api.patch<Credit>(`/credits/${id}/status`, { status });
+    return response.data;
+  },
+
+  recordPayment: async (id: string, amount: number, note?: string): Promise<Credit> => {
+    const response = await api.patch<Credit>(`/credits/${id}/payment`, { amount, ...(note ? { note } : {}) });
+    return response.data;
+  },
+
   getById: async (id: string): Promise<Credit> => {
     const response = await api.get<Credit>(`/credits/${id}`);
     return response.data;
