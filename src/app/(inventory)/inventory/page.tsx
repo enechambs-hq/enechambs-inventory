@@ -1,21 +1,53 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { Plus, Search, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuthStore } from '@/store/auth.store';
-import { useInventoryStore } from '@/store/inventory.store';
-import { inventoryService } from '@/lib/services/inventory.service';
-import { collectionsService } from '@/lib/services/collections.service';
-import { InventoryItem, CreateInventoryDto, UserRole, CollectionStatus } from '@/types';
-import InventoryForm from '@/components/shared/InventoryForm';
+import { useEffect, useState, useCallback } from "react";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+import { useAuthStore } from "@/store/auth.store";
+import { useInventoryStore } from "@/store/inventory.store";
+import { inventoryService } from "@/lib/services/inventory.service";
+import { collectionsService } from "@/lib/services/collections.service";
+import {
+  InventoryItem,
+  CreateInventoryDto,
+  UserRole,
+  CollectionStatus,
+} from "@/types";
+import InventoryForm from "@/components/shared/InventoryForm";
+import StockLevelCards from "@/components/inventory/StockLevelCards";
+import LowStockAlert from "@/components/inventory/LowStockAlert";
+import InventoryFilters from "@/components/inventory/InventoryFilters";
+import InventoryTable from "@/components/inventory/InventoryTable";
+
+type ActiveFilter = "all" | "available" | "sold" | "in-collection";
+type SearchState = {
+  productName: string;
+  imei: string;
+  companyName: string;
+  color: string;
+};
 
 export default function InventoryPage() {
   const { user } = useAuthStore();
-  const { items, total, page, limit, totalPages, isLoading, setItems, setLoading, setPage } =
-    useInventoryStore();
+  const {
+    items,
+    total,
+    page,
+    limit,
+    totalPages,
+    isLoading,
+    setItems,
+    setLoading,
+    setPage,
+  } = useInventoryStore();
 
-  const [search, setSearch] = useState({ productName: '', imei: '', companyName: '', color: '' });
+  const [search, setSearch] = useState<SearchState>({
+    productName: "",
+    imei: "",
+    companyName: "",
+    color: "",
+  });
+  const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -25,9 +57,12 @@ export default function InventoryPage() {
     sold: number;
   } | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'available' | 'sold' | 'in-collection'>('all');
-  const [collectionSerials, setCollectionSerials] = useState<Set<string>>(new Set());
-  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(null);
+  const [collectionSerials, setCollectionSerials] = useState<Set<string>>(
+    new Set(),
+  );
+  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(
+    null,
+  );
   const [isFilterLoading, setIsFilterLoading] = useState(false);
 
   const fetchInventory = useCallback(async () => {
@@ -36,92 +71,86 @@ export default function InventoryPage() {
       const data = await inventoryService.getAll({ page, limit, ...search });
       setItems(data.data, data.meta);
     } catch {
-      toast.error('Failed to load inventory');
+      toast.error("Failed to load inventory");
     } finally {
       setLoading(false);
     }
   }, [page, limit, search, setItems, setLoading]);
 
-  const fetchStockLevels = async () => {
-    try {
-      const data = await inventoryService.getStockLevels();
-      setStockLevels(data);
-    } catch {}
-  };
-
-  const fetchLowStock = async () => {
-    if (user?.role !== UserRole.ADMIN) return;
-    try {
-      const data = await inventoryService.getLowStockAlerts();
-      setLowStock(data);
-    } catch {}
-  };
-
   useEffect(() => {
     fetchInventory();
   }, [fetchInventory]);
 
-  const fetchCollectionSerials = async () => {
-    try {
-      const data = await collectionsService.getAll({ limit: 100 });
-      const serials = new Set(
-        data.data
-          .filter((c) => c.status === CollectionStatus.PENDING)
-          .map((c) => c.imei)
-      );
-      setCollectionSerials(serials);
-    } catch {}
-  };
-
   useEffect(() => {
-    fetchStockLevels();
-    fetchLowStock();
-    fetchCollectionSerials();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    inventoryService
+      .getStockLevels()
+      .then(setStockLevels)
+      .catch(() => {});
+    if (user?.role === UserRole.ADMIN) {
+      inventoryService
+        .getLowStockAlerts()
+        .then(setLowStock)
+        .catch(() => {});
+    }
+    collectionsService
+      .getAll({ limit: 100 })
+      .then((data) => {
+        const serials = new Set(
+          data.data
+            .filter((c) => c.status === CollectionStatus.PENDING)
+            .map((c) => c.imei),
+        );
+        setCollectionSerials(serials);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When a non-"all" filter is active, fetch the full dataset (limit=100)
-  // so filtering is applied across all records, not just the current page.
   useEffect(() => {
-    if (activeFilter === 'all') {
+    if (activeFilter === "all") {
       setFilterSnapshot(null);
       return;
     }
     setIsFilterLoading(true);
-    inventoryService.getAll({ limit: 100, ...search })
+    inventoryService
+      .getAll({ limit: 100, ...search })
       .then((data) => setFilterSnapshot(data.data))
       .catch(() => setFilterSnapshot([]))
       .finally(() => setIsFilterLoading(false));
-  // search is intentionally included so the snapshot refreshes on search changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeFilter, search]);
 
   const handleSubmit = async (data: CreateInventoryDto) => {
     try {
       setSubmitting(true);
       if (editItem) {
-        // IMEI is a device identifier — exclude it from updates
         const { dateAdded: _d, imei: _i, ...updateData } = data;
-        void _d; void _i;
+        void _d;
+        void _i;
         await inventoryService.update(editItem.id, updateData);
-        toast.success('Product updated successfully');
+        toast.success("Product updated successfully");
       } else {
         await inventoryService.create(data);
-        toast.success('Product added successfully');
+        toast.success("Product added successfully");
       }
       setModalOpen(false);
       setEditItem(null);
       fetchInventory();
-      fetchStockLevels();
+      inventoryService
+        .getStockLevels()
+        .then(setStockLevels)
+        .catch(() => {});
     } catch (error) {
-      const err = error as { response?: { status?: number; data?: { message?: string | string[] } } };
-      const status = err.response?.status;
-      const backendMsg = err.response?.data?.message;
-      if (status === 500) {
-        toast.error('Failed to save product. The IMEI may already exist — please use a unique one.');
+      const err = error as {
+        response?: { status?: number; data?: { message?: string | string[] } };
+      };
+      if (err.response?.status === 500) {
+        toast.error(
+          "Failed to save product. The IMEI may already exist — please use a unique one.",
+        );
       } else {
-        const message = backendMsg || 'Something went wrong';
-        toast.error(Array.isArray(message) ? message[0] : message);
+        const msg = err.response?.data?.message || "Something went wrong";
+        toast.error(Array.isArray(msg) ? msg[0] : msg);
       }
     } finally {
       setSubmitting(false);
@@ -129,28 +158,28 @@ export default function InventoryPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
+    if (!confirm("Are you sure you want to delete this product?")) return;
     try {
       await inventoryService.delete(id);
-      toast.success('Product deleted');
+      toast.success("Product deleted");
       fetchInventory();
-      fetchStockLevels();
+      inventoryService
+        .getStockLevels()
+        .then(setStockLevels)
+        .catch(() => {});
     } catch {
-      toast.error('Failed to delete product');
+      toast.error("Failed to delete product");
     }
   };
 
-  const handleEdit = (item: InventoryItem) => {
-    setEditItem(item);
-    setModalOpen(true);
-  };
-
-  // For non-"all" filters use the full snapshot; for "all" use the paginated page.
   const baseItems = filterSnapshot !== null ? filterSnapshot : items;
   const filteredItems = baseItems.filter((item) => {
-    if (activeFilter === 'available') return item.isAvailable && !collectionSerials.has(item.imei);
-    if (activeFilter === 'sold') return !item.isAvailable && !collectionSerials.has(item.imei);
-    if (activeFilter === 'in-collection') return collectionSerials.has(item.imei);
+    if (activeFilter === "available")
+      return item.isAvailable && !collectionSerials.has(item.imei);
+    if (activeFilter === "sold")
+      return !item.isAvailable && !collectionSerials.has(item.imei);
+    if (activeFilter === "in-collection")
+      return collectionSerials.has(item.imei);
     return true;
   });
 
@@ -160,196 +189,55 @@ export default function InventoryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-sm text-muted-foreground">Manage your product stock</p>
+          <p className="text-sm text-muted-foreground">
+            Manage your product stock
+          </p>
         </div>
-        <button
-          onClick={() => { setEditItem(null); setModalOpen(true); }}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus size={16} />
-          Add Product
-        </button>
-      </div>
-
-      {/* Stock level cards */}
-      {stockLevels && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Total Stock', value: stockLevels.total },
-            { label: 'Available', value: stockLevels.available },
-            { label: 'Sold', value: stockLevels.sold },
-          ].map(({ label, value }) => (
-            <div key={label} className="rounded-xl border bg-card p-4">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-2xl font-bold mt-1">{value}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Low stock alerts — admin only */}
-      {user?.role === UserRole.ADMIN && lowStock.length > 0 && (
-        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={16} className="text-yellow-500" />
-            <p className="text-sm font-medium text-yellow-600">
-              {lowStock.length} low stock {lowStock.length === 1 ? 'alert' : 'alerts'}
-            </p>
-          </div>
-          <ul className="space-y-1">
-            {lowStock.map((item) => (
-              <li key={item.id} className="text-xs text-muted-foreground">
-                {item.productName} — {item.companyName} ({item.color})
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Filter tabs */}
-      <div className="flex gap-1 border-b">
-        {(['all', 'available', 'sold', 'in-collection'] as const).map((filter) => (
+        {user?.role === UserRole.ADMIN && (
           <button
-            key={filter}
-            onClick={() => { setActiveFilter(filter); setPage(1); }}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeFilter === filter
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={() => {
+              setEditItem(null);
+              setModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
           >
-            {filter === 'in-collection' ? 'In Collection' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+            <Plus size={16} />
+            Add Product
           </button>
-        ))}
+        )}
       </div>
 
-      {/* Search filters */}
-      <div className="grid grid-cols-4 gap-3">
-        {[
-          { key: 'productName', placeholder: 'Search product...' },
-          { key: 'imei', placeholder: 'Search IMEI...' },
-          { key: 'companyName', placeholder: 'Search company...' },
-          { key: 'color', placeholder: 'Search color...' },
-        ].map(({ key, placeholder }) => (
-          <div key={key} className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              placeholder={placeholder}
-              value={search[key as keyof typeof search]}
-              onChange={(e) => setSearch((prev) => ({ ...prev, [key]: e.target.value }))}
-              className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-        ))}
-      </div>
+      {stockLevels && <StockLevelCards stockLevels={stockLevels} />}
+      {user?.role === UserRole.ADMIN && <LowStockAlert items={lowStock} />}
 
-      {/* Table */}
-      <div className="rounded-xl border bg-card overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {['Product', 'IMEI', 'Company', 'Color', 'Storage', 'Selling Price', 'Status', 'Actions'].map(
-                (h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
-                    {h}
-                  </th>
-                )
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {isLoading || isFilterLoading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading...
-                </td>
-              </tr>
-            ) : filteredItems.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                  No products found
-                </td>
-              </tr>
-            ) : (
-              filteredItems.map((item) => (
-                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium">{item.productName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{item.imei}</td>
-                  <td className="px-4 py-3">{item.companyName}</td>
-                  <td className="px-4 py-3">{item.color}</td>
-                  <td className="px-4 py-3">{item.storageGB}GB</td>
-                  <td className="px-4 py-3">₦{item.sellingPrice.toLocaleString()}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                      collectionSerials.has(item.imei)
-                        ? 'bg-yellow-500/10 text-yellow-600'
-                        : item.isAvailable
-                        ? 'bg-green-500/10 text-green-600'
-                        : 'bg-red-500/10 text-red-600'
-                    }`}>
-                      {collectionSerials.has(item.imei)
-                        ? 'In Collection'
-                        : item.isAvailable
-                        ? 'Available'
-                        : 'Sold'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="text-xs text-primary hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="text-xs text-destructive hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <InventoryFilters
+        activeFilter={activeFilter}
+        search={search}
+        onFilterChange={(f) => {
+          setActiveFilter(f);
+          setPage(1);
+        }}
+        onSearchChange={(key, value) =>
+          setSearch((prev) => ({ ...prev, [key]: value }))
+        }
+      />
 
-      {/* Pagination — only for the "all" view; filtered views show full count */}
-      {activeFilter === 'all' ? (
-        totalPages > 1 && (
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {items.length} of {total} products
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
-              >
-                Previous
-              </button>
-              <span className="text-sm">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          Showing {filteredItems.length} {filteredItems.length === 1 ? 'product' : 'products'}
-        </p>
-      )}
+      <InventoryTable
+        items={filteredItems}
+        isLoading={isLoading || isFilterLoading}
+        userRole={user?.role}
+        collectionSerials={collectionSerials}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        showPagination={activeFilter === "all"}
+        onEdit={(item) => {
+          setEditItem(item);
+          setModalOpen(true);
+        }}
+        onDelete={handleDelete}
+        onPageChange={setPage}
+      />
 
       {/* Modal */}
       {modalOpen && (
@@ -364,13 +252,16 @@ export default function InventoryPage() {
               </div>
             )}
             <h2 className="text-lg font-semibold mb-4">
-              {editItem ? 'Edit Product' : 'Add Product'}
+              {editItem ? "Edit Product" : "Add Product"}
             </h2>
             <InventoryForm
               defaultValues={editItem || undefined}
               onSubmit={handleSubmit}
               isLoading={submitting}
-              onCancel={() => { setModalOpen(false); setEditItem(null); }}
+              onCancel={() => {
+                setModalOpen(false);
+                setEditItem(null);
+              }}
             />
           </div>
         </div>
