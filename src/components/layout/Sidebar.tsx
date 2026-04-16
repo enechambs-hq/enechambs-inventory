@@ -67,7 +67,7 @@ export default function Sidebar() {
             </span>
           </div>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-white">
+            <h1 className="text-base font-bold tracking-tight text-foreground">
               Lmart
             </h1>
             <p className="text-[10px] text-[hsl(var(--sidebar-foreground))] opacity-60 -mt-0.5">
