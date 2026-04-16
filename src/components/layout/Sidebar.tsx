@@ -8,6 +8,7 @@ import {
   Package,
   ShoppingCart,
   Wallet,
+  CreditCard,
   Users,
   TrendingUp,
   LogOut,
@@ -22,6 +23,7 @@ const staffLinks = [
   { href: '/inventory', label: 'Inventory', icon: Package },
   { href: '/sales', label: 'Sales', icon: ShoppingCart },
   { href: '/collections', label: 'Collections', icon: Wallet },
+  { href: '/credits', label: 'Credits', icon: CreditCard },
 ];
 
 const adminLinks = [

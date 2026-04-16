@@ -108,6 +108,16 @@ export interface Credit {
   createdAt: string;
 }
 
+export interface CreateCreditDto {
+  inventoryId: string;
+  date: string;
+  amount: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  dueDate: string;
+}
+
 export interface CreditStats {
   totalCredits: number;
   totalCreditAmount: number;
