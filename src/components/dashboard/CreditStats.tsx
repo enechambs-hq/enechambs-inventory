@@ -1,4 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { CreditStats, CreditStatus } from "@/types";
+import { creditsService } from "@/lib/services/credits.service";
+import { toast } from "sonner";
 import { format } from "date-fns";
 
 interface Props {
@@ -22,6 +27,23 @@ const STATUS_COLORS: Record<CreditStatus, string> = {
 };
 
 export default function CreditStatsCard({ stats }: Props) {
+  const [checking, setChecking] = useState(false);
+
+  const handleCheckOverdue = async () => {
+    try {
+      setChecking(true);
+      const res = await creditsService.checkOverdue();
+      toast.info(res.message ?? "Overdue check completed");
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { message?: string } } })
+          .response?.data?.message ?? "Failed to run overdue check";
+      toast.warning(message);
+    } finally {
+      setChecking(false);
+    }
+  };
+
   const kpis = [
     { label: "Total Credits", value: stats.totalCredits },
     { label: "Total Amount", value: `₦${stats.totalCreditAmount.toLocaleString()}` },
@@ -32,7 +54,16 @@ export default function CreditStatsCard({ stats }: Props) {
 
   return (
     <div className="rounded-xl border bg-card p-6 space-y-6">
-      <h2 className="text-base font-semibold">Credits</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-semibold">Credits</h2>
+        <button
+          onClick={handleCheckOverdue}
+          disabled={checking}
+          className="text-xs px-3 py-1.5 rounded-md border hover:bg-muted transition-colors disabled:opacity-50"
+        >
+          {checking ? "Checking..." : "Check Overdue"}
+        </button>
+      </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-5 gap-3">
