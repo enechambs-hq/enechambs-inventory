@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
-import { Geist } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import AuthProvider from '@/components/providers/AuthProvider';
 import './globals.css';
 
-const geist = Geist({ subsets: ['latin'] });
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: ['400', '500', '600', '700'],
+});
 
 export const metadata: Metadata = {
   title: 'Lmart Inventory',
@@ -18,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={geist.className} suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
         <AuthProvider>
           {children}
           <Toaster richColors position="top-right" />
