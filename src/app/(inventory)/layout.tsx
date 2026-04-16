@@ -1,33 +1,50 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Bell } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
+import ActivityPanel from '@/components/layout/ActivityPanel';
 import api from '@/lib/api';
 
-export default function InventoryLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function InventoryLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthGuard();
   const [mounted, setMounted] = useState(false);
+  const pathname = usePathname();
+  const [activityOpen, setActivityOpen] = useState(false);
+  const isActivityPage = pathname === '/activity';
 
   useEffect(() => {
     setMounted(true);
-    // Warm up the Render free-tier server so it isn't cold when the user submits a form
     api.get('/inventory?limit=1').catch(() => {});
   }, []);
 
-  // Return null on the server and on the very first client render so that
-  // both sides produce identical output and React hydration succeeds.
-  // After mount, the actual auth-aware layout renders.
   if (!mounted || !isAuthenticated) return null;
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
-      <main className="flex-1 ml-64 p-8">{children}</main>
+      <div className="flex-1 ml-64 flex flex-col">
+        {/* Topbar */}
+        <header className="h-14 border-b bg-card flex items-center justify-end px-8 sticky top-0 z-30">
+          <button
+            onClick={() => setActivityOpen(true)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+              isActivityPage
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            <Bell size={16} />
+            Activity
+          </button>
+        </header>
+
+        <main className="flex-1 p-8">{children}</main>
+      </div>
+
+      <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
     </div>
   );
 }

@@ -57,11 +57,13 @@ export const dashboardService = {
   },
 
   getRecentActivity: async (limit = 10): Promise<ActivityLog[]> => {
-    const response = await api.get<SuccessResponse<ActivityLog[]> | ActivityLog[]>(
-      `/activity-logs/recent?limit=${limit}`
-    );
-    const payload = response.data;
-    return Array.isArray(payload) ? payload : (payload.data ?? []);
+    const response = await api.get<ActivityLog[]>(`/activity-logs/recent?limit=${limit}`);
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  getAllActivity: async (page = 1, limit = 20): Promise<import('@/types').PaginatedResponse<ActivityLog>> => {
+    const response = await api.get(`/activity-logs?page=${page}&limit=${limit}`);
+    return response.data;
   },
 
   getDaily: async (): Promise<DailySummary> => {
