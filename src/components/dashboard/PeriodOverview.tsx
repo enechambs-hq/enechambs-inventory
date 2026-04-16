@@ -27,21 +27,21 @@ export default function PeriodOverview({ daily, weekly, monthly }: Props) {
   const data = periodTab === "daily" ? daily : periodTab === "weekly" ? weekly : monthly;
 
   return (
-    <div className="rounded-xl border bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-semibold">Sales Overview</h2>
-        <div className="flex gap-1 border rounded-lg p-1">
+        <h2 className="text-base font-semibold text-foreground">Sales Overview</h2>
+        <div className="flex gap-1 bg-muted rounded-lg p-1">
           {(["daily", "weekly", "monthly"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setPeriodTab(tab)}
-              className={`px-3 py-1 rounded-md text-xs font-medium capitalize transition-colors ${
+              className={
                 periodTab === tab
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "bg-primary text-primary-foreground rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+                  : "text-muted-foreground hover:text-foreground rounded-lg px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+              }
             >
-              {tab}
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </div>
@@ -78,22 +78,18 @@ function PeriodContent({ data }: { data: DailySummary | WeeklySummary | MonthlyS
 
   return (
     <div className="space-y-6">
-      {/* Sales metrics */}
-      <div>
-        <div className="grid grid-cols-5 gap-3">
-          {salesCards.map(({ label, value }) => (
-            <div key={label} className="rounded-lg border bg-muted/30 p-3">
-              <p className="text-xs text-muted-foreground">{label}</p>
-              <p className="text-lg font-bold mt-0.5">{value}</p>
-            </div>
-          ))}
-        </div>
+      <div className="grid grid-cols-5 gap-3">
+        {salesCards.map(({ label, value }) => (
+          <div key={label} className="rounded-xl border border-border bg-background p-4">
+            <p className="text-xs text-muted-foreground mb-1">{label}</p>
+            <p className="text-lg font-bold text-foreground">{value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Daily breakdown chart */}
       {breakdown && breakdown.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
             Daily Breakdown
           </p>
           <ResponsiveContainer width="100%" height={200}>
@@ -107,15 +103,15 @@ function PeriodContent({ data }: { data: DailySummary | WeeklySummary | MonthlyS
             >
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
                   <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.2} />
+                  <stop offset="5%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0.1} />
                   <stop offset="95%" stopColor="hsl(var(--muted-foreground))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
               <XAxis
                 dataKey="date"
                 tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
@@ -143,7 +139,8 @@ function PeriodContent({ data }: { data: DailySummary | WeeklySummary | MonthlyS
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
                 fill="url(#revGrad)"
-                dot={{ r: 3, fill: "hsl(var(--primary))", strokeWidth: 0 }}
+                dot={false}
+                activeDot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 0 }}
               />
               <Area
                 type="monotone"
@@ -151,7 +148,8 @@ function PeriodContent({ data }: { data: DailySummary | WeeklySummary | MonthlyS
                 stroke="hsl(var(--muted-foreground))"
                 strokeWidth={1.5}
                 fill="url(#costGrad)"
-                dot={{ r: 3, fill: "hsl(var(--muted-foreground))", strokeWidth: 0 }}
+                dot={false}
+                activeDot={{ r: 3, fill: "hsl(var(--muted-foreground))", strokeWidth: 0 }}
               />
             </AreaChart>
           </ResponsiveContainer>

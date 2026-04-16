@@ -38,7 +38,7 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormInput>({
+  } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
     defaultValues: {
       date: format(new Date(), 'yyyy-MM-dd'),

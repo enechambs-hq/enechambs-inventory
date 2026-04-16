@@ -335,6 +335,24 @@ export interface CreateCollectionDto {
   collectorName: string;
 }
 
+// ==================== CUSTOMERS ====================
+export interface CustomerCreditPurchases {
+  totalCredits: number;
+  totalCreditAmount: number;
+  totalPaid: number;
+}
+
+export interface Customer {
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string;
+  totalPurchases: number;
+  totalSpent: number;
+  firstPurchaseDate: string;
+  lastPurchaseDate: string;
+  creditPurchases: CustomerCreditPurchases;
+}
+
 // ==================== ACTIVITY LOGS ====================
 export interface ActivityLog {
   id: string;

@@ -33,18 +33,17 @@ export default function CollectionsStatsCards({ stats }: Props) {
   ];
 
   return (
-    <div className="rounded-xl border bg-card p-6 space-y-5">
-      <h2 className="text-base font-semibold">Collections</h2>
-      {sections.map(({ label, cards }) => (
-        <div key={label}>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+    <div>
+      {sections.map(({ label, cards }, idx) => (
+        <div key={label} className={idx < sections.length - 1 ? "mb-6" : ""}>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
             {label}
           </p>
           <div className="grid grid-cols-6 gap-3">
             {cards.map(({ label: cardLabel, value }) => (
-              <div key={cardLabel} className="rounded-lg border bg-muted/30 p-3">
-                <p className="text-xs text-muted-foreground">{cardLabel}</p>
-                <p className="text-lg font-bold mt-0.5">{value}</p>
+              <div key={cardLabel} className="rounded-xl border border-border bg-background p-4">
+                <p className="text-xs text-muted-foreground mb-1">{cardLabel}</p>
+                <p className="text-lg font-bold text-foreground">{value}</p>
               </div>
             ))}
           </div>

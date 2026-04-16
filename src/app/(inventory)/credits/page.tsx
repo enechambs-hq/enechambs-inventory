@@ -5,8 +5,10 @@ import { Plus, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { creditsService } from '@/lib/services/credits.service';
-import { Credit, CreateCreditDto, CreditStatus } from '@/types';
+import { dashboardService } from '@/lib/services/dashboard.service';
+import { Credit, CreateCreditDto, CreditStats, CreditStatus } from '@/types';
 import CreditForm from '@/components/shared/CreditForm';
+import CreditsCards from '@/components/dashboard/CreditsCards';
 
 const STATUS_STYLES: Record<CreditStatus, string> = {
   [CreditStatus.PENDING]: 'bg-yellow-50 text-yellow-700',
@@ -14,6 +16,22 @@ const STATUS_STYLES: Record<CreditStatus, string> = {
   [CreditStatus.PAID]: 'bg-green-50 text-green-700',
   [CreditStatus.OVERDUE]: 'bg-orange-50 text-orange-700',
   [CreditStatus.DEFAULTED]: 'bg-red-50 text-red-700',
+};
+
+const STATUS_LABELS: Record<CreditStatus, string> = {
+  [CreditStatus.PENDING]: 'Pending',
+  [CreditStatus.PARTIAL]: 'Partial',
+  [CreditStatus.PAID]: 'Paid',
+  [CreditStatus.OVERDUE]: 'Overdue',
+  [CreditStatus.DEFAULTED]: 'Defaulted',
+};
+
+const STATUS_PILL_COLORS: Record<CreditStatus, string> = {
+  [CreditStatus.PENDING]: 'bg-yellow-500/10 text-yellow-600',
+  [CreditStatus.PARTIAL]: 'bg-blue-500/10 text-blue-600',
+  [CreditStatus.PAID]: 'bg-green-500/10 text-green-600',
+  [CreditStatus.OVERDUE]: 'bg-orange-500/10 text-orange-600',
+  [CreditStatus.DEFAULTED]: 'bg-red-500/10 text-red-600',
 };
 
 type ActiveTab = 'all' | 'mine' | 'overdue';
@@ -195,6 +213,7 @@ export default function CreditsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [selectedCredit, setSelectedCredit] = useState<Credit | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [creditStats, setCreditStats] = useState<CreditStats | null>(null);
 
   const limit = 20;
 
@@ -224,6 +243,19 @@ export default function CreditsPage() {
   useEffect(() => {
     fetchCredits();
   }, [fetchCredits]);
+
+  useEffect(() => {
+    dashboardService.getCreditStats().then(setCreditStats).catch(() => {});
+  }, []);
+
+  const creditsForCards = creditStats
+    ? {
+        total: creditStats.totalCredits,
+        paid: creditStats.byStatus[CreditStatus.PAID] ?? 0,
+        outstanding: creditStats.outstandingBalance,
+        overdue: creditStats.byStatus[CreditStatus.OVERDUE] ?? 0,
+      }
+    : null;
 
   const handleRowClick = async (id: string) => {
     try {
@@ -272,6 +304,56 @@ export default function CreditsPage() {
           New Credit
         </button>
       </div>
+
+      {creditsForCards && <CreditsCards credits={creditsForCards} />}
+
+      {creditStats && (
+        <>
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">By Status</p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.entries(creditStats.byStatus) as [CreditStatus, number][]).map(([status, count]) => (
+                <span
+                  key={status}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${STATUS_PILL_COLORS[status]}`}
+                >
+                  {STATUS_LABELS[status]}
+                  <span className="font-bold">{count}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {creditStats.overdueCredits.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Overdue</p>
+              <div className="space-y-2">
+                {creditStats.overdueCredits.map((credit) => (
+                  <div
+                    key={credit.id}
+                    className="flex items-center justify-between rounded-xl border border-orange-200/60 bg-orange-50/40 px-4 py-3 text-sm"
+                  >
+                    <div>
+                      <p className="font-medium text-foreground">{credit.customerName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {credit.productName} · Due {format(new Date(credit.dueDate), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-orange-600">
+                        ₦{Number(credit.remainingBalance).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">remaining</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      <hr className="border-border my-6" />
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">

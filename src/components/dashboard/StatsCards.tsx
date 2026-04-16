@@ -5,24 +5,94 @@ interface Props {
   stats: DashboardStats;
 }
 
-export default function StatsCards({ stats }: Props) {
-  const cards = [
-    { label: "Total Inventory", value: stats.totalInventory, icon: Package },
-    { label: "Total Sales", value: stats.totalSales, icon: ShoppingCart },
-    { label: "Total Revenue", value: `₦${(stats.totalRevenue ?? 0).toLocaleString()}`, icon: Wallet },
-    { label: "Available Stock", value: stats.availableInventory, icon: BarChart2 },
-    { label: "Collections", value: stats.totalCollections, icon: BarChart2 },
-  ];
+const cards = [
+  {
+    label: "Total Inventory",
+    value: (s: DashboardStats) => String(s.totalInventory),
+    icon: Package,
+    iconBg: "bg-blue-500/10",
+    iconColor: "text-blue-600",
+    valueColor: "text-foreground",
+    patternColor: "#2563eb",
+  },
+  {
+    label: "Total Sales",
+    value: (s: DashboardStats) => String(s.totalSales),
+    icon: ShoppingCart,
+    iconBg: "bg-green-500/10",
+    iconColor: "text-green-600",
+    valueColor: "text-green-600",
+    patternColor: "#16a34a",
+  },
+  {
+    label: "Total Revenue",
+    value: (s: DashboardStats) => `₦${(s.totalRevenue ?? 0).toLocaleString()}`,
+    icon: Wallet,
+    iconBg: "bg-primary/10",
+    iconColor: "text-primary",
+    valueColor: "text-primary",
+    patternColor: "#2563eb",
+  },
+  {
+    label: "Available Stock",
+    value: (s: DashboardStats) => String(s.availableInventory),
+    icon: BarChart2,
+    iconBg: "bg-blue-500/10",
+    iconColor: "text-blue-600",
+    valueColor: "text-foreground",
+    patternColor: "#2563eb",
+  },
+  {
+    label: "Collections",
+    value: (s: DashboardStats) => String(s.totalCollections),
+    icon: BarChart2,
+    iconBg: "bg-purple-500/10",
+    iconColor: "text-purple-600",
+    valueColor: "text-foreground",
+    patternColor: "#9333ea",
+  },
+];
 
+export default function StatsCards({ stats }: Props) {
   return (
     <div className="grid grid-cols-5 gap-4">
-      {cards.map(({ label, value, icon: Icon }) => (
-        <div key={label} className="rounded-xl border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs text-muted-foreground">{label}</p>
-            <Icon size={16} className="text-muted-foreground" />
+      {cards.map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, patternColor }) => (
+        <div
+          key={label}
+          className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+        >
+          {/* Dot pattern */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `radial-gradient(circle, ${patternColor} 1px, transparent 1px)`,
+              backgroundSize: "18px 18px",
+              opacity: 0.2,
+            }}
+          />
+
+          {/* Subtle corner glow */}
+          <div
+            className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl opacity-10"
+            style={{ backgroundColor: patternColor }}
+          />
+
+          {/* Content */}
+          <div className="relative z-10">
+            <div className="flex items-start justify-between mb-3">
+              <p className="text-xs font-medium text-muted-foreground leading-tight">
+                {label}
+              </p>
+              <div
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
+              >
+                <Icon size={16} className={iconColor} />
+              </div>
+            </div>
+            <p className={`text-2xl font-bold tracking-tight ${valueColor}`}>
+              {value(stats)}
+            </p>
           </div>
-          <p className="text-2xl font-bold">{value}</p>
         </div>
       ))}
     </div>

@@ -5,8 +5,10 @@ import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCollectionsStore } from '@/store/collections.store';
 import { collectionsService } from '@/lib/services/collections.service';
-import { CreateCollectionDto, CollectionStatus } from '@/types';
+import { CreateCollectionDto, CollectionStatus, CollectionsStats } from '@/types';
 import CollectionForm from '@/components/shared/CollectionForm';
+import CollectionsStatsCards from '@/components/dashboard/CollectionsStats';
+import { dashboardService } from '@/lib/services/dashboard.service';
 
 export default function CollectionsPage() {
   const {
@@ -26,6 +28,7 @@ export default function CollectionsPage() {
     imei: '',
     collectorName: '',
   });
+  const [collectionsStats, setCollectionsStats] = useState<CollectionsStats | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -49,6 +52,10 @@ export default function CollectionsPage() {
   useEffect(() => {
     fetchCollections();
   }, [fetchCollections]);
+
+  useEffect(() => {
+    dashboardService.getCollectionsStats().then(setCollectionsStats).catch(() => {});
+  }, []);
 
   const handleSubmit = async (data: CreateCollectionDto) => {
     try {
@@ -115,6 +122,10 @@ export default function CollectionsPage() {
           Record Collection
         </button>
       </div>
+
+      {collectionsStats && <CollectionsStatsCards stats={collectionsStats} />}
+
+      <hr className="border-border my-6" />
 
       {/* Search filters */}
       <div className="grid grid-cols-2 gap-3">

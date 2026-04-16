@@ -20,17 +20,22 @@ interface Props {
 
 export default function RevenueChart({ data, dateRange, onDateRangeChange }: Props) {
   return (
-    <div className="rounded-xl border bg-card p-6">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-base font-semibold">Revenue Overview</h2>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Revenue Overview</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Total revenue over selected period</p>
+        </div>
         <div className="flex items-center gap-3">
           <div className="space-y-0.5">
             <label className="text-xs text-muted-foreground">From</label>
             <input
               type="date"
               value={dateRange.startDate}
-              onChange={(e) => onDateRangeChange({ ...dateRange, startDate: e.target.value })}
-              className="px-3 py-1.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              onChange={(e) =>
+                onDateRangeChange({ ...dateRange, startDate: e.target.value })
+              }
+              className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
           <div className="space-y-0.5">
@@ -38,8 +43,10 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
             <input
               type="date"
               value={dateRange.endDate}
-              onChange={(e) => onDateRangeChange({ ...dateRange, endDate: e.target.value })}
-              className="px-3 py-1.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              onChange={(e) =>
+                onDateRangeChange({ ...dateRange, endDate: e.target.value })
+              }
+              className="px-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
         </div>
@@ -60,11 +67,16 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
           >
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                <stop offset="0%"   stopColor="#2563eb" stopOpacity={0.4}  />
+                <stop offset="40%"  stopColor="#3b82f6" stopOpacity={0.2}  />
+                <stop offset="100%" stopColor="#93c5fd" stopOpacity={0}    />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="hsl(var(--border))"
+              vertical={false}
+            />
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
@@ -84,21 +96,26 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
             <Tooltip
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "8px",
+                // border: "1px solid hsl(var(--border))",
+                // borderLeft: "3px solid #2563eb",
+                borderRadius: "10px",
                 fontSize: "12px",
+                boxShadow: "0 4px 16px rgba(37,99,235,0.12)",
               }}
-              formatter={(value) => [`₦${Number(value).toLocaleString()}`, "Revenue"]}
-              cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+              formatter={(value) => [
+                `₦${Number(value).toLocaleString()}`,
+                "Revenue",
+              ]}
+              cursor={{ stroke: "#5d8df4", strokeWidth: 1, strokeDasharray: "4 4" }}
             />
             <Area
               type="monotone"
               dataKey="Revenue"
-              stroke="hsl(var(--primary))"
-              strokeWidth={2}
+              stroke="#1b1a1b"
+              strokeWidth={0}
               fill="url(#revenueGradient)"
-              dot={{ r: 4, fill: "hsl(var(--primary))", strokeWidth: 0 }}
-              activeDot={{ r: 6, fill: "hsl(var(--primary))", strokeWidth: 0 }}
+              dot={false}
+              activeDot={{ r: 5, fill: "hsl(var(--primary))", strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>

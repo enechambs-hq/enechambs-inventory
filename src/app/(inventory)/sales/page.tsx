@@ -15,21 +15,44 @@ export default function SalesPage() {
     useSalesStore();
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('all');
-  const [search, setSearch] = useState({ productName: '', imei: '', customerName: '', customerPhone: '' });
+  const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+
+  // Animated placeholder
+  const PLACEHOLDERS = ['phone...', 'name...', 'product name...'];
+  const [phIndex, setPhIndex] = useState(0);
+  const [phVisible, setPhVisible] = useState(true);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setPhVisible(false);
+      setTimeout(() => {
+        setPhIndex((i) => (i + 1) % PLACEHOLDERS.length);
+        setPhVisible(true);
+      }, 300);
+    }, 3000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [submitting, setSubmitting] = useState(false);
 
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await salesService.getAll({ page, limit, ...search });
+      const data = await salesService.getAll({
+        page,
+        limit,
+        productName: searchQuery,
+        customerName: searchQuery,
+        customerPhone: searchQuery,
+      });
       setSales(data.data, data.meta);
     } catch {
       toast.error('Failed to load sales');
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, setLoading, setSales]);
+  }, [page, limit, searchQuery, setLoading, setSales]);
 
   const fetchMySales = useCallback(async () => {
     try {
@@ -117,23 +140,24 @@ export default function SalesPage() {
 
       {/* Search — all tab only */}
       {activeTab === 'all' && (
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { key: 'productName', placeholder: 'Search product name...' },
-            { key: 'imei', placeholder: 'Search IMEI...' },
-            { key: 'customerName', placeholder: 'Search customer name...' },
-            { key: 'customerPhone', placeholder: 'Search customer phone...' },
-          ].map(({ key, placeholder }) => (
-            <div key={key} className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                placeholder={placeholder}
-                value={search[key as keyof typeof search]}
-                onChange={(e) => setSearch((prev) => ({ ...prev, [key]: e.target.value }))}
-                className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          ))}
+        <div className="relative max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground z-10" />
+          {!searchQuery && (
+            <span className="absolute left-8 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none flex items-center gap-1">
+              Search by{" "}
+              <span
+                className={`transition-opacity duration-300 ${phVisible ? 'opacity-100' : 'opacity-0'}`}
+              >
+                {PLACEHOLDERS[phIndex]}
+              </span>
+            </span>
+          )}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+            className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-transparent"
+          />
         </div>
       )}
 

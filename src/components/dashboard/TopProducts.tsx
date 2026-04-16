@@ -1,32 +1,34 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { TopProduct } from "@/types";
+import { useState } from 'react';
+import { TopProduct } from '@/types';
 
 interface Props {
   products: TopProduct[];
 }
 
-const COLUMNS = ["#", "Product", "Sold", "Revenue", "Profit", "Margin"];
+const COLUMNS = ['#', 'Product', 'Sold', 'Revenue', 'Profit', 'Margin'];
 const PREVIEW_COUNT = 5;
 
 function ProductRow({ p, i }: { p: TopProduct; i: number }) {
   return (
-    <tr className="hover:bg-muted/30 transition-colors">
-      <td className="py-2.5 text-muted-foreground">{i + 1}</td>
-      <td className="py-2.5 font-medium">{p.productName}</td>
-      <td className="py-2.5">{p.totalSold}</td>
-      <td className="py-2.5">₦{p.totalRevenue.toLocaleString()}</td>
-      <td className="py-2.5">₦{p.totalProfit.toLocaleString()}</td>
-      <td className="py-2.5">
+    <tr className="hover:bg-accent transition-colors group">
+      <td className="py-3 pr-3 text-xs font-medium text-muted-foreground w-6">
+        {i + 1}
+      </td>
+      <td className="py-3 text-sm font-medium text-foreground">{p.productName}</td>
+      <td className="py-3 text-sm text-muted-foreground">{p.totalSold}</td>
+      <td className="py-3 text-sm text-foreground">₦{p.totalRevenue.toLocaleString()}</td>
+      <td className="py-3 text-sm text-foreground">₦{p.totalProfit.toLocaleString()}</td>
+      <td className="py-3 text-sm w-40">
         <div className="flex items-center gap-2">
-          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full bg-primary"
+              className="h-full bg-primary rounded-full transition-all"
               style={{ width: `${Math.min(p.profitMargin, 100).toFixed(1)}%` }}
             />
           </div>
-          <span className="text-xs text-muted-foreground w-10 text-right">
+          <span className="text-xs text-muted-foreground w-10 text-right shrink-0">
             {p.profitMargin.toFixed(1)}%
           </span>
         </div>
@@ -39,15 +41,18 @@ function ProductTable({ products }: { products: TopProduct[] }) {
   return (
     <table className="w-full text-sm">
       <thead>
-        <tr>
+        <tr className="border-b border-border">
           {COLUMNS.map((h) => (
-            <th key={h} className="pb-2 text-left text-xs font-medium text-muted-foreground">
+            <th
+              key={h}
+              className="pb-3 text-left text-xs font-semibold text-muted-foreground tracking-wide"
+            >
               {h}
             </th>
           ))}
         </tr>
       </thead>
-      <tbody className="divide-y">
+      <tbody className="divide-y divide-border">
         {products.map((p, i) => (
           <ProductRow key={p.productName} p={p} i={i} />
         ))}
@@ -63,13 +68,13 @@ export default function TopProducts({ products }: Props) {
 
   return (
     <>
-      <div className="rounded-xl border bg-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold">Top Products</h2>
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-semibold text-foreground">Top Products</h2>
           {hasMore && (
             <button
               onClick={() => setModalOpen(true)}
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-primary font-medium hover:underline"
             >
               View all {products.length}
             </button>
@@ -77,17 +82,22 @@ export default function TopProducts({ products }: Props) {
         </div>
 
         {products.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No product data available</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No product data available
+          </p>
         ) : (
           <ProductTable products={preview} />
         )}
       </div>
 
+      {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 h-screen bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[80vh] flex flex-col animate-in zoom-in-95 fade-in duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold">All Top Products</h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-card rounded-2xl border border-border p-6 w-full max-w-3xl max-h-[80vh] flex flex-col shadow-xl animate-in zoom-in-95 fade-in duration-200">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-semibold text-foreground">
+                All Top Products
+              </h2>
               <button
                 onClick={() => setModalOpen(false)}
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"

@@ -10,8 +10,7 @@ import { dashboardService, DashboardStats, RevenueDataPoint } from "@/lib/servic
 import { usersService } from "@/lib/services/users.service";
 
 import StatsCards from "@/components/dashboard/StatsCards";
-import CollectionsStatsCards from "@/components/dashboard/CollectionsStats";
-import CreditStatsCard from "@/components/dashboard/CreditStats";
+import SummaryCards from "@/components/dashboard/SummaryCards";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import PeriodOverview from "@/components/dashboard/PeriodOverview";
 import TopStaff from "@/components/dashboard/TopStaff";
@@ -103,8 +102,7 @@ export default function DashboardPage() {
 
       {stats && <StatsCards stats={stats} />}
       <RevenueChart data={revenueData} dateRange={dateRange} onDateRangeChange={setDateRange} />
-      {collectionsStats && <CollectionsStatsCards stats={collectionsStats} />}
-      {creditStats && <CreditStatsCard stats={creditStats} />}
+      <SummaryCards collectionsStats={collectionsStats} creditStats={creditStats} />
       <PeriodOverview daily={daily} weekly={weekly} monthly={monthly} />
 
       <TopProducts products={topProducts} />

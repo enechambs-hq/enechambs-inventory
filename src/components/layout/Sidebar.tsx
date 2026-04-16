@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
@@ -11,26 +11,28 @@ import {
   CreditCard,
   Users,
   TrendingUp,
+  Contact,
   LogOut,
-} from 'lucide-react';
-import { useAuthStore } from '@/store/auth.store';
-import { authService } from '@/lib/services/auth.service';
-import { UserRole } from '@/types';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { useAuthStore } from "@/store/auth.store";
+import { authService } from "@/lib/services/auth.service";
+import { UserRole } from "@/types";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const staffLinks = [
-  { href: '/inventory', label: 'Inventory', icon: Package },
-  { href: '/sales', label: 'Sales', icon: ShoppingCart },
-  { href: '/collections', label: 'Collections', icon: Wallet },
-  { href: '/credits', label: 'Credits', icon: CreditCard },
+  { href: "/inventory", label: "Inventory", icon: Package },
+  { href: "/sales", label: "Sales", icon: ShoppingCart },
+  { href: "/collections", label: "Collections", icon: Wallet },
+  { href: "/credits", label: "Credits", icon: CreditCard },
 ];
 
 const adminLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   ...staffLinks,
-  { href: '/users', label: 'Users', icon: Users },
-  { href: '/profit-report', label: 'Profit Report', icon: TrendingUp },
+  { href: "/customers", label: "Customers", icon: Contact },
+  { href: "/users", label: "Users", icon: Users },
+  { href: "/profit-report", label: "Profit Report", icon: TrendingUp },
 ];
 
 export default function Sidebar() {
@@ -49,17 +51,30 @@ export default function Sidebar() {
       // fail silently, clear anyway
     } finally {
       clearAuth();
-      router.push('/login');
-      toast.success('Logged out successfully');
+      router.push("/login");
+      toast.success("Logged out successfully");
     }
   };
 
   return (
     <aside className="w-64 h-screen fixed left-0 top-0 flex flex-col border-r bg-card">
       {/* Logo */}
-      <div className="px-6 py-5 border-b">
-        <h1 className="text-xl font-bold tracking-tight">Lmart</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Inventory</p>
+      <div className="px-6 py-5 border-b border-[hsl(var(--sidebar-border))]">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground font-black text-sm">
+              L
+            </span>
+          </div>
+          <div>
+            <h1 className="text-base font-bold tracking-tight text-white">
+              Lmart
+            </h1>
+            <p className="text-[10px] text-[hsl(var(--sidebar-foreground))] opacity-60 -mt-0.5">
+              Management System
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Nav links */}
@@ -69,10 +84,10 @@ export default function Sidebar() {
             key={href}
             href={href}
             className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:scale-[1.1] active:scale-[0.98]",
               pathname === href
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
             <Icon size={16} />
@@ -87,7 +102,9 @@ export default function Sidebar() {
           <p className="text-sm font-medium truncate">
             {user?.firstName} {user?.lastName}
           </p>
-          <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+          <p className="text-xs text-muted-foreground capitalize">
+            {user?.role}
+          </p>
         </div>
         <button
           onClick={handleLogout}
@@ -99,7 +116,7 @@ export default function Sidebar() {
           ) : (
             <LogOut size={16} />
           )}
-          {isLoggingOut ? 'Logging out...' : 'Logout'}
+          {isLoggingOut ? "Logging out..." : "Logout"}
         </button>
       </div>
     </aside>

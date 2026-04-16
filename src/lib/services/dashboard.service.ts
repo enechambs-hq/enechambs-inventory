@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { SuccessResponse, ActivityLog, DailySummary, WeeklySummary, MonthlySummary, TopProduct, ProfitReport, CollectionsStats, CreditStats } from '@/types';
+import { SuccessResponse, ActivityLog, DailySummary, WeeklySummary, MonthlySummary, TopProduct, ProfitReport, CollectionsStats, CreditStats, Customer, PaginatedResponse } from '@/types';
 
 export interface DashboardStats {
   totalInventory: number;
@@ -95,6 +95,11 @@ export const dashboardService = {
     const response = await api.get<ProfitReport>(
       `/dashboard/profit-report?startDate=${startDate}&endDate=${endDate}`
     );
+    return response.data;
+  },
+
+  getCustomers: async (page = 1, limit = 20): Promise<PaginatedResponse<Customer>> => {
+    const response = await api.get(`/dashboard/customers?page=${page}&limit=${limit}`);
     return response.data;
   },
 
