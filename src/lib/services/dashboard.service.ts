@@ -103,6 +103,18 @@ export const dashboardService = {
     return response.data;
   },
 
+  broadcastEmail: async (subject: string, message: string): Promise<{
+    success: boolean;
+    message: string;
+    subject: string;
+    totalRecipients: number;
+    successful: number;
+    failed: number;
+  }> => {
+    const response = await api.post('/dashboard/broadcast-email', { subject, message });
+    return response.data;
+  },
+
   getTopProducts: async (): Promise<TopProduct[]> => {
     const response = await api.get<TopProduct[]>('/dashboard/top-products', {
       headers: { 'Cache-Control': 'no-cache' },
