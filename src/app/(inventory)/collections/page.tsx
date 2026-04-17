@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { format } from 'date-fns';
 import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCollectionsStore } from '@/store/collections.store';
@@ -210,7 +211,7 @@ export default function CollectionsPage() {
                   key={collection.id}
                   className="hover:bg-muted/30 transition-colors"
                 >
-                  <td className="px-4 py-3">{collection.date}</td>
+                  <td className="px-4 py-3">{format(new Date(collection.date), 'MMM d, yyyy')}</td>
                   <td className="px-4 py-3 font-medium">
                     {collection.productName}
                   </td>

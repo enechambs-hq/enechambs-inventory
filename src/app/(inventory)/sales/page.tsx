@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { format } from 'date-fns';
 import { Plus, Search, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSalesStore } from '@/store/sales.store';
@@ -191,7 +192,7 @@ export default function SalesPage() {
             ) : (
               displayedSales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">{sale.date}</td>
+                  <td className="px-4 py-3">{format(new Date(sale.date), 'MMM d, yyyy')}</td>
                   <td className="px-4 py-3 font-medium">{sale.productName}</td>
                   <td className="px-4 py-3 text-muted-foreground">{sale.imei}</td>
                   <td className="px-4 py-3">{sale.customerName}</td>
