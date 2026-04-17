@@ -75,12 +75,10 @@ export default function InventoryPage() {
       .getStockLevels()
       .then(setStockLevels)
       .catch(() => {});
-    if (user?.role === UserRole.ADMIN) {
-      inventoryService
-        .getLowStockAlerts()
-        .then(setLowStock)
-        .catch(() => {});
-    }
+    inventoryService
+      .getLowStockAlerts()
+      .then(setLowStock)
+      .catch(() => {});
     collectionsService
       .getAll({ limit: 100 })
       .then((data) => {
