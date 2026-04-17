@@ -35,6 +35,7 @@ const STATUS_PILL_COLORS: Record<CreditStatus, string> = {
 };
 
 type ActiveTab = 'all' | 'mine' | 'overdue';
+type StatusFilter = CreditStatus | '';
 
 function CreditDetailModal({ credit, onClose, onPaymentRecorded }: { credit: Credit; onClose: () => void; onPaymentRecorded: (updated: Credit) => void }) {
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -42,16 +43,29 @@ function CreditDetailModal({ credit, onClose, onPaymentRecorded }: { credit: Cre
   const [submitting, setSubmitting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [currentCredit, setCurrentCredit] = useState(credit);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
+  const [voidReason, setVoidReason] = useState('');
 
   const canPay = !['paid', 'defaulted'].includes(currentCredit.status);
+  const requiresVoidReason = (s: string) => s === 'defaulted';
 
   const handleStatusChange = async (status: string) => {
+    if (requiresVoidReason(status)) {
+      setPendingStatus(status);
+      return;
+    }
+    await submitStatusChange(status);
+  };
+
+  const submitStatusChange = async (status: string, reason?: string) => {
     try {
       setUpdatingStatus(true);
-      const updated = await creditsService.updateStatus(currentCredit.id, status);
+      const updated = await creditsService.updateStatus(currentCredit.id, status, reason);
       setCurrentCredit(updated);
       toast.success(`Status updated to ${status}`);
       onPaymentRecorded(updated);
+      setPendingStatus(null);
+      setVoidReason('');
     } catch {
       toast.error('Failed to update status');
     } finally {
@@ -179,6 +193,37 @@ function CreditDetailModal({ credit, onClose, onPaymentRecorded }: { credit: Cre
           </div>
         )}
 
+        {/* Void reason prompt */}
+        {pendingStatus && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 mb-4 space-y-3">
+            <p className="text-xs font-medium text-destructive uppercase tracking-wide">
+              Mark as {pendingStatus} — provide reason
+            </p>
+            <textarea
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="Reason for marking as defaulted…"
+              rows={2}
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setPendingStatus(null); setVoidReason(''); }}
+                className="flex-1 px-3 py-1.5 rounded-md border text-sm hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => submitStatusChange(pendingStatus, voidReason || undefined)}
+                disabled={updatingStatus}
+                className="flex-1 px-3 py-1.5 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+              >
+                {updatingStatus ? 'Updating…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Payment history */}
         {currentCredit.paymentHistory.length > 0 && (
           <div>
@@ -209,6 +254,7 @@ export default function CreditsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('');
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedCredit, setSelectedCredit] = useState<Credit | null>(null);
@@ -226,9 +272,15 @@ export default function CreditsPage() {
         setTotal(data.length);
         setTotalPages(1);
       } else {
+        const filters = {
+          page,
+          limit,
+          ...(search ? { productName: search, customerName: search, customerPhone: search } : {}),
+          ...(statusFilter ? { status: statusFilter } : {}),
+        };
         const data = activeTab === 'all'
-          ? await creditsService.getAll(page, limit, search)
-          : await creditsService.getMyCredits(page, limit);
+          ? await creditsService.getAll(filters)
+          : await creditsService.getMyCredits(filters);
         setCredits(data.data);
         setTotal(data.meta.total);
         setTotalPages(data.meta.totalPages);
@@ -238,7 +290,7 @@ export default function CreditsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, page, search, limit]);
+  }, [activeTab, page, search, statusFilter, limit]);
 
   useEffect(() => {
     fetchCredits();
@@ -372,17 +424,29 @@ export default function CreditsPage() {
         ))}
       </div>
 
-      {/* Search */}
-      {activeTab === 'all' && (
-        <div className="relative max-w-sm">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search by customer or product..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+      {/* Search + Status filter */}
+      {activeTab !== 'overdue' && (
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-sm flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search by customer, phone or product…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value as StatusFilter); setPage(1); }}
+            className="px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">All Statuses</option>
+            {(Object.values(CreditStatus) as CreditStatus[]).map((s) => (
+              <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            ))}
+          </select>
         </div>
       )}
 

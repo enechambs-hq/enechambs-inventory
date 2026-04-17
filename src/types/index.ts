@@ -112,6 +112,7 @@ export interface CreateCreditDto {
   inventoryId: string;
   date: string;
   amount: number;
+  amountPaid?: number;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;

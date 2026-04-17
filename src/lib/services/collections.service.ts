@@ -10,7 +10,6 @@ export interface CollectionFilters {
   page?: number;
   limit?: number;
   productName?: string;
-  imei?: string;
   collectorName?: string;
 }
 
@@ -38,10 +37,10 @@ export const collectionsService = {
     return response.data;
   },
 
-  updateStatus: async (id: string, status: CollectionStatus) => {
+  updateStatus: async (id: string, status: CollectionStatus, voidReason?: string) => {
     const response = await api.patch<Collection>(
       `/collections/${id}/status`,
-      { status }
+      { status, ...(voidReason ? { voidReason } : {}) }
     );
     return response.data;
   },

@@ -10,7 +10,6 @@ export interface SaleFilters {
   page?: number;
   limit?: number;
   productName?: string;
-  imei?: string;
   customerName?: string;
   customerPhone?: string;
 }

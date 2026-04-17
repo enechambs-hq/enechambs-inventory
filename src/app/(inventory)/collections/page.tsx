@@ -46,6 +46,8 @@ export default function CollectionsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [voidModal, setVoidModal] = useState<{ id: string; status: CollectionStatus; current: CollectionStatus } | null>(null);
+  const [voidReason, setVoidReason] = useState('');
 
   const fetchCollections = useCallback(async () => {
     try {
@@ -89,16 +91,27 @@ export default function CollectionsPage() {
     }
   };
 
-  const handleStatusUpdate = async (id: string, status: CollectionStatus, current: CollectionStatus) => {
+  const handleStatusUpdate = (id: string, status: CollectionStatus, current: CollectionStatus) => {
     if (current === status) {
       toast.error(`Status is already set to ${status}`);
       return;
     }
+    if (status === CollectionStatus.RETURNED) {
+      setVoidReason('');
+      setVoidModal({ id, status, current });
+      return;
+    }
+    commitStatusUpdate(id, status);
+  };
+
+  const commitStatusUpdate = async (id: string, status: CollectionStatus, reason?: string) => {
     try {
       setUpdatingId(id);
-      await collectionsService.updateStatus(id, status);
+      await collectionsService.updateStatus(id, status, reason);
       toast.success('Status updated successfully');
       fetchCollections();
+      setVoidModal(null);
+      setVoidReason('');
     } catch {
       toast.error('Failed to update status');
     } finally {
@@ -317,6 +330,43 @@ export default function CollectionsPage() {
               isLoading={submitting}
               onCancel={() => setModalOpen(false)}
             />
+          </div>
+        </div>
+      )}
+      {/* Void reason modal (RETURNED status) */}
+      {voidModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl border p-6 w-full max-w-sm shadow-lg">
+            <h2 className="text-base font-semibold mb-1">Mark as Returned</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              Provide an optional reason for returning this item.
+            </p>
+            <textarea
+              value={voidReason}
+              onChange={(e) => setVoidReason(e.target.value)}
+              placeholder="Reason (optional)…"
+              rows={3}
+              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none mb-4"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setVoidModal(null)}
+                disabled={updatingId === voidModal.id}
+                className="px-4 py-2 rounded-md border text-sm hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => commitStatusUpdate(voidModal.id, voidModal.status, voidReason || undefined)}
+                disabled={updatingId === voidModal.id}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {updatingId === voidModal.id && (
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin" />
+                )}
+                Confirm
+              </button>
+            </div>
           </div>
         </div>
       )}

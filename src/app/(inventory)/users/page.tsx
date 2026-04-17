@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Pencil, Trash2 } from 'lucide-react';
+import { Search, Pencil, Trash2, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,7 +11,8 @@ import { useSearchParams } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useUsersStore } from '@/store/users.store';
 import { usersService } from '@/lib/services/users.service';
-import { User, UserPerformance, UserRole } from '@/types';
+import { User, UserPerformance, UserRole, ActivityLog } from '@/types';
+import { dashboardService } from '@/lib/services/dashboard.service';
 
 type ActiveTab = 'users' | 'performance';
 
@@ -39,6 +40,12 @@ export default function UsersPage() {
   const [perfLoading, setPerfLoading] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [activityUser, setActivityUser] = useState<User | null>(null);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [activityPage, setActivityPage] = useState(1);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityTotalPages, setActivityTotalPages] = useState(1);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -72,6 +79,24 @@ export default function UsersPage() {
       setPerfLoading(false);
     }
   }, []);
+
+  const fetchActivityForUser = useCallback(async (userId: string, pg: number) => {
+    try {
+      setActivityLoading(true);
+      const data = await dashboardService.getActivityByUser(userId, pg, 15);
+      setActivityLogs(data.data);
+      setActivityTotal(data.meta.total);
+      setActivityTotalPages(data.meta.totalPages);
+    } catch {
+      // fail silently
+    } finally {
+      setActivityLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activityUser) fetchActivityForUser(activityUser.id, activityPage);
+  }, [activityUser, activityPage, fetchActivityForUser]);
 
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
@@ -214,6 +239,13 @@ export default function UsersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <button
+                            onClick={() => { setActivityUser(user); setActivityPage(1); setActivityLogs([]); }}
+                            className="p-1.5 rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                            title="View activity"
+                          >
+                            <Activity size={13} />
+                          </button>
+                          <button
                             onClick={() => openEdit(user)}
                             className="p-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                           >
@@ -328,6 +360,82 @@ export default function UsersPage() {
                 {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity modal */}
+      {activityUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-semibold">Activity — {activityUser.firstName} {activityUser.lastName}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{activityUser.email}</p>
+              </div>
+              <button
+                onClick={() => { setActivityUser(null); setActivityLogs([]); }}
+                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto rounded-lg border">
+              {activityLoading ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>
+              ) : activityLogs.length === 0 ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">No activity found</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 sticky top-0">
+                    <tr>
+                      {['Timestamp', 'Action', 'Description'].map((h) => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {activityLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                          {format(new Date(log.timestamp), 'MMM d, yyyy · h:mm a')}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{log.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {activityTotalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                <p className="text-xs text-muted-foreground">{activityTotal} total entries</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setActivityPage((p) => p - 1)}
+                    disabled={activityPage === 1 || activityLoading}
+                    className="px-3 py-1.5 rounded-md border text-xs disabled:opacity-50 hover:bg-muted transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-xs">{activityPage} / {activityTotalPages}</span>
+                  <button
+                    onClick={() => setActivityPage((p) => p + 1)}
+                    disabled={activityPage === activityTotalPages || activityLoading}
+                    className="px-3 py-1.5 rounded-md border text-xs disabled:opacity-50 hover:bg-muted transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

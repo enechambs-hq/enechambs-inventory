@@ -12,6 +12,7 @@ const schema = z.object({
   inventoryId: z.string().min(1, 'Select an inventory item'),
   date: z.string().min(1, 'Required'),
   amount: z.coerce.number().min(0, 'Required'),
+  amountPaid: z.coerce.number().min(0, 'Must be 0 or more').optional().default(0),
   customerName: z.string().min(1, 'Required'),
   customerPhone: z.string().min(1, 'Required'),
   customerEmail: z.preprocess(
@@ -87,11 +88,20 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
         </div>
       </div>
 
-      {/* Amount */}
-      <div className="space-y-1">
-        <label className="text-sm font-medium">Amount (₦)</label>
-        <input type="number" {...register('amount')} className={field} placeholder="0" min={0} />
-        {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
+      {/* Amount + Amount Paid */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-sm font-medium">Total Amount (₦)</label>
+          <input type="number" {...register('amount')} className={field} placeholder="0" min={0} />
+          {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium">
+            Initial Deposit (₦) <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <input type="number" {...register('amountPaid')} className={field} placeholder="0" min={0} />
+          {errors.amountPaid && <p className="text-xs text-destructive">{errors.amountPaid.message}</p>}
+        </div>
       </div>
 
       {/* Customer */}

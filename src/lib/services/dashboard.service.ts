@@ -99,12 +99,14 @@ export const dashboardService = {
     return response.data;
   },
 
-  getCustomers: async (page = 1, limit = 20): Promise<PaginatedResponse<Customer>> => {
-    const response = await api.get(`/dashboard/customers?page=${page}&limit=${limit}`);
+  getCustomers: async (page = 1, limit = 20, search = ''): Promise<PaginatedResponse<Customer>> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) params.set('search', search);
+    const response = await api.get(`/dashboard/customers?${params}`);
     return response.data;
   },
 
-  broadcastEmail: async (subject: string, message: string): Promise<{
+  broadcastEmail: async (subject: string, message: string, senderName?: string): Promise<{
     success: boolean;
     message: string;
     subject: string;
@@ -112,7 +114,16 @@ export const dashboardService = {
     successful: number;
     failed: number;
   }> => {
-    const response = await api.post('/dashboard/broadcast-email', { subject, message });
+    const response = await api.post('/dashboard/broadcast-email', {
+      subject,
+      message,
+      ...(senderName ? { senderName } : {}),
+    });
+    return response.data;
+  },
+
+  getActivityByUser: async (userId: string, page = 1, limit = 20): Promise<PaginatedResponse<ActivityLog>> => {
+    const response = await api.get(`/activity-logs/user/${userId}?page=${page}&limit=${limit}`);
     return response.data;
   },
 

@@ -21,6 +21,7 @@ interface BroadcastResult {
 function BroadcastModal({ onClose }: { onClose: () => void }) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+  const [senderName, setSenderName] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<BroadcastResult | null>(null);
 
@@ -28,7 +29,7 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
     if (!subject.trim() || !message.trim()) return;
     try {
       setSending(true);
-      const res = await dashboardService.broadcastEmail(subject.trim(), message.trim());
+      const res = await dashboardService.broadcastEmail(subject.trim(), message.trim(), senderName.trim() || undefined);
       setResult({
         subject: res.subject,
         totalRecipients: res.totalRecipients,
@@ -101,6 +102,18 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
               This will send an email to all customers and staff who have an email address on record.
             </p>
             <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Sender Name <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+                placeholder="e.g. LMart Team"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Subject</label>
               <input
                 type="text"
@@ -161,10 +174,10 @@ export default function CustomersPage() {
   const [search, setSearch] = useState("");
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-  const load = useCallback(async (page: number) => {
+  const load = useCallback(async (page: number, q = search) => {
     try {
       setLoading(true);
-      const res = await dashboardService.getCustomers(page, LIMIT);
+      const res = await dashboardService.getCustomers(page, LIMIT, q);
       setCustomers(res.data);
       setMeta(res.meta);
     } catch {
@@ -172,20 +185,14 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   useEffect(() => {
     load(1);
   }, [load]);
 
-  const filtered = customers.filter((c) => {
-    const q = search.toLowerCase();
-    return (
-      c.customerName.toLowerCase().includes(q) ||
-      (c.customerEmail ?? "").toLowerCase().includes(q) ||
-      c.customerPhone.toLowerCase().includes(q)
-    );
-  });
+  const filtered = customers;
 
   return (
     <div className="p-6 space-y-6">
@@ -204,7 +211,7 @@ export default function CustomersPage() {
               type="text"
               placeholder="Search by name, email or phone…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); load(1, e.target.value); }}
               className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -281,14 +288,14 @@ export default function CustomersPage() {
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => load(meta.page - 1)}
+              onClick={() => load(meta.page - 1, search)}
               disabled={meta.page <= 1}
               className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
             <button
-              onClick={() => load(meta.page + 1)}
+              onClick={() => load(meta.page + 1, search)}
               disabled={meta.page >= meta.totalPages}
               className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >

@@ -1,11 +1,31 @@
 import api from '@/lib/api';
-import { Credit, CreateCreditDto, PaginatedResponse } from '@/types';
+import { Credit, CreateCreditDto, CreditStatus, PaginatedResponse } from '@/types';
+
+export interface CreditFilters {
+  page?: number;
+  limit?: number;
+  productName?: string;
+  customerName?: string;
+  customerPhone?: string;
+  status?: CreditStatus | '';
+}
 
 export const creditsService = {
-  getAll: async (page = 1, limit = 20, search = ''): Promise<PaginatedResponse<Credit>> => {
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    if (search) params.set('search', search);
+  getAll: async (filters: CreditFilters = {}): Promise<PaginatedResponse<Credit>> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') params.append(key, String(value));
+    });
     const response = await api.get<PaginatedResponse<Credit>>(`/credits?${params}`);
+    return response.data;
+  },
+
+  getMyCredits: async (filters: CreditFilters = {}): Promise<PaginatedResponse<Credit>> => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') params.append(key, String(value));
+    });
+    const response = await api.get<PaginatedResponse<Credit>>(`/credits/my-credits?${params}`);
     return response.data;
   },
 
@@ -19,19 +39,19 @@ export const creditsService = {
     return Array.isArray(response.data) ? response.data : [];
   },
 
-  getMyCredits: async (page = 1, limit = 20): Promise<PaginatedResponse<Credit>> => {
-    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    const response = await api.get<PaginatedResponse<Credit>>(`/credits/my-credits?${params}`);
-    return response.data;
-  },
-
-  updateStatus: async (id: string, status: string): Promise<Credit> => {
-    const response = await api.patch<Credit>(`/credits/${id}/status`, { status });
+  updateStatus: async (id: string, status: string, voidReason?: string): Promise<Credit> => {
+    const response = await api.patch<Credit>(`/credits/${id}/status`, {
+      status,
+      ...(voidReason ? { voidReason } : {}),
+    });
     return response.data;
   },
 
   recordPayment: async (id: string, amount: number, note?: string): Promise<Credit> => {
-    const response = await api.patch<Credit>(`/credits/${id}/payment`, { amount, ...(note ? { note } : {}) });
+    const response = await api.patch<Credit>(`/credits/${id}/payment`, {
+      amount,
+      ...(note ? { note } : {}),
+    });
     return response.data;
   },
 
