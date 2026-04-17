@@ -20,12 +20,6 @@ import InventoryFilters from "@/components/inventory/InventoryFilters";
 import InventoryTable from "@/components/inventory/InventoryTable";
 
 type ActiveFilter = "all" | "available" | "sold" | "in-collection";
-type SearchState = {
-  productName: string;
-  imei: string;
-  companyName: string;
-  color: string;
-};
 
 export default function InventoryPage() {
   const { user } = useAuthStore();
@@ -41,12 +35,7 @@ export default function InventoryPage() {
     setPage,
   } = useInventoryStore();
 
-  const [search, setSearch] = useState<SearchState>({
-    productName: "",
-    imei: "",
-    companyName: "",
-    color: "",
-  });
+  const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<InventoryItem | null>(null);
@@ -68,7 +57,7 @@ export default function InventoryPage() {
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await inventoryService.getAll({ page, limit, ...search });
+      const data = await inventoryService.getAll({ page, limit, productName: search, companyName: search, color: search });
       setItems(data.data, data.meta);
     } catch {
       toast.error("Failed to load inventory");
@@ -113,7 +102,7 @@ export default function InventoryPage() {
     }
     setIsFilterLoading(true);
     inventoryService
-      .getAll({ limit: 100, ...search })
+      .getAll({ limit: 100, productName: search, companyName: search, color: search })
       .then((data) => setFilterSnapshot(data.data))
       .catch(() => setFilterSnapshot([]))
       .finally(() => setIsFilterLoading(false));
@@ -212,14 +201,12 @@ export default function InventoryPage() {
 
       <InventoryFilters
         activeFilter={activeFilter}
-        search={search}
+        searchQuery={search}
         onFilterChange={(f) => {
           setActiveFilter(f);
           setPage(1);
         }}
-        onSearchChange={(key, value) =>
-          setSearch((prev) => ({ ...prev, [key]: value }))
-        }
+        onSearchChange={(value) => { setSearch(value); setPage(1); }}
       />
 
       <InventoryTable
