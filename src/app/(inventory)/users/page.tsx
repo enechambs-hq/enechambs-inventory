@@ -367,7 +367,7 @@ export default function UsersPage() {
       {/* Activity modal */}
       {activityUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-4xl max-h-[85vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
+          <div className="bg-card rounded-xl border p-6 w-full max-w-6xl max-h-[85vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-base font-semibold">Activity — {activityUser.firstName} {activityUser.lastName}</h2>
@@ -381,42 +381,58 @@ export default function UsersPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto rounded-lg border">
+            <div
+              className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-1"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}
+            >
               {activityLoading ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>
               ) : activityLogs.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">No activity found</div>
               ) : (
-                <table className="w-full text-sm table-fixed">
-                  <colgroup>
-                    <col className="w-44" />
-                    <col className="w-52" />
-                    <col />
-                  </colgroup>
-                  <thead className="bg-muted/50 sticky top-0">
-                    <tr>
-                      {['Timestamp', 'Action', 'Description'].map((h) => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {activityLogs.map((log) => (
-                      <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {format(new Date(log.timestamp), 'MMM d, yyyy')}<br />
-                          <span className="text-muted-foreground/70">{format(new Date(log.timestamp), 'h:mm a')}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground break-all">
-                            {log.action}
+                <div className="space-y-2 py-1">
+                  {activityLogs.map((log) => {
+                    const action = log.action ?? '';
+                    const badgeClass = action.includes('LOGIN') || action.includes('LOGOUT')
+                      ? 'bg-slate-500/10 text-slate-600 dark:text-slate-400'
+                      : action.includes('SALE')
+                      ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                      : action.includes('CREDIT')
+                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
+                      : action.includes('COLLECTION')
+                      ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+                      : action.includes('DELETE') || action.includes('VOID')
+                      ? 'bg-red-500/10 text-red-700 dark:text-red-400'
+                      : 'bg-muted text-muted-foreground';
+
+                    return (
+                      <div
+                        key={log.id}
+                        className="flex items-start gap-4 rounded-lg border bg-background px-4 py-3 hover:bg-primary/5 hover:border-primary/20 hover:scale-[1.005] transition-all duration-150 cursor-default"
+                      >
+                        {/* Timestamp */}
+                        <div className="shrink-0 w-28 pt-0.5">
+                          <p className="text-xs font-medium text-foreground">
+                            {format(new Date(log.timestamp), 'MMM d, yyyy')}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {format(new Date(log.timestamp), 'h:mm a')}
+                          </p>
+                        </div>
+
+                        {/* Badge */}
+                        <div className="shrink-0 w-36 pt-0.5">
+                          <span className={`inline-block px-1.5 py-0.5 rounded-md text-[10px] font-semibold leading-tight tracking-wide uppercase ${badgeClass}`}>
+                            {action.replace(/_/g, ' ')}
                           </span>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground text-sm leading-relaxed">{log.description}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+
+                        {/* Description */}
+                        <p className="flex-1 text-sm text-muted-foreground leading-relaxed">{log.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
 
