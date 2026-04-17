@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { format, subDays } from "date-fns";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { UserRole, UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct, CollectionsStats, CreditStats } from "@/types";
+import type { ActivityLog } from "@/types";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import { dashboardService, DashboardStats, RevenueDataPoint } from "@/lib/services/dashboard.service";
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [collectionsStats, setCollectionsStats] = useState<CollectionsStats | null>(null);
   const [creditStats, setCreditStats] = useState<CreditStats | null>(null);
+  const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
     startDate: format(subDays(new Date(), 30), "yyyy-MM-dd"),
@@ -63,6 +65,7 @@ export default function DashboardPage() {
         dashboardService.getTopProducts().then(setTopProducts).catch(() => toast.error("Failed to load top products")),
         dashboardService.getCollectionsStats().then(setCollectionsStats).catch(() => {}),
         dashboardService.getCreditStats().then(setCreditStats).catch(() => {}),
+        dashboardService.getRecentActivity(15).then(setRecentActivities).catch(() => {}),
       ]);
       setIsLoading(false);
     };
@@ -109,7 +112,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-6">
         <TopStaff performance={staffPerformance} />
-        <RecentActivity activities={stats?.recentActivities ?? []} />
+        <RecentActivity activities={recentActivities} />
       </div>
 
       <RegisterStaffModal open={registerModalOpen} onClose={() => setRegisterModalOpen(false)} />

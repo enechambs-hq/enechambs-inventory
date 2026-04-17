@@ -57,8 +57,9 @@ export const dashboardService = {
   },
 
   getRecentActivity: async (limit = 10): Promise<ActivityLog[]> => {
-    const response = await api.get<ActivityLog[]>(`/activity-logs/recent?limit=${limit}`);
-    return Array.isArray(response.data) ? response.data : [];
+    const response = await api.get<ActivityLog[] | { data: ActivityLog[] }>(`/activity-logs/recent?limit=${limit}`);
+    const payload = response.data;
+    return Array.isArray(payload) ? payload : (payload.data ?? []);
   },
 
   getAllActivity: async (page = 1, limit = 20): Promise<import('@/types').PaginatedResponse<ActivityLog>> => {
