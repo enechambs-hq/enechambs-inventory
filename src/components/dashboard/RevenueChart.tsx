@@ -1,6 +1,6 @@
 "use client";
 
-import { format } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import {
   AreaChart,
   Area,
@@ -12,6 +12,25 @@ import {
 } from "recharts";
 import { RevenueDataPoint } from "@/lib/services/dashboard.service";
 
+function fillRevenueGaps(
+  data: RevenueDataPoint[],
+  startDate: string,
+  endDate: string
+): RevenueDataPoint[] {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const effectiveEnd = endDate > today ? today : endDate;
+  const existing = new Map(data.map((d) => [d.date.slice(0, 10), d]));
+  const result: RevenueDataPoint[] = [];
+  let current = parseISO(startDate);
+  const end = parseISO(effectiveEnd);
+  while (current <= end) {
+    const key = format(current, "yyyy-MM-dd");
+    result.push(existing.get(key) ?? { date: key, total: "0" });
+    current = addDays(current, 1);
+  }
+  return result;
+}
+
 interface Props {
   data: RevenueDataPoint[];
   dateRange: { startDate: string; endDate: string };
@@ -19,6 +38,8 @@ interface Props {
 }
 
 export default function RevenueChart({ data, dateRange, onDateRangeChange }: Props) {
+  const filledData = fillRevenueGaps(data, dateRange.startDate, dateRange.endDate);
+
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between mb-6">
@@ -52,14 +73,14 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
         </div>
       </div>
 
-      {data.length === 0 ? (
+      {filledData.every((d) => Number(d.total) === 0) ? (
         <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
           No revenue data for selected range
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
           <AreaChart
-            data={data.map((d) => ({
+            data={filledData.map((d) => ({
               date: format(new Date(d.date), "MMM d"),
               Revenue: Number(d.total),
             }))}

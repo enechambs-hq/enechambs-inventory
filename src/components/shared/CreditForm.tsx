@@ -66,7 +66,7 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
           <option value="">{loadingInventory ? 'Loading...' : 'Select item'}</option>
           {inventory.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.productName} — {item.color}, {item.storageGB}GB (S/N: {item.serialNumber})
+              {item.productName} — {item.color}, {item.storageGB} (S/N: {item.serialNumber})
             </option>
           ))}
         </select>

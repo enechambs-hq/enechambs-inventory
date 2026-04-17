@@ -219,7 +219,7 @@ export default function CollectionsPage() {
                     {collection.imei}
                   </td>
                   <td className="px-4 py-3">{collection.collectorName}</td>
-                  <td className="px-4 py-3">{collection.storageGB}GB</td>
+                  <td className="px-4 py-3">{collection.storageGB}</td>
                   <td className="px-4 py-3">{collection.color}</td>
                   <td className="px-4 py-3">
                     ₦{collection.amount.toLocaleString()}

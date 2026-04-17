@@ -110,7 +110,7 @@ function CreditDetailModal({ credit, onClose, onPaymentRecorded }: { credit: Cre
         <div className="rounded-lg border bg-muted/30 p-4 mb-4 space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Product</p>
           <p className="font-semibold">{currentCredit.productName}</p>
-          <p className="text-sm text-muted-foreground">{currentCredit.color} · {currentCredit.storageGB}GB · IMEI: {currentCredit.imei}</p>
+          <p className="text-sm text-muted-foreground">{currentCredit.color} · {currentCredit.storageGB} · IMEI: {currentCredit.imei}</p>
         </div>
 
         {/* Customer */}

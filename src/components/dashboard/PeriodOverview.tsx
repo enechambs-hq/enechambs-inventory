@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
 import {
   AreaChart,
   Area,
@@ -11,7 +11,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { DailySummary, WeeklySummary, MonthlySummary } from "@/types";
+import { DailySummary, WeeklySummary, MonthlySummary, PeriodBreakdownItem } from "@/types";
 
 interface Props {
   daily: DailySummary | null;
@@ -56,9 +56,32 @@ export default function PeriodOverview({ daily, weekly, monthly }: Props) {
   );
 }
 
+function fillBreakdownGaps(
+  items: PeriodBreakdownItem[],
+  start: string,
+  end: string
+): PeriodBreakdownItem[] {
+  const today = format(new Date(), "yyyy-MM-dd");
+  const effectiveEnd = end > today ? today : end;
+  const existing = new Map(items.map((d) => [d.date.slice(0, 10), d]));
+  const result: PeriodBreakdownItem[] = [];
+  let current = parseISO(start);
+  const endDate = parseISO(effectiveEnd);
+  while (current <= endDate) {
+    const key = format(current, "yyyy-MM-dd");
+    result.push(existing.get(key) ?? { date: key, count: "0", revenue: "0", cost: "0" });
+    current = addDays(current, 1);
+  }
+  return result;
+}
+
 function PeriodContent({ data }: { data: DailySummary | WeeklySummary | MonthlySummary }) {
   const { sales } = data;
-  const breakdown = "dailyBreakdown" in data ? data.dailyBreakdown : null;
+  const rawBreakdown = "dailyBreakdown" in data ? data.dailyBreakdown : null;
+  const breakdown =
+    rawBreakdown && "period" in data
+      ? fillBreakdownGaps(rawBreakdown, data.period.start, data.period.end)
+      : rawBreakdown;
   const profitMargin =
     "profitMargin" in sales ? (sales as MonthlySummary["sales"]).profitMargin : null;
 

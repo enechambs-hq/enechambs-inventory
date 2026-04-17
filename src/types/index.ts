@@ -242,7 +242,7 @@ export interface InventoryItem {
   dateAdded: string;
   productName: string;
   imei: string;
-  storageGB: number;
+  storageGB: string;
   color: string;
   productType: string;
   companyName: string;
@@ -259,7 +259,7 @@ export interface CreateInventoryDto {
   dateAdded: string;
   productName: string;
   imei: string;
-  storageGB: number;
+  storageGB: string;
   color: string;
   productType: string;
   companyName: string;
@@ -271,7 +271,7 @@ export interface CreateInventoryDto {
 export interface UpdateInventoryDto {
   productName?: string;
   imei?: string;
-  storageGB?: number;
+  storageGB?: string;
   color?: string;
   productType?: string;
   companyName?: string;

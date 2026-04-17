@@ -62,7 +62,7 @@ export default function InventoryTable({
                   <td className="px-4 py-3 text-muted-foreground">{item.imei}</td>
                   <td className="px-4 py-3">{item.companyName}</td>
                   <td className="px-4 py-3">{item.color}</td>
-                  <td className="px-4 py-3">{item.storageGB}GB</td>
+                  <td className="px-4 py-3">{item.storageGB}</td>
                   <td className="px-4 py-3">₦{item.sellingPrice.toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
