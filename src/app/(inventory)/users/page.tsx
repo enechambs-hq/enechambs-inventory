@@ -366,8 +366,8 @@ export default function UsersPage() {
 
       {/* Activity modal */}
       {activityUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[85vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card rounded-xl border p-6 w-full max-w-4xl max-h-[85vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-base font-semibold">Activity — {activityUser.firstName} {activityUser.lastName}</h2>
@@ -387,7 +387,12 @@ export default function UsersPage() {
               ) : activityLogs.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">No activity found</div>
               ) : (
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-fixed">
+                  <colgroup>
+                    <col className="w-44" />
+                    <col className="w-52" />
+                    <col />
+                  </colgroup>
                   <thead className="bg-muted/50 sticky top-0">
                     <tr>
                       {['Timestamp', 'Action', 'Description'].map((h) => (
@@ -398,15 +403,16 @@ export default function UsersPage() {
                   <tbody className="divide-y">
                     {activityLogs.map((log) => (
                       <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                          {format(new Date(log.timestamp), 'MMM d, yyyy · h:mm a')}
+                        <td className="px-4 py-3 text-muted-foreground text-xs">
+                          {format(new Date(log.timestamp), 'MMM d, yyyy')}<br />
+                          <span className="text-muted-foreground/70">{format(new Date(log.timestamp), 'h:mm a')}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground">
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground break-all">
                             {log.action}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">{log.description}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-sm leading-relaxed">{log.description}</td>
                       </tr>
                     ))}
                   </tbody>
