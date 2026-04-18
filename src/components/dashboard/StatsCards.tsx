@@ -34,7 +34,7 @@ const cards = [
     patternColor: "#2563eb",
   },
   {
-    label: "Available Stock",
+    label: "Available Now",
     value: (s: DashboardStats) => String(s.availableInventory),
     icon: BarChart2,
     iconBg: "bg-blue-500/10",
