@@ -61,7 +61,7 @@ export default function InventoryTable({
                 <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 font-medium">{item.productName}</td>
                   <td className="px-4 py-3 text-muted-foreground">{item.imei || '—'}</td>
-                  <td className="px-4 py-3">{item.companyName}</td>
+                  <td className="px-4 py-3">{item.companyName || '—'}</td>
                   <td className="px-4 py-3">{item.color}</td>
                   <td className="px-4 py-3">{item.storageGB}</td>
                   <td className="px-4 py-3">₦{item.sellingPrice.toLocaleString()}</td>
