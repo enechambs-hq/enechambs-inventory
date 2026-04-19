@@ -66,7 +66,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Inventory picker */}
         <div className="col-span-2 space-y-1">
           <label className="text-sm font-medium">Inventory Item</label>
@@ -104,14 +104,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
 
         {/* Amount */}
         <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Amount</label>
-            {selectedItem && (
-              <span className="text-xs text-muted-foreground">
-                Threshold: ₦{selectedItem.thresholdPrice.toLocaleString()}
-              </span>
-            )}
-          </div>
+          <label className="text-sm font-medium">Amount (₦)</label>
           <input
             {...register('amount')}
             type="number"
@@ -120,8 +113,12 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           {errors.amount ? (
             <p className="text-xs text-destructive">{errors.amount.message}</p>
           ) : belowThreshold ? (
-            <p className="text-xs text-amber-500">
-              Below threshold — selling price is ₦{selectedItem!.sellingPrice.toLocaleString()}
+            <p className="text-xs text-amber-500 font-medium">
+              ⚠ Below threshold — min is ₦{selectedItem!.thresholdPrice.toLocaleString()}
+            </p>
+          ) : selectedItem ? (
+            <p className="text-xs font-semibold text-orange-500">
+              Floor price: ₦{selectedItem.thresholdPrice.toLocaleString()}
             </p>
           ) : null}
         </div>

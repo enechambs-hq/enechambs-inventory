@@ -93,7 +93,7 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       </div>
 
       {/* Date + Due Date */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-sm font-medium">Date</label>
           <input type="date" {...register('date')} className={field} />
@@ -107,22 +107,19 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       </div>
 
       {/* Amount + Amount Paid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Total Amount (₦)</label>
-            {selectedItem && (
-              <span className="text-xs text-muted-foreground">
-                Threshold: ₦{selectedItem.thresholdPrice.toLocaleString()}
-              </span>
-            )}
-          </div>
+          <label className="text-sm font-medium">Total Amount (₦)</label>
           <input type="number" {...register('amount')} className={field} placeholder="0" min={0} />
           {errors.amount ? (
             <p className="text-xs text-destructive">{errors.amount.message}</p>
           ) : belowThreshold ? (
-            <p className="text-xs text-amber-500">
-              Below threshold — selling price is ₦{selectedItem!.sellingPrice.toLocaleString()}
+            <p className="text-xs text-amber-500 font-medium">
+              ⚠ Below threshold — min is ₦{selectedItem!.thresholdPrice.toLocaleString()}
+            </p>
+          ) : selectedItem ? (
+            <p className="text-xs font-semibold text-orange-500">
+              Floor price: ₦{selectedItem.thresholdPrice.toLocaleString()}
             </p>
           ) : null}
         </div>
@@ -136,7 +133,7 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       </div>
 
       {/* Customer */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-sm font-medium">Customer Name</label>
           <input type="text" {...register('customerName')} className={field} />
