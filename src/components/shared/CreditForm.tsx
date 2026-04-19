@@ -60,8 +60,13 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
   }, []);
 
   const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
+  const amountValue = useWatch({ control, name: 'amount', defaultValue: 0 });
   const { field: phoneField } = useController({ control, name: 'customerPhone', defaultValue: '' });
   const phoneLength = phoneField.value?.length ?? 0;
+
+  const selectedItem = inventory.find((i) => i.id === inventoryId) ?? null;
+  const belowThreshold = selectedItem && Number(amountValue) > 0 && Number(amountValue) < selectedItem.thresholdPrice;
+
   const handleFormSubmit = (data: FormOutput) => onSubmit(data as CreateCreditDto);
 
   const field = 'w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -76,7 +81,11 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
         <InventorySearchSelect
           items={inventory}
           value={inventoryId}
-          onChange={(id) => setValue('inventoryId', id, { shouldValidate: true })}
+          onChange={(id) => {
+            setValue('inventoryId', id, { shouldValidate: true });
+            const item = inventory.find((i) => i.id === id);
+            if (item) setValue('amount', item.sellingPrice, { shouldValidate: true });
+          }}
           disabled={loadingInventory}
           placeholder={loadingInventory ? 'Loading…' : 'Select an item'}
         />
@@ -100,9 +109,22 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       {/* Amount + Amount Paid */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-sm font-medium">Total Amount (₦)</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Total Amount (₦)</label>
+            {selectedItem && (
+              <span className="text-xs text-muted-foreground">
+                Threshold: ₦{selectedItem.thresholdPrice.toLocaleString()}
+              </span>
+            )}
+          </div>
           <input type="number" {...register('amount')} className={field} placeholder="0" min={0} />
-          {errors.amount && <p className="text-xs text-destructive">{errors.amount.message}</p>}
+          {errors.amount ? (
+            <p className="text-xs text-destructive">{errors.amount.message}</p>
+          ) : belowThreshold ? (
+            <p className="text-xs text-amber-500">
+              Below threshold — selling price is ₦{selectedItem!.sellingPrice.toLocaleString()}
+            </p>
+          ) : null}
         </div>
         <div className="space-y-1">
           <label className="text-sm font-medium">

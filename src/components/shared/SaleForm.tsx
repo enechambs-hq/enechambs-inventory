@@ -59,6 +59,10 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
   });
 
   const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
+  const amountValue = useWatch({ control, name: 'amount', defaultValue: 0 });
+
+  const selectedItem = inventory.find((i) => i.id === inventoryId) ?? null;
+  const belowThreshold = selectedItem && Number(amountValue) > 0 && Number(amountValue) < selectedItem.thresholdPrice;
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -70,7 +74,11 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           <InventorySearchSelect
             items={inventory}
             value={inventoryId}
-            onChange={(id) => setValue('inventoryId', id, { shouldValidate: true })}
+            onChange={(id) => {
+              setValue('inventoryId', id, { shouldValidate: true });
+              const item = inventory.find((i) => i.id === id);
+              if (item) setValue('amount', item.sellingPrice, { shouldValidate: true });
+            }}
             disabled={loadingInventory}
             placeholder={loadingInventory ? 'Loading…' : 'Select an item'}
           />
@@ -96,15 +104,26 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
 
         {/* Amount */}
         <div className="space-y-1">
-          <label className="text-sm font-medium">Amount</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Amount</label>
+            {selectedItem && (
+              <span className="text-xs text-muted-foreground">
+                Threshold: ₦{selectedItem.thresholdPrice.toLocaleString()}
+              </span>
+            )}
+          </div>
           <input
             {...register('amount')}
             type="number"
             className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          {errors.amount && (
+          {errors.amount ? (
             <p className="text-xs text-destructive">{errors.amount.message}</p>
-          )}
+          ) : belowThreshold ? (
+            <p className="text-xs text-amber-500">
+              Below threshold — selling price is ₦{selectedItem!.sellingPrice.toLocaleString()}
+            </p>
+          ) : null}
         </div>
 
         {/* Condition */}
