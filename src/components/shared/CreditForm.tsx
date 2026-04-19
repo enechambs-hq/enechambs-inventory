@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CreateCreditDto, InventoryItem } from '@/types';
@@ -15,7 +15,9 @@ const schema = z.object({
   amount: z.coerce.number().min(0, 'Required'),
   amountPaid: z.coerce.number().min(0, 'Must be 0 or more').optional().default(0),
   customerName: z.string().min(1, 'Required'),
-  customerPhone: z.string().min(1, 'Required'),
+  customerPhone: z
+    .string()
+    .regex(/^\d{11}$/, 'Phone must be exactly 11 digits'),
   customerEmail: z.preprocess(
     (val) => (val === '' ? undefined : val),
     z.email('Invalid email').optional()
@@ -58,6 +60,8 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
   }, []);
 
   const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
+  const { field: phoneField } = useController({ control, name: 'customerPhone', defaultValue: '' });
+  const phoneLength = phoneField.value?.length ?? 0;
   const handleFormSubmit = (data: FormOutput) => onSubmit(data as CreateCreditDto);
 
   const field = 'w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -118,8 +122,35 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
         </div>
         <div className="space-y-1">
           <label className="text-sm font-medium">Phone</label>
-          <input type="tel" {...register('customerPhone')} className={field} />
-          {errors.customerPhone && <p className="text-xs text-destructive">{errors.customerPhone.message}</p>}
+          <div className="relative">
+            <input
+              {...phoneField}
+              type="text"
+              inputMode="numeric"
+              maxLength={11}
+              className={`${field} pr-14`}
+              onKeyDown={(e) => {
+                const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
+                if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault();
+                if (phoneLength >= 11 && !allowed.includes(e.key)) e.preventDefault();
+              }}
+              onPaste={(e) => {
+                e.preventDefault();
+                const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 11);
+                phoneField.onChange(pasted);
+              }}
+            />
+            <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs tabular-nums ${
+              phoneLength === 11 ? 'text-green-600' : phoneLength > 0 ? 'text-muted-foreground' : 'text-muted-foreground/50'
+            }`}>
+              {phoneLength}/11
+            </span>
+          </div>
+          {errors.customerPhone ? (
+            <p className="text-xs text-destructive">{errors.customerPhone.message}</p>
+          ) : phoneLength > 0 && phoneLength < 11 ? (
+            <p className="text-xs text-amber-500">{11 - phoneLength} more digit{11 - phoneLength !== 1 ? 's' : ''} needed</p>
+          ) : null}
         </div>
       </div>
 
