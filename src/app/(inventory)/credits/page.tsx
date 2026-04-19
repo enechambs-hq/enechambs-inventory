@@ -9,6 +9,7 @@ import { dashboardService } from '@/lib/services/dashboard.service';
 import { Credit, CreateCreditDto, CreditStats, CreditStatus } from '@/types';
 import CreditForm from '@/components/shared/CreditForm';
 import CreditsCards from '@/components/dashboard/CreditsCards';
+import { useCreditNotificationStore } from '@/store/creditNotification.store';
 
 const STATUS_STYLES: Record<CreditStatus, string> = {
   [CreditStatus.PENDING]: 'bg-yellow-50 text-yellow-700',
@@ -304,9 +305,12 @@ export default function CreditsPage() {
     fetchCredits();
   }, [fetchCredits]);
 
+  const fetchNotificationCount = useCreditNotificationStore((s) => s.fetch);
+
   const fetchStats = useCallback(() => {
     dashboardService.getCreditStats().then(setCreditStats).catch(() => {});
-  }, []);
+    fetchNotificationCount();
+  }, [fetchNotificationCount]);
 
   useEffect(() => {
     fetchStats();

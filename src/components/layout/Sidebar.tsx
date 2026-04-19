@@ -19,6 +19,7 @@ import { authService } from "@/lib/services/auth.service";
 import { UserRole } from "@/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useCreditNotificationStore } from "@/store/creditNotification.store";
 
 const staffLinks = [
   { href: "/inventory", label: "Inventory", icon: Package },
@@ -39,6 +40,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
+  const overdueCount = useCreditNotificationStore((s) => s.overdueCount);
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const links = user?.role === UserRole.ADMIN ? adminLinks : staffLinks;
@@ -79,21 +81,33 @@ export default function Sidebar() {
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:scale-[1.1] active:scale-[0.98]",
-              pathname === href
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-foreground",
-            )}
-          >
-            <Icon size={16} />
-            {label}
-          </Link>
-        ))}
+        {links.map(({ href, label, icon: Icon }) => {
+          const isCredits = href === '/credits';
+          const showBadge = isCredits && overdueCount > 0;
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:scale-[1.1] active:scale-[0.98]",
+                pathname === href
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
+            >
+              <Icon size={16} />
+              <span className="flex-1">{label}</span>
+              {showBadge && (
+                <span
+                  className="ml-auto min-w-4.5 h-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--warning)', color: 'var(--warning-foreground)' }}
+                >
+                  {overdueCount > 99 ? '99+' : overdueCount}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User + Logout */}

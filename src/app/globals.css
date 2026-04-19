@@ -77,6 +77,10 @@
   --chart-5: oklch(0.80 0.06 230);
   --radius: 0.625rem;
   --destructive: oklch(0.577 0.245 27.325);
+  --warning: oklch(0.72 0.18 55);
+  --warning-foreground: oklch(0.98 0.01 55);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
 }
 
 :root {
@@ -112,6 +116,8 @@
   --chart-5: oklch(0.80 0.06 230);
   --radius: 0.625rem;
   --destructive: oklch(0.577 0.245 27.325);
+  --warning: oklch(0.72 0.18 55);
+  --warning-foreground: oklch(0.98 0.01 55);
 }
 
 .dark {
