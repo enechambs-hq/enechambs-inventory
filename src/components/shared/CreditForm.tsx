@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CreateCreditDto, InventoryItem } from '@/types';
 import { inventoryService } from '@/lib/services/inventory.service';
 import { format } from 'date-fns';
+import InventorySearchSelect from './InventorySearchSelect';
 
 const schema = z.object({
   inventoryId: z.string().min(1, 'Select an inventory item'),
@@ -38,6 +39,8 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
   const {
     register,
     handleSubmit,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
@@ -54,6 +57,7 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       .finally(() => setLoadingInventory(false));
   }, []);
 
+  const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
   const handleFormSubmit = (data: FormOutput) => onSubmit(data as CreateCreditDto);
 
   const field = 'w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -63,14 +67,15 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       {/* Inventory item */}
       <div className="space-y-1">
         <label className="text-sm font-medium">Item</label>
-        <select {...register('inventoryId')} className={field} disabled={loadingInventory}>
-          <option value="">{loadingInventory ? 'Loading...' : 'Select item'}</option>
-          {inventory.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.productName} — {item.color}, {item.storageGB} (S/N: {item.serialNumber})
-            </option>
-          ))}
-        </select>
+        {/* hidden input keeps react-hook-form validation wired */}
+        <input type="hidden" {...register('inventoryId')} />
+        <InventorySearchSelect
+          items={inventory}
+          value={inventoryId}
+          onChange={(id) => setValue('inventoryId', id, { shouldValidate: true })}
+          disabled={loadingInventory}
+          placeholder={loadingInventory ? 'Loading…' : 'Select an item'}
+        />
         {errors.inventoryId && <p className="text-xs text-destructive">{errors.inventoryId.message}</p>}
       </div>
 

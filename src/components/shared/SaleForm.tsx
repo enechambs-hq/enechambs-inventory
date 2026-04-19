@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
+import InventorySearchSelect from './InventorySearchSelect';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { CreateSaleDto, SaleCondition, InventoryItem } from '@/types';
@@ -46,6 +47,8 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
   const {
     register,
     handleSubmit,
+    setValue,
+    control,
     formState: { errors },
   } = useForm<SaleFormInput, unknown, SaleFormOutput>({
     resolver: zodResolver(saleSchema),
@@ -55,26 +58,22 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     },
   });
 
+  const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         {/* Inventory picker */}
         <div className="col-span-2 space-y-1">
           <label className="text-sm font-medium">Inventory Item</label>
-          <select
-            {...register('inventoryId')}
+          <input type="hidden" {...register('inventoryId')} />
+          <InventorySearchSelect
+            items={inventory}
+            value={inventoryId}
+            onChange={(id) => setValue('inventoryId', id, { shouldValidate: true })}
             disabled={loadingInventory}
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-          >
-            <option value="">
-              {loadingInventory ? 'Loading...' : 'Select an item'}
-            </option>
-            {inventory.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.productName} — {item.serialNumber} ({item.imei})
-              </option>
-            ))}
-          </select>
+            placeholder={loadingInventory ? 'Loading…' : 'Select an item'}
+          />
           {errors.inventoryId && (
             <p className="text-xs text-destructive">
               {errors.inventoryId.message}
