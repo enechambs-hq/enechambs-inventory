@@ -50,6 +50,14 @@ function CreditDetailModal({ credit, onClose, onPaymentRecorded }: { credit: Cre
   const requiresVoidReason = (s: string) => s === 'defaulted';
 
   const handleStatusChange = async (status: string) => {
+    if (status === CreditStatus.OVERDUE) {
+      const due = new Date(currentCredit.dueDate);
+      due.setHours(23, 59, 59, 999); // end of due date
+      if (due >= new Date()) {
+        toast.warning(`Cannot mark as overdue — due date is ${format(due, 'MMM d, yyyy')}`);
+        return;
+      }
+    }
     if (requiresVoidReason(status)) {
       setPendingStatus(status);
       return;
@@ -296,9 +304,13 @@ export default function CreditsPage() {
     fetchCredits();
   }, [fetchCredits]);
 
-  useEffect(() => {
+  const fetchStats = useCallback(() => {
     dashboardService.getCreditStats().then(setCreditStats).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const creditsForCards = creditStats
     ? {
@@ -531,6 +543,8 @@ export default function CreditsPage() {
           onPaymentRecorded={(updated) => {
             setCredits((prev) => prev.map((c) => c.id === updated.id ? updated : c));
             setSelectedCredit(updated);
+            fetchCredits();
+            fetchStats();
           }}
         />
       )}
