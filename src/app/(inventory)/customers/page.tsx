@@ -178,7 +178,10 @@ export default function CustomersPage() {
     try {
       setLoading(true);
       const res = await dashboardService.getCustomers(page, LIMIT, q);
-      setCustomers(res.data);
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.lastPurchaseDate).getTime() - new Date(a.lastPurchaseDate).getTime()
+      );
+      setCustomers(sorted);
       setMeta(res.meta);
     } catch {
       // fail silently
