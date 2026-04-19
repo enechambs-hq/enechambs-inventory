@@ -4,9 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import { InventoryItem } from '@/types';
 
-function itemLabel(item: InventoryItem): string {
-  const identifier = item.imei || 'N/A';
-  return `${item.productName} — ${item.color}, ${item.storageGB} · ${identifier}`;
+function itemSearchText(item: InventoryItem): string {
+  return `${item.productName} ${item.color} ${item.storageGB} ${item.imei || ''}`.toLowerCase();
+}
+
+function itemSummary(item: InventoryItem): string {
+  return `${item.productName} — ${item.color}, ${item.storageGB}`;
 }
 
 interface Props {
@@ -31,7 +34,7 @@ export default function InventorySearchSelect({
   const selected = items.find((i) => i.id === value);
 
   const filtered = query.trim()
-    ? items.filter((i) => itemLabel(i).toLowerCase().includes(query.toLowerCase()))
+    ? items.filter((i) => itemSearchText(i).includes(query.toLowerCase()))
     : items;
 
   useEffect(() => {
@@ -47,23 +50,29 @@ export default function InventorySearchSelect({
 
   return (
     <div ref={ref} className="relative">
+      {/* Trigger */}
       <button
         type="button"
         disabled={disabled}
-        onClick={() => {
-          if (!disabled) setOpen((o) => !o);
-        }}
-        className="w-full flex items-center justify-between px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 text-left"
+        onClick={() => { if (!disabled) setOpen((o) => !o); }}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-md border bg-background focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 text-left gap-2"
       >
-        <span className={selected ? 'text-foreground truncate' : 'text-muted-foreground'}>
-          {selected ? itemLabel(selected) : placeholder}
-        </span>
-        <ChevronDown size={14} className="text-muted-foreground shrink-0 ml-2" />
+        {selected ? (
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{selected.productName}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {selected.color} · {selected.storageGB} · {selected.imei || 'N/A'}
+            </p>
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">{placeholder}</span>
+        )}
+        <ChevronDown size={14} className="text-muted-foreground shrink-0" />
       </button>
 
       {open && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
-          {/* Search */}
+          {/* Search input */}
           <div className="p-2 border-b">
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -72,35 +81,44 @@ export default function InventorySearchSelect({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name, IMEI…"
+                placeholder="Search by name, color, IMEI…"
                 className="w-full pl-8 pr-3 py-1.5 text-sm rounded-sm border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
           </div>
 
           {/* List */}
-          <ul className="max-h-56 overflow-y-auto py-1">
+          <ul className="max-h-60 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-muted-foreground">No items found</li>
+              <li className="px-4 py-3 text-sm text-muted-foreground">No items found</li>
             ) : (
-              filtered.map((item) => (
-                <li
-                  key={item.id}
-                  onMouseDown={() => {
-                    onChange(item.id);
-                    setOpen(false);
-                    setQuery('');
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent transition-colors ${
-                    item.id === value ? 'bg-accent/50' : ''
-                  }`}
-                >
-                  <span className="shrink-0 w-4">
-                    {item.id === value && <Check size={12} className="text-primary" />}
-                  </span>
-                  <span>{itemLabel(item)}</span>
-                </li>
-              ))
+              filtered.map((item) => {
+                const isSelected = item.id === value;
+                return (
+                  <li
+                    key={item.id}
+                    onMouseDown={() => { onChange(item.id); setOpen(false); setQuery(''); }}
+                    className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-accent transition-colors ${
+                      isSelected ? 'bg-primary/5' : ''
+                    }`}
+                  >
+                    {/* Check column */}
+                    <span className="shrink-0 w-4 flex justify-center">
+                      {isSelected && <Check size={13} className="text-primary" />}
+                    </span>
+
+                    {/* Item info */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {item.productName}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {item.color} · {item.storageGB} · <span className="font-mono">{item.imei || 'N/A'}</span>
+                      </p>
+                    </div>
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>
