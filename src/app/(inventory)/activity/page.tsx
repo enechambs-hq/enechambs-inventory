@@ -71,8 +71,8 @@ export default function ActivityPage() {
           <tbody className="divide-y">
             {isLoading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  Loading...
+                <td colSpan={5} className="px-4 py-8 text-center">
+                  <div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>
                 </td>
               </tr>
             ) : logs.length === 0 ? (

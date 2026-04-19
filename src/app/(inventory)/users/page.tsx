@@ -199,7 +199,7 @@ export default function UsersPage() {
               <tbody className="divide-y">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Loading...</td>
+                    <td colSpan={7} className="px-4 py-8 text-center"><div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div></td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
@@ -308,7 +308,7 @@ export default function UsersPage() {
             <tbody className="divide-y">
               {perfLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">Loading...</td>
+                  <td colSpan={4} className="px-4 py-8 text-center"><div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div></td>
                 </tr>
               ) : performance.length === 0 ? (
                 <tr>
@@ -386,7 +386,7 @@ export default function UsersPage() {
               style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}
             >
               {activityLoading ? (
-                <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>
+                <div className="p-8 flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>
               ) : activityLogs.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">No activity found</div>
               ) : (

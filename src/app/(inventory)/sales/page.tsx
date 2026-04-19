@@ -179,8 +179,8 @@ export default function SalesPage() {
           <tbody className="divide-y">
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading...
+                <td colSpan={9} className="px-4 py-8 text-center">
+                  <div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>
                 </td>
               </tr>
             ) : displayedSales.length === 0 ? (
