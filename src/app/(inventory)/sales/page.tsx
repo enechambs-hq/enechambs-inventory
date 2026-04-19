@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Plus, Search, Receipt } from 'lucide-react';
+import { Plus, Search, Receipt, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSalesStore } from '@/store/sales.store';
 import { salesService } from '@/lib/services/sales.service';
@@ -185,14 +185,21 @@ export default function SalesPage() {
               </tr>
             ) : displayedSales.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
-                  No sales found
+                <td colSpan={9} className="px-4 py-12 text-center">
+                  {activeTab === 'mine' ? (
+                    <div>
+                      <ShoppingCart size={32} className="text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground text-center">You have no recorded sales yet</p>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">No sales found</span>
+                  )}
                 </td>
               </tr>
             ) : (
               displayedSales.map((sale) => (
                 <tr key={sale.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3">{format(new Date(sale.date), 'MMM d, yyyy')}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{format(new Date(sale.date), 'dd MMM yyyy')}</td>
                   <td className="px-4 py-3 font-medium">{sale.productName}</td>
                   <td className="px-4 py-3 text-muted-foreground">{sale.imei}</td>
                   <td className="px-4 py-3">{sale.customerName}</td>

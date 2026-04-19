@@ -99,9 +99,19 @@ function PeriodContent({ data }: { data: DailySummary | WeeklySummary | MonthlyS
     },
   ];
 
+  const isEmpty = sales.count === 0;
+
+  if (isEmpty) {
+    return (
+      <p className="text-sm text-muted-foreground text-center py-8">
+        No sales recorded for this period
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {salesCards.map(({ label, value }) => (
           <div key={label} className="rounded-xl border border-border bg-background p-4">
             <p className="text-xs text-muted-foreground mb-1">{label}</p>

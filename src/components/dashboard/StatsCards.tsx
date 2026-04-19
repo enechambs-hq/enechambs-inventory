@@ -55,7 +55,7 @@ const cards = [
 
 export default function StatsCards({ stats }: Props) {
   return (
-    <div className="grid grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
       {cards.map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, patternColor }) => (
         <div
           key={label}
@@ -80,7 +80,7 @@ export default function StatsCards({ stats }: Props) {
           {/* Content */}
           <div className="relative z-10">
             <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground leading-tight">
+              <p className="text-xs font-medium text-muted-foreground leading-tight truncate">
                 {label}
               </p>
               <div

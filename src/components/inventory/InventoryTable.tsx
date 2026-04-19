@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react';
 import { InventoryItem, UserRole } from '@/types';
 
 interface Props {
@@ -78,11 +79,11 @@ export default function InventoryTable({
                   {isAdmin && (
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => onEdit(item)} className="text-xs text-primary hover:underline">
-                          Edit
+                        <button onClick={() => onEdit(item)} title="Edit product" className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-primary transition-colors">
+                          <Pencil size={14} />
                         </button>
-                        <button onClick={() => onDelete(item.id)} className="text-xs text-destructive hover:underline">
-                          Delete
+                        <button onClick={() => onDelete(item.id)} title="Delete product" className="p-1.5 rounded-md hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors">
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
