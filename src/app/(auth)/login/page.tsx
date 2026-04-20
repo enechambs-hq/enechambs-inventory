@@ -53,9 +53,10 @@ export default function LoginPage() {
         router.push("/inventory");
       }
     } catch (error) {
-      const message =
-        (error as { response?: { data?: { message?: string | string[] } } })
-          .response?.data?.message || "Invalid credentials";
+      const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
+      const message = err.response?.data?.message
+        || err.message
+        || "Something went wrong";
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setIsLoading(false);
