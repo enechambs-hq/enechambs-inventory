@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ActivityLog } from '@/types';
+import { formatActivityDescription } from '@/lib/utils';
 
 interface Props {
   activities: ActivityLog[];
@@ -82,7 +83,7 @@ export default function RecentActivity({ activities }: Props) {
                   </div>
 
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed truncate">
-                    {log.description}
+                    {formatActivityDescription(log.description)}
                   </p>
                 </div>
               </div>

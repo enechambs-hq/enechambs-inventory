@@ -7,12 +7,13 @@ import { z } from 'zod';
 import { CreateCreditDto, InventoryItem } from '@/types';
 import { inventoryService } from '@/lib/services/inventory.service';
 import { format } from 'date-fns';
+import { formatAmount } from '@/lib/utils';
 import InventorySearchSelect from './InventorySearchSelect';
 
 const schema = z.object({
   inventoryId: z.string().min(1, 'Select an inventory item'),
   date: z.string().min(1, 'Required'),
-  amount: z.coerce.number().min(0, 'Required'),
+  amount: z.preprocess((v) => Number(String(v).replace(/,/g, '')), z.number().min(0, 'Required')),
   amountPaid: z.coerce.number().min(0, 'Must be 0 or more').optional().default(0),
   customerName: z.string().min(1, 'Required'),
   customerPhone: z
@@ -84,7 +85,8 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
           onChange={(id) => {
             setValue('inventoryId', id, { shouldValidate: true });
             const item = inventory.find((i) => i.id === id);
-            if (item) setValue('amount', item.sellingPrice, { shouldValidate: true });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (item) setValue('amount', formatAmount(item.sellingPrice) as any, { shouldValidate: true });
           }}
           disabled={loadingInventory}
           placeholder={loadingInventory ? 'Loading…' : 'Select an item'}
@@ -110,12 +112,12 @@ export default function CreditForm({ onSubmit, isLoading, onCancel }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-sm font-medium">Total Amount (₦)</label>
-          <input type="number" {...register('amount')} className={field} placeholder="0" min={0} />
+          <input type="text" inputMode="decimal" {...register('amount')} className={field} placeholder="0" />
           {errors.amount ? (
             <p className="text-xs text-destructive">{errors.amount.message}</p>
           ) : belowThreshold ? (
             <p className="text-xs text-amber-500 font-medium">
-              ⚠ Below threshold — min is ₦{selectedItem!.thresholdPrice.toLocaleString()}
+              ⚠ Below threshold — min is ₦{formatAmount(selectedItem!.thresholdPrice)}
             </p>
           ) : selectedItem ? (
             <p className="text-xs font-semibold text-orange-500">

@@ -201,7 +201,7 @@ export default function SalesPage() {
                 <tr key={sale.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3 whitespace-nowrap">{format(new Date(sale.date), 'dd MMM yyyy')}</td>
                   <td className="px-4 py-3 font-medium">{sale.productName}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{sale.imei}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{sale.imei || '—'}</td>
                   <td className="px-4 py-3">{sale.customerName}</td>
                   <td className="px-4 py-3">{sale.customerPhone}</td>
                   <td className="px-4 py-3">₦{sale.amount.toLocaleString()}</td>

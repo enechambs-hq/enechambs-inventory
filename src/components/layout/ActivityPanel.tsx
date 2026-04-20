@@ -6,6 +6,7 @@ import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ActivityLog } from '@/types';
 import { dashboardService } from '@/lib/services/dashboard.service';
+import { formatActivityDescription } from '@/lib/utils';
 
 const ACTION_COLORS: Record<string, string> = {
   LOGIN: 'bg-green-500',
@@ -92,7 +93,7 @@ export default function ActivityPanel({ open, onClose }: Props) {
                     <p className="text-xs font-medium text-foreground">
                       {log.action.replace(/_/g, ' ')}
                     </p>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{log.description}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{formatActivityDescription(log.description)}</p>
                     <p className="text-xs text-muted-foreground">
                       {format(new Date(log.timestamp), 'MMM d · h:mm a')}
                     </p>

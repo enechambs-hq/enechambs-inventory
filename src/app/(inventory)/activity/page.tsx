@@ -6,6 +6,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { UserRole, ActivityLog } from '@/types';
 import { dashboardService } from '@/lib/services/dashboard.service';
 import { toast } from 'sonner';
+import { formatActivityDescription } from '@/lib/utils';
 
 const ACTION_COLORS: Record<string, string> = {
   LOGIN: 'bg-green-500/10 text-green-700',
@@ -98,7 +99,7 @@ export default function ActivityPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">
-                    {log.description}
+                    {formatActivityDescription(log.description)}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                     {format(new Date(log.timestamp), 'MMM d, yyyy · h:mm a')}
