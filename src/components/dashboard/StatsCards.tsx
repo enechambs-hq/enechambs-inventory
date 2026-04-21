@@ -1,4 +1,4 @@
-import { Package, ShoppingCart, Wallet, BarChart2 } from "lucide-react";
+import { Package, ShoppingCart, Wallet, BarChart2, TrendingUp } from "lucide-react";
 import { DashboardStats } from "@/lib/services/dashboard.service";
 
 interface Props {
@@ -14,6 +14,7 @@ const cards = [
     iconColor: "text-blue-600",
     valueColor: "text-foreground",
     patternColor: "#2563eb",
+    stripColor: "#2563eb",
   },
   {
     label: "Total Sales",
@@ -23,6 +24,7 @@ const cards = [
     iconColor: "text-green-600",
     valueColor: "text-green-600",
     patternColor: "#16a34a",
+    stripColor: "#16a34a",
   },
   {
     label: "Total Revenue",
@@ -32,15 +34,17 @@ const cards = [
     iconColor: "text-primary",
     valueColor: "text-primary",
     patternColor: "#2563eb",
+    stripColor: "#2563eb",
   },
   {
     label: "Available Now",
     value: (s: DashboardStats) => String(s.availableInventory),
-    icon: BarChart2,
-    iconBg: "bg-blue-500/10",
-    iconColor: "text-blue-600",
+    icon: TrendingUp,
+    iconBg: "bg-sky-500/10",
+    iconColor: "text-sky-600",
     valueColor: "text-foreground",
-    patternColor: "#2563eb",
+    patternColor: "#0284c7",
+    stripColor: "#0284c7",
   },
   {
     label: "Collections",
@@ -50,16 +54,18 @@ const cards = [
     iconColor: "text-purple-600",
     valueColor: "text-foreground",
     patternColor: "#9333ea",
+    stripColor: "#9333ea",
   },
 ];
 
 export default function StatsCards({ stats }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      {cards.map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, patternColor }) => (
+      {cards.map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, patternColor, stripColor }) => (
         <div
           key={label}
-          className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+          className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+          style={{ borderTop: `3px solid ${stripColor}` }}
         >
           {/* Dot pattern */}
           <div
@@ -67,13 +73,13 @@ export default function StatsCards({ stats }: Props) {
             style={{
               backgroundImage: `radial-gradient(circle, ${patternColor} 1px, transparent 1px)`,
               backgroundSize: "18px 18px",
-              opacity: 0.2,
+              opacity: 0.15,
             }}
           />
 
-          {/* Subtle corner glow */}
+          {/* Corner glow */}
           <div
-            className="absolute -top-6 -right-6 w-20 h-20 rounded-full blur-2xl opacity-10"
+            className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-20"
             style={{ backgroundColor: patternColor }}
           />
 
