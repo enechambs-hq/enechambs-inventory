@@ -56,7 +56,7 @@ export default function IncomingOrderForm({ onSubmit, isLoading, onCancel }: Pro
   useEffect(() => {
     inventoryService
       .getAll({ page: 1, limit: 100 })
-      .then((res) => setInventory(res.data))
+      .then((res) => setInventory(res.data.filter((i) => i.isAvailable)))
       .catch(() => {})
       .finally(() => setLoadingInventory(false));
   }, []);
