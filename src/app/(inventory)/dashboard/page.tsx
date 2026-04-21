@@ -58,7 +58,6 @@ export default function DashboardPage() {
             [...data].sort((a, b) => Number(b.totalrevenue) - Number(a.totalrevenue)).slice(0, 2)
           ))
           .catch(() => {}),
-        fetchRevenueChart(),
         dashboardService.getDaily().then(setDaily).catch(() => {}),
         dashboardService.getWeekly().then(setWeekly).catch(() => {}),
         dashboardService.getMonthly().then(setMonthly).catch(() => {}),
