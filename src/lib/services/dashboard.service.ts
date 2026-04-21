@@ -128,9 +128,7 @@ export const dashboardService = {
   },
 
   getTopProducts: async (): Promise<TopProduct[]> => {
-    const response = await api.get<TopProduct[]>('/dashboard/top-products', {
-      headers: { 'Cache-Control': 'no-cache' },
-    });
+    const response = await api.get<TopProduct[]>('/dashboard/top-products');
     return Array.isArray(response.data) ? response.data : [];
   },
 };
