@@ -370,6 +370,52 @@ export interface ActivityLog {
   timestamp: string;
 }
 
+// ==================== INCOMING ORDERS ====================
+export enum IncomingOrderStatus {
+  PENDING = 'pending',
+  CONVERTED = 'converted',
+  CANCELLED = 'cancelled',
+}
+
+export interface IncomingOrder {
+  id: string;
+  date: string;
+  expiryDate: string;
+  expectedAmount: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  notes?: string;
+  status: IncomingOrderStatus;
+  createdAt: string;
+  createdById: string;
+  createdBy?: { id: string; firstName: string; lastName: string; role: string };
+  inventoryId?: string;
+  inventory?: {
+    id: string;
+    productName: string;
+    color: string;
+    storageGB: string;
+    imei: string;
+  };
+}
+
+export interface CreateIncomingOrderDto {
+  inventoryId?: string;
+  date: string;
+  expiryDate: string;
+  expectedAmount: number;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  notes?: string;
+}
+
+export interface IncomingOrderStats {
+  total: number;
+  byStatus: Record<IncomingOrderStatus, number>;
+}
+
 // ==================== API RESPONSES ====================
 export interface SuccessResponse<T> {
   success: true;

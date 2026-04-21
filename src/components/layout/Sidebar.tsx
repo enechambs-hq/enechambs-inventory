@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Contact,
   LogOut,
+  ClipboardList,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth.store";
 import { authService } from "@/lib/services/auth.service";
@@ -26,6 +27,7 @@ const staffLinks = [
   { href: "/sales", label: "Sales", icon: ShoppingCart },
   { href: "/collections", label: "Collections", icon: Wallet },
   { href: "/credits", label: "Credits", icon: CreditCard },
+  { href: "/incoming-orders", label: "Incoming Orders", icon: ClipboardList },
 ];
 
 const adminLinks = [
