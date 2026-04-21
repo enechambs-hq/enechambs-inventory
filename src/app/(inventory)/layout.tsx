@@ -7,6 +7,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
 import ActivityPanel from '@/components/layout/ActivityPanel';
 import StaffGuide from '@/components/layout/StaffGuide';
+import GlobalSearch from '@/components/layout/GlobalSearch';
 import api from '@/lib/api';
 import { useCreditNotificationStore } from '@/store/creditNotification.store';
 
@@ -37,7 +38,8 @@ export default function InventoryLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <div className="flex-1 ml-64 flex flex-col">
         {/* Topbar */}
-        <header className="h-14 border-b bg-card flex items-center justify-end px-8 sticky top-0 z-30">
+        <header className="h-14 border-b bg-card flex items-center justify-between px-8 sticky top-0 z-30">
+          <GlobalSearch />
           <button
             onClick={() => setActivityOpen(true)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${

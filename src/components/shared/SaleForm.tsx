@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch, useController } from 'react-hook-form';
 import InventorySearchSelect from './InventorySearchSelect';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CreateSaleDto, SaleCondition, InventoryItem } from '@/types';
+import { CreateSaleDto, SaleCondition, InventoryItem, Vendor } from '@/types';
 import { inventoryService } from '@/lib/services/inventory.service';
+import { dashboardService } from '@/lib/services/dashboard.service';
 import { format } from 'date-fns';
 import { formatAmount } from '@/lib/utils';
 
@@ -21,7 +22,9 @@ const saleSchema = z.object({
     (val) => (val === '' ? undefined : val),
     z.email('Invalid email').optional()
   ),
+  customerId: z.string().optional(),
   accountPaidTo: z.string().min(1, 'Required'),
+  isVendor: z.boolean().optional().default(false),
 });
 
 type SaleFormInput = z.input<typeof saleSchema>;
@@ -37,12 +40,29 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
 
+  // Customer search state
+  const [suggestions, setSuggestions] = useState<Vendor[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     inventoryService
       .getAvailableForSale()
       .then((items) => setInventory(items ?? []))
       .catch(() => setInventory([]))
       .finally(() => setLoadingInventory(false));
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const {
@@ -62,10 +82,44 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
   const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
   const amountValue = useWatch({ control, name: 'amount', defaultValue: 0 });
   const { field: phoneField } = useController({ control, name: 'customerPhone', defaultValue: '' });
+  const { field: nameField } = useController({ control, name: 'customerName', defaultValue: '' });
   const phoneLength = phoneField.value?.length ?? 0;
 
   const selectedItem = inventory.find((i) => i.id === inventoryId) ?? null;
   const belowThreshold = selectedItem && Number(amountValue) > 0 && Number(amountValue) < selectedItem.thresholdPrice;
+
+  const handleNameChange = (val: string) => {
+    const capitalized = val.replace(/\b\w/g, (c) => c.toUpperCase());
+    nameField.onChange(capitalized);
+    val = capitalized;
+    // Clear customerId when user types manually
+    setValue('customerId', undefined);
+
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (val.trim().length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const results = await dashboardService.searchCustomers(val);
+        setSuggestions(results);
+        setShowSuggestions(results.length > 0);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 100);
+  };
+
+  const handleSelectCustomer = (customer: Vendor) => {
+    setValue('customerName', customer.customerName, { shouldValidate: true });
+    setValue('customerId', customer.id);
+    phoneField.onChange(customer.customerPhone ?? '');
+    setValue('customerEmail', customer.customerEmail ?? '', { shouldValidate: true });
+    setValue('isVendor', customer.isVendor ?? false);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
+  const field = 'w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -87,34 +141,21 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
             placeholder={loadingInventory ? 'Loading…' : 'Select an item'}
           />
           {errors.inventoryId && (
-            <p className="text-xs text-destructive">
-              {errors.inventoryId.message}
-            </p>
+            <p className="text-xs text-destructive">{errors.inventoryId.message}</p>
           )}
         </div>
 
         {/* Date */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Date</label>
-          <input
-            {...register('date')}
-            type="date"
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          {errors.date && (
-            <p className="text-xs text-destructive">{errors.date.message}</p>
-          )}
+          <input {...register('date')} type="date" className={field} />
+          {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
         </div>
 
         {/* Amount */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Amount (₦)</label>
-          <input
-            {...register('amount')}
-            type="text"
-            inputMode="decimal"
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <input {...register('amount')} type="text" inputMode="decimal" className={field} />
           {errors.amount ? (
             <p className="text-xs text-destructive">{errors.amount.message}</p>
           ) : belowThreshold ? (
@@ -131,33 +172,40 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
         {/* Condition */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Condition</label>
-          <select
-            {...register('condition')}
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
+          <select {...register('condition')} className={field}>
             <option value={SaleCondition.NEW}>New</option>
             <option value={SaleCondition.USED}>Used</option>
           </select>
-          {errors.condition && (
-            <p className="text-xs text-destructive">
-              {errors.condition.message}
-            </p>
-          )}
+          {errors.condition && <p className="text-xs text-destructive">{errors.condition.message}</p>}
         </div>
 
-        {/* Customer Name */}
-        <div className="space-y-1">
+        {/* Customer Name with autocomplete */}
+        <div className="space-y-1 relative" ref={suggestionsRef}>
           <label className="text-sm font-medium">Customer Name</label>
           <input
-            {...register('customerName')}
+            {...nameField}
             type="text"
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            autoComplete="off"
+            className={field}
+            onChange={(e) => handleNameChange(e.target.value)}
+            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           />
-          {errors.customerName && (
-            <p className="text-xs text-destructive">
-              {errors.customerName.message}
-            </p>
+          {showSuggestions && (
+            <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-card border border-border rounded-md shadow-lg overflow-hidden">
+              {suggestions.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onMouseDown={() => handleSelectCustomer(c)}
+                  className="w-full px-3 py-2.5 text-left hover:bg-accent transition-colors border-b border-border last:border-0"
+                >
+                  <p className="text-sm font-medium text-foreground">{c.customerName}</p>
+                  <p className="text-xs text-muted-foreground">{c.customerPhone}{c.customerEmail ? ` · ${c.customerEmail}` : ''}</p>
+                </button>
+              ))}
+            </div>
           )}
+          {errors.customerName && <p className="text-xs text-destructive">{errors.customerName.message}</p>}
         </div>
 
         {/* Customer Phone */}
@@ -169,7 +217,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
               type="text"
               inputMode="numeric"
               maxLength={11}
-              className="w-full px-3 py-2 pr-14 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className={`${field} pr-14`}
               onKeyDown={(e) => {
                 const allowed = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'];
                 if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault();
@@ -197,43 +245,41 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
         {/* Customer Email (optional) */}
         <div className="space-y-1">
           <label className="text-sm font-medium">
-            Customer Email{' '}
-            <span className="text-muted-foreground font-normal">(optional)</span>
+            Customer Email <span className="text-muted-foreground font-normal">(optional)</span>
           </label>
-          <input
-            {...register('customerEmail')}
-            type="email"
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          {errors.customerEmail && (
-            <p className="text-xs text-destructive">
-              {errors.customerEmail.message}
-            </p>
-          )}
+          <input {...register('customerEmail')} type="email" className={field} />
+          {errors.customerEmail && <p className="text-xs text-destructive">{errors.customerEmail.message}</p>}
         </div>
 
         {/* Account Paid To */}
         <div className="space-y-1">
           <label className="text-sm font-medium">Account Paid To</label>
-          <input
-            {...register('accountPaidTo')}
-            type="text"
-            className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          {errors.accountPaidTo && (
-            <p className="text-xs text-destructive">
-              {errors.accountPaidTo.message}
+          <input {...register('accountPaidTo')} type="text" className={field} />
+          {errors.accountPaidTo && <p className="text-xs text-destructive">{errors.accountPaidTo.message}</p>}
+        </div>
+
+        {/* Vendor toggle */}
+        <div className="col-span-2 flex items-center justify-between rounded-md border border-border px-3 py-2.5">
+          <div>
+            <p className="text-sm font-medium">Mark as Vendor sale</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Check this if the buyer is a wholesale vendor, not a regular customer.
             </p>
-          )}
+          </div>
+          <label className="cursor-pointer ml-4 shrink-0">
+            <input
+              {...register('isVendor')}
+              type="checkbox"
+              className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+            />
+          </label>
         </div>
       </div>
 
+      <input type="hidden" {...register('customerId')} />
+
       <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 rounded-md border text-sm hover:bg-muted transition-colors"
-        >
+        <button type="button" onClick={onCancel} className="px-4 py-2 rounded-md border text-sm hover:bg-muted transition-colors">
           Cancel
         </button>
         <button

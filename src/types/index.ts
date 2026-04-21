@@ -310,7 +310,9 @@ export interface CreateSaleDto {
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
+  customerId?: string;
   accountPaidTo: string;
+  isVendor?: boolean;
 }
 
 // ==================== COLLECTIONS ====================
@@ -352,6 +354,18 @@ export interface Customer {
   firstPurchaseDate: string;
   lastPurchaseDate: string;
   creditPurchases: CustomerCreditPurchases;
+}
+
+export interface Vendor {
+  id: string;
+  customerName: string;
+  customerEmail: string | null;
+  customerPhone: string;
+  purchaseCount: number;
+  totalPurchases: string;
+  isVendor: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ==================== ACTIVITY LOGS ====================

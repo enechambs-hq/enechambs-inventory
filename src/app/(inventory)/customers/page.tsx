@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Search, Mail, X, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { dashboardService } from "@/lib/services/dashboard.service";
-import { Customer } from "@/types";
+import { Customer, Vendor } from "@/types";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { UserRole } from "@/types";
 
@@ -165,46 +165,202 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+type Tab = "all" | "customers" | "vendors";
+
+function CustomersTable({ rows, loading }: { rows: Customer[]; loading: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">No customers found</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                {["Name", "Email", "Phone", "Purchases", "Total Spent", "Credits", "Last Purchase"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c, i) => (
+                <tr key={i} className="border-t border-border hover:bg-accent transition-colors">
+                  <td className="px-4 py-3 font-medium text-foreground">{c.customerName}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.customerEmail ?? <span className="text-muted-foreground/40">—</span>}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{c.customerPhone}</td>
+                  <td className="px-4 py-3 text-foreground">{c.totalPurchases}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">₦{c.totalSpent.toLocaleString()}</td>
+                  <td className="px-4 py-3">
+                    {c.creditPurchases?.totalCredits > 0 ? (
+                      <div className="space-y-0.5">
+                        <p className="text-foreground font-medium">{c.creditPurchases.totalCredits} credit{c.creditPurchases.totalCredits !== 1 ? "s" : ""}</p>
+                        <p className="text-xs text-muted-foreground">₦{c.creditPurchases.totalPaid.toLocaleString()} / ₦{c.creditPurchases.totalCreditAmount.toLocaleString()} paid</p>
+                      </div>
+                    ) : <span className="text-muted-foreground/40">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{format(new Date(c.lastPurchaseDate), "MMM d, yyyy")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VendorsTable({ rows, loading }: { rows: Vendor[]; loading: boolean }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+      {loading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">No vendors found</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40">
+                {["Name", "Email", "Phone", "Orders", "Total Purchases", "Since"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((v, i) => (
+                <tr key={i} className="border-t border-border hover:bg-accent transition-colors">
+                  <td className="px-4 py-3 font-medium text-foreground">{v.customerName}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{v.customerEmail ?? <span className="text-muted-foreground/40">—</span>}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{v.customerPhone}</td>
+                  <td className="px-4 py-3 text-foreground">{v.purchaseCount}</td>
+                  <td className="px-4 py-3 font-medium text-foreground">₦{Number(v.totalPurchases).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{v.createdAt ? format(new Date(v.createdAt), "MMM d, yyyy") : <span className="text-muted-foreground/40">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CustomersPage() {
   useAuthGuard(UserRole.ADMIN);
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>("all");
+
+  // All state
+  const [all, setAll] = useState<Customer[]>([]);
+  const [allMeta, setAllMeta] = useState({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+  const [allLoading, setAllLoading] = useState(true);
+  const [allSearch, setAllSearch] = useState("");
+
+  // Regular customers state
+  const [customers, setCustomers] = useState<Vendor[]>([]);
+  const [customerMeta, setCustomerMeta] = useState({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+
+  // Vendors state
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [vendorMeta, setVendorMeta] = useState({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });
+  const [vendorLoading, setVendorLoading] = useState(false);
+  const [vendorSearch, setVendorSearch] = useState("");
+
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-  const load = useCallback(async (page: number, q = search) => {
+  const loadAll = useCallback(async (page: number, q = allSearch) => {
     try {
-      setLoading(true);
-      const res = await dashboardService.getCustomers(page, LIMIT, q);
+      setAllLoading(true);
+      const res = await dashboardService.getAllCustomers(page, LIMIT, q);
       const sorted = [...res.data].sort(
         (a, b) => new Date(b.lastPurchaseDate).getTime() - new Date(a.lastPurchaseDate).getTime()
       );
-      setCustomers(sorted);
-      setMeta(res.meta);
+      setAll(sorted);
+      setAllMeta(res.meta);
     } catch {
       // fail silently
     } finally {
-      setLoading(false);
+      setAllLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [allSearch]);
+
+  const loadCustomers = useCallback(async (page: number, q = customerSearch) => {
+    try {
+      setCustomerLoading(true);
+      const res = await dashboardService.getCustomers(page, LIMIT, q);
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setCustomers(sorted);
+      setCustomerMeta(res.meta);
+    } catch {
+      // fail silently
+    } finally {
+      setCustomerLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customerSearch]);
+
+  const loadVendors = useCallback(async (page: number, q = vendorSearch) => {
+    try {
+      setVendorLoading(true);
+      const res = await dashboardService.getVendors(page, LIMIT, q);
+      const sorted = [...res.data].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setVendors(sorted);
+      setVendorMeta(res.meta);
+    } catch {
+      // fail silently
+    } finally {
+      setVendorLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vendorSearch]);
 
   useEffect(() => {
-    load(1);
-  }, [load]);
+    loadAll(1);
+  }, [loadAll]);
 
-  const filtered = customers;
+  // Lazy-load each tab on first visit
+  useEffect(() => {
+    if (activeTab === "customers" && customers.length === 0 && !customerLoading) loadCustomers(1);
+    if (activeTab === "vendors" && vendors.length === 0 && !vendorLoading) loadVendors(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const meta = activeTab === "all" ? allMeta : activeTab === "customers" ? customerMeta : vendorMeta;
+  const search = activeTab === "all" ? allSearch : activeTab === "customers" ? customerSearch : vendorSearch;
+
+  const handleSearch = (val: string) => {
+    if (activeTab === "all") { setAllSearch(val); loadAll(1, val); }
+    else if (activeTab === "customers") { setCustomerSearch(val); loadCustomers(1, val); }
+    else { setVendorSearch(val); loadVendors(1, val); }
+  };
+
+  const handlePageChange = (page: number) => {
+    if (activeTab === "all") loadAll(page, allSearch);
+    else if (activeTab === "customers") loadCustomers(page, customerSearch);
+    else loadVendors(page, vendorSearch);
+  };
+
+  const tabLoading = activeTab === "all" ? allLoading : activeTab === "customers" ? customerLoading : vendorLoading;
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header + Search */}
+      {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Customers</h1>
+          <h1 className="text-xl font-bold text-foreground">
+            {activeTab === "all" ? "All Contacts" : activeTab === "customers" ? "Regular Customers" : "Vendors"}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {meta.total} customer{meta.total !== 1 ? "s" : ""} total
+            {meta.total} {activeTab === "all" ? "contact" : activeTab === "customers" ? "customer" : "vendor"}{meta.total !== 1 ? "s" : ""} total
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -212,9 +368,9 @@ export default function CustomersPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by name, email or phone…"
+              placeholder={`Search by name, email or phone…`}
               value={search}
-              onChange={(e) => { setSearch(e.target.value); load(1, e.target.value); }}
+              onChange={(e) => handleSearch(e.target.value)}
               className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -228,77 +384,51 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">No customers found</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  {["Name", "Email", "Phone", "Purchases", "Total Spent", "Credits", "Last Purchase"].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c, i) => (
-                  <tr key={i} className="border-t border-border hover:bg-accent transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">{c.customerName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {c.customerEmail ?? <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{c.customerPhone}</td>
-                    <td className="px-4 py-3 text-foreground">{c.totalPurchases}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      ₦{c.totalSpent.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      {c.creditPurchases.totalCredits > 0 ? (
-                        <div className="space-y-0.5">
-                          <p className="text-foreground font-medium">
-                            {c.creditPurchases.totalCredits} credit{c.creditPurchases.totalCredits !== 1 ? "s" : ""}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            ₦{c.creditPurchases.totalPaid.toLocaleString()} / ₦{c.creditPurchases.totalCreditAmount.toLocaleString()} paid
-                          </p>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground/40">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {format(new Date(c.lastPurchaseDate), "MMM d, yyyy")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border">
+        {([
+          { key: "all", label: "All Contacts" },
+          { key: "customers", label: "Regular Customers" },
+          { key: "vendors", label: "Vendors" },
+        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
+      {/* Table */}
+      {activeTab === "all"
+        ? <CustomersTable rows={all} loading={allLoading} />
+        : activeTab === "customers"
+        ? <VendorsTable rows={customers} loading={customerLoading} />
+        : <VendorsTable rows={vendors} loading={vendorLoading} />
+      }
+
       {/* Pagination */}
-      {!loading && meta.totalPages > 1 && (
+      {!tabLoading && meta.totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
           <p className="text-muted-foreground">
             Page {meta.page} of {meta.totalPages}
           </p>
           <div className="flex gap-2">
             <button
-              onClick={() => load(meta.page - 1, search)}
+              onClick={() => handlePageChange(meta.page - 1)}
               disabled={meta.page <= 1}
               className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
             <button
-              onClick={() => load(meta.page + 1, search)}
+              onClick={() => handlePageChange(meta.page + 1)}
               disabled={meta.page >= meta.totalPages}
               className="px-3 py-1.5 rounded-lg border border-border text-sm hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >

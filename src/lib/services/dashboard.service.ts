@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { SuccessResponse, ActivityLog, DailySummary, WeeklySummary, MonthlySummary, TopProduct, ProfitReport, CollectionsStats, CreditStats, Customer, PaginatedResponse } from '@/types';
+import { SuccessResponse, ActivityLog, DailySummary, WeeklySummary, MonthlySummary, TopProduct, ProfitReport, CollectionsStats, CreditStats, Customer, Vendor, PaginatedResponse } from '@/types';
 
 export interface DashboardStats {
   totalInventory: number;
@@ -99,11 +99,53 @@ export const dashboardService = {
     return response.data;
   },
 
-  getCustomers: async (page = 1, limit = 20, search = ''): Promise<PaginatedResponse<Customer>> => {
+  getAllCustomers: async (page = 1, limit = 20, search = ''): Promise<PaginatedResponse<Customer>> => {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set('search', search);
     const response = await api.get(`/dashboard/customers?${params}`);
     return response.data;
+  },
+
+  getCustomers: async (page = 1, limit = 20, search = ''): Promise<PaginatedResponse<Vendor>> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) params.set('search', search);
+    const response = await api.get<SuccessResponse<PaginatedResponse<Vendor>> | PaginatedResponse<Vendor>>(`/customers/regular?${params}`);
+    const payload = response.data;
+    return ('data' in payload && 'meta' in (payload.data as object) ? payload.data : payload) as PaginatedResponse<Vendor>;
+  },
+
+  globalSearch: async (query: string, limit = 10): Promise<{
+    results: Array<{
+      id: string;
+      type: string;
+      title: string;
+      subtitle: string;
+      description: string;
+      metadata: Record<string, unknown>;
+      createdAt: string;
+    }>;
+    meta: { total: number; page: number; limit: number };
+  }> => {
+    const params = new URLSearchParams({ query, limit: String(limit) });
+    const response = await api.get(`/search?${params}`);
+    return response.data;
+  },
+
+  searchCustomers: async (query: string): Promise<Vendor[]> => {
+    if (!query.trim()) return [];
+    const params = new URLSearchParams({ customerName: query.trim(), limit: '8' });
+    const response = await api.get<SuccessResponse<PaginatedResponse<Vendor>> | PaginatedResponse<Vendor>>(`/customers?${params}`);
+    const payload = response.data;
+    const result = ('data' in payload && 'meta' in (payload.data as object) ? payload.data : payload) as PaginatedResponse<Vendor>;
+    return result.data ?? [];
+  },
+
+  getVendors: async (page = 1, limit = 20, search = ''): Promise<PaginatedResponse<Vendor>> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) params.set('search', search);
+    const response = await api.get<SuccessResponse<PaginatedResponse<Vendor>> | PaginatedResponse<Vendor>>(`/customers/vendors?${params}`);
+    const payload = response.data;
+    return ('data' in payload && 'meta' in (payload.data as object) ? payload.data : payload) as PaginatedResponse<Vendor>;
   },
 
   broadcastEmail: async (subject: string, message: string, senderName?: string): Promise<{

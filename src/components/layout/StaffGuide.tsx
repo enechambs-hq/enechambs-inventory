@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   HelpCircle, X, BookOpen, Package, ShoppingCart,
   Wallet, CreditCard, User, Lightbulb, AlertTriangle,
-  ChevronRight,
+  ChevronRight, ClipboardList, Users, Search,
 } from 'lucide-react';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -121,6 +121,17 @@ function GettingStarted() {
         The <strong className="text-foreground">sidebar on the left</strong> is your main navigation. Each icon takes you to a different section. Your name and role are shown at the very bottom of the sidebar, and the <strong className="text-foreground">Logout</strong> button lives there too.
       </p>
 
+      <H3>Global Search</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        The <strong className="text-foreground">search bar at the top</strong> of every page lets you search across the entire platform — inventory items, sales, credits, customers, and incoming orders — all at once.
+      </p>
+      <div className="space-y-3">
+        <Step n={1} text="Click the search bar in the top header, or press ⌘K (Mac) / Ctrl+K (Windows) to open it from anywhere." />
+        <Step n={2} text="Start typing at least 2 characters — results appear instantly grouped by type." />
+        <Step n={3} text="Click any result to navigate directly to that section." />
+      </div>
+      <Tip>Use global search to quickly find a customer by name, look up a sale by product, or check on an inventory item — no need to navigate to each page manually.</Tip>
+
       <Tip>Click the Activity button in the top-right corner of any page to see a live feed of recent actions across the platform.</Tip>
     </div>
   );
@@ -198,12 +209,25 @@ function SalesGuide() {
         <Step n={2} text="Search for and select the inventory item from the dropdown. The price will auto-fill — you can change it if needed." />
         <Step n={3} text="Set the sale date (defaults to today)." />
         <Step n={4} text='Choose the condition: "New" for brand-new items, "Used" for pre-owned.' />
-        <Step n={5} text="Enter the customer's name, 11-digit phone number, and optionally their email." />
-        <Step n={6} text='"Account Paid To" — enter the bank account or payment method the customer paid into (e.g. Lmart company, personal account name, POS).' />
-        <Step n={7} text='"Record Sale" — the item status switches to Sold and a receipt is generated.' />
+        <Step n={5} text="Start typing the customer's name — a dropdown will suggest returning customers. Select one to auto-fill their phone and email." />
+        <Step n={6} text="If it's a new customer, finish typing their name, then enter their 11-digit phone number and optionally their email." />
+        <Step n={7} text='"Account Paid To" — enter the bank account or payment method the customer paid into (e.g. Lmart company, personal account name, POS).' />
+        <Step n={8} text='If this sale is to a wholesale vendor, tick "Mark as Vendor sale" at the bottom of the form.' />
+        <Step n={9} text='"Record Sale" — the item status switches to Sold and a receipt is generated.' />
       </div>
 
       <Tip>If the amount you enter is below the item's threshold price, you'll see a warning in orange. You can still proceed, but it's worth double-checking with your manager first.</Tip>
+
+      <H3>Returning Customer Auto-fill</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        When you type a customer's name in the Customer Name field, Lmart searches existing customers and shows suggestions after 2 characters. Selecting a suggestion fills in their phone number, email, and vendor status automatically — saving you time and reducing typos.
+      </p>
+      <Tip>Customer names auto-capitalise as you type — no need to worry about case.</Tip>
+
+      <H3>Vendor Sales</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        If a buyer is a <strong className="text-foreground">wholesale vendor</strong> (not a regular retail customer), tick the <strong className="text-foreground">"Mark as Vendor sale"</strong> checkbox at the bottom of the form. This records them separately in the Vendors tab on the Customers page, keeping your retail customer list clean.
+      </p>
 
       <H3>My Sales Tab</H3>
       <p className="text-sm text-muted-foreground leading-relaxed">
@@ -379,22 +403,142 @@ function MyAccountGuide() {
   );
 }
 
+function IncomingOrdersGuide() {
+  return (
+    <div className="space-y-5">
+      <SectionHeading icon={ClipboardList} title="Incoming Orders" />
+
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        <strong className="text-foreground">Incoming Orders</strong> (also called inquiries) are customer requests or reservations for items that haven't been sold yet. Use this section to log when a customer expresses interest in a product so nothing falls through the cracks.
+      </p>
+
+      <Tip>Think of an incoming order as a "hold" or "pre-order." The item hasn't changed hands yet — you're just recording that a customer wants it.</Tip>
+
+      <H3>Recording a New Inquiry</H3>
+      <div className="space-y-3">
+        <Step n={1} text='Click "+ New Inquiry" in the top-right corner.' />
+        <Step n={2} text="Optionally select an inventory item if the customer wants a specific product already in stock." />
+        <Step n={3} text="Set the inquiry date and the expiry date — when the reservation lapses if the customer doesn't follow through." />
+        <Step n={4} text="Enter the expected amount the customer is willing to pay." />
+        <Step n={5} text="Fill in the customer's name, phone number, and optionally email." />
+        <Step n={6} text="Add any notes about the inquiry (e.g. 'wants black colour only', 'will call back Thursday')." />
+        <Step n={7} text='"Record Inquiry" — it appears in the list with a Pending status.' />
+      </div>
+
+      <H3>Inquiry Statuses</H3>
+      <div className="space-y-2">
+        {[
+          { label: 'Pending', color: 'bg-yellow-500/10 text-yellow-700', desc: 'Customer has expressed interest — no sale made yet.' },
+          { label: 'Converted', color: 'bg-green-500/10 text-green-700', desc: 'The inquiry led to an actual sale or credit.' },
+          { label: 'Cancelled', color: 'bg-red-500/10 text-red-700', desc: 'Customer no longer interested or did not follow through.' },
+        ].map(({ label, color, desc }) => (
+          <div key={label} className="flex items-start gap-3 text-sm">
+            <Badge label={label} color={color} />
+            <span className="text-muted-foreground leading-relaxed">{desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <H3>Updating an Inquiry Status</H3>
+      <div className="space-y-3">
+        <Step n={1} text='Find the inquiry in the table and use the "Update Status" dropdown on that row.' />
+        <Step n={2} text='If the customer followed through and bought the item, set it to "Converted".' />
+        <Step n={3} text='If they changed their mind or stopped responding, set it to "Cancelled".' />
+      </div>
+
+      <H3>Finding Similar Items</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        If the specific item a customer wants isn't in stock, click the <strong className="text-foreground">Similar</strong> button on an inquiry row to see other available items that might match what they're looking for.
+      </p>
+
+      <Warn>Don't leave inquiries as Pending indefinitely. Check them regularly and update their status — expired inquiries should be Cancelled to keep your list accurate.</Warn>
+    </div>
+  );
+}
+
+function CustomersVendorsGuide() {
+  return (
+    <div className="space-y-5">
+      <SectionHeading icon={Users} title="Customers & Vendors" />
+
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        The <strong className="text-foreground">Customers page</strong> (admin only) gives you a full picture of everyone who has bought from Lmart. It's split into three tabs to keep retail customers and wholesale vendors clearly separated.
+      </p>
+
+      <H3>The Three Tabs</H3>
+      <div className="space-y-3">
+        {[
+          { label: 'All Contacts', desc: 'Everyone — both regular customers and vendors — in one view.' },
+          { label: 'Regular Customers', desc: 'Only retail customers (sales recorded without the vendor checkbox).' },
+          { label: 'Vendors', desc: 'Only wholesale buyers (sales recorded with "Mark as Vendor sale" ticked).' },
+        ].map(({ label, desc }) => (
+          <div key={label} className="flex items-start gap-3 text-sm">
+            <span className="mt-0.5 shrink-0 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">{label}</span>
+            <span className="text-muted-foreground leading-relaxed">{desc}</span>
+          </div>
+        ))}
+      </div>
+
+      <H3>What Each Row Shows</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        For <strong className="text-foreground">Regular Customers</strong>, you can see their total purchases, total amount spent, credit history, and when they last bought from Lmart.
+      </p>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        For <strong className="text-foreground">Vendors</strong>, you see their order count, total purchase value, and when they were first added.
+      </p>
+
+      <H3>Broadcast Email</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        The <strong className="text-foreground">Broadcast Email</strong> button lets admins send a message to all customers and staff who have an email address on record. Use this for promotions, announcements, or important notices.
+      </p>
+      <div className="space-y-3">
+        <Step n={1} text='Click "Broadcast Email" in the top-right corner.' />
+        <Step n={2} text="Optionally enter a sender name (e.g. Lmart Team)." />
+        <Step n={3} text="Write a subject line and your message." />
+        <Step n={4} text='"Send Broadcast" — a summary shows how many emails were delivered successfully.' />
+      </div>
+
+      <Tip>Search within any tab by name, email, or phone number to quickly find a specific customer or vendor.</Tip>
+
+      <Warn>Broadcast emails go to everyone with an email on record. Double-check your message before sending — it cannot be recalled.</Warn>
+
+      <H3>How Customers Are Created</H3>
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        Customers are automatically added when a sale is recorded. There's no separate "add customer" flow — just record the sale and the customer appears in the right tab based on whether the vendor checkbox was ticked.
+      </p>
+
+      <div className="rounded-xl bg-primary/8 border border-primary/20 p-4 text-sm flex gap-3">
+        <Search size={16} className="text-primary shrink-0 mt-0.5" />
+        <p className="text-foreground/80 leading-relaxed">
+          <strong>Pro tip:</strong> Use the global search bar at the top to find a customer instantly without navigating to this page first.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Tab Config ──────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'start',       label: 'Getting Started', icon: BookOpen,      content: GettingStarted },
-  { id: 'inventory',   label: 'Inventory',        icon: Package,       content: InventoryGuide },
-  { id: 'sales',       label: 'Sales',            icon: ShoppingCart,  content: SalesGuide },
-  { id: 'collections', label: 'Collections',      icon: Wallet,        content: CollectionsGuide },
-  { id: 'credits',     label: 'Credits',          icon: CreditCard,    content: CreditsGuide },
-  { id: 'account',     label: 'My Account',       icon: User,          content: MyAccountGuide },
+  { id: 'start',       label: 'Getting Started',   icon: BookOpen,       content: GettingStarted },
+  { id: 'inventory',   label: 'Inventory',          icon: Package,        content: InventoryGuide },
+  { id: 'sales',       label: 'Sales',              icon: ShoppingCart,   content: SalesGuide },
+  { id: 'collections', label: 'Collections',        icon: Wallet,         content: CollectionsGuide },
+  { id: 'credits',     label: 'Credits',            icon: CreditCard,     content: CreditsGuide },
+  { id: 'orders',      label: 'Incoming Orders',    icon: ClipboardList,  content: IncomingOrdersGuide },
+  { id: 'customers',   label: 'Customers & Vendors',icon: Users,          content: CustomersVendorsGuide },
+  { id: 'account',     label: 'My Account',         icon: User,           content: MyAccountGuide },
 ] as const;
 
 type TabId = typeof TABS[number]['id'];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+const EXPIRY = new Date('2026-05-12T00:00:00Z');
+
 export default function StaffGuide() {
+  if (new Date() >= EXPIRY) return null;
+
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('start');
   const [visible, setVisible] = useState(false);
