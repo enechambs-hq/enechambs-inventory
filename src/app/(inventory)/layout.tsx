@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
 import ActivityPanel from '@/components/layout/ActivityPanel';
+import StaffGuide from '@/components/layout/StaffGuide';
 import api from '@/lib/api';
 import { useCreditNotificationStore } from '@/store/creditNotification.store';
 
@@ -54,6 +55,7 @@ export default function InventoryLayout({ children }: { children: React.ReactNod
       </div>
 
       <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
+      <StaffGuide />
     </div>
   );
 }
