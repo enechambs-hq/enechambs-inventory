@@ -2,12 +2,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Plus, Search, ClipboardList } from 'lucide-react';
+import { Plus, Search, ClipboardList, Layers, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 import { useIncomingOrdersStore } from '@/store/incomingOrders.store';
 import { incomingOrdersService } from '@/lib/services/incomingOrders.service';
-import { IncomingOrderStatus, UserRole, CreateIncomingOrderDto } from '@/types';
+import { IncomingOrderStatus, IncomingOrderStats, InventoryItem, UserRole, CreateIncomingOrderDto } from '@/types';
 import { formatAmount } from '@/lib/utils';
 import IncomingOrderForm from '@/components/shared/IncomingOrderForm';
 
@@ -18,6 +18,13 @@ const STATUS_STYLES: Record<IncomingOrderStatus, string> = {
   [IncomingOrderStatus.CONVERTED]: 'bg-green-500/10 text-green-700',
   [IncomingOrderStatus.CANCELLED]: 'bg-red-500/10 text-red-600',
 };
+
+const STAT_CARDS = [
+  { label: 'Total',     key: 'total',     color: 'text-foreground',    bg: 'bg-muted/50' },
+  { label: 'Pending',   key: IncomingOrderStatus.PENDING,   color: 'text-yellow-700', bg: 'bg-yellow-500/10' },
+  { label: 'Converted', key: IncomingOrderStatus.CONVERTED, color: 'text-green-700',  bg: 'bg-green-500/10'  },
+  { label: 'Cancelled', key: IncomingOrderStatus.CANCELLED, color: 'text-red-600',    bg: 'bg-red-500/10'    },
+] as const;
 
 export default function IncomingOrdersPage() {
   const { user } = useAuthStore();
@@ -32,6 +39,28 @@ export default function IncomingOrdersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Stats
+  const [stats, setStats] = useState<IncomingOrderStats | null>(null);
+
+  // Similar items modal
+  const [similarModal, setSimilarModal] = useState<{
+    open: boolean;
+    orderId: string;
+    productName: string;
+    items: InventoryItem[];
+    loading: boolean;
+  }>({ open: false, orderId: '', productName: '', items: [], loading: false });
+
+  const fetchStats = useCallback(async () => {
+    if (!isAdmin) return;
+    try {
+      const data = await incomingOrdersService.getStatistics();
+      setStats(data);
+    } catch {
+      // fail silently — stats are supplementary
+    }
+  }, [isAdmin]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -64,6 +93,10 @@ export default function IncomingOrdersPage() {
   }, [page, limit, setLoading, setMyOrders]);
 
   useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  useEffect(() => {
     if (activeTab === 'all') fetchAll();
     else fetchMine();
   }, [activeTab, fetchAll, fetchMine]);
@@ -74,6 +107,7 @@ export default function IncomingOrdersPage() {
       await incomingOrdersService.create(data);
       toast.success('Inquiry recorded successfully');
       setModalOpen(false);
+      fetchStats();
       if (activeTab === 'all') fetchAll();
       else fetchMine();
     } catch (error) {
@@ -89,6 +123,7 @@ export default function IncomingOrdersPage() {
       setUpdatingId(id);
       await incomingOrdersService.updateStatus(id, status);
       toast.success('Status updated');
+      fetchStats();
       if (activeTab === 'all') fetchAll();
       else fetchMine();
     } catch (error) {
@@ -96,6 +131,17 @@ export default function IncomingOrdersPage() {
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleViewSimilar = async (orderId: string, productName: string) => {
+    setSimilarModal({ open: true, orderId, productName, items: [], loading: true });
+    try {
+      const items = await incomingOrdersService.getSimilarItems(orderId);
+      setSimilarModal((prev) => ({ ...prev, items, loading: false }));
+    } catch {
+      setSimilarModal((prev) => ({ ...prev, loading: false }));
+      toast.error('Failed to load similar items');
     }
   };
 
@@ -117,6 +163,21 @@ export default function IncomingOrdersPage() {
           New Inquiry
         </button>
       </div>
+
+      {/* Stats — admin only */}
+      {isAdmin && stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {STAT_CARDS.map(({ label, key, color, bg }) => {
+            const value = key === 'total' ? stats.total : (stats.byStatus?.[key as IncomingOrderStatus] ?? 0);
+            return (
+              <div key={label} className={`rounded-xl border bg-card p-4 ${bg}`}>
+                <p className="text-xs text-muted-foreground font-medium mb-1">{label}</p>
+                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 border-b">
@@ -166,7 +227,7 @@ export default function IncomingOrdersPage() {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              {['Date', 'Expiry', 'Product', 'Customer', 'Phone', 'Expected (₦)', 'Status', 'By', 'Actions'].map((h) => (
+              {['Date', 'Expiry', 'Product', 'Customer', 'Phone', 'Expected (₦)', 'Status', 'By', 'Update Status', 'Similar'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -174,7 +235,7 @@ export default function IncomingOrdersPage() {
           <tbody className="divide-y">
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center">
+                <td colSpan={10} className="px-4 py-8 text-center">
                   <div className="flex justify-center">
                     <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
                   </div>
@@ -182,7 +243,7 @@ export default function IncomingOrdersPage() {
               </tr>
             ) : displayedOrders.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center">
+                <td colSpan={10} className="px-4 py-12 text-center">
                   <ClipboardList size={32} className="text-muted-foreground/40 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No inquiries found</p>
                 </td>
@@ -216,6 +277,16 @@ export default function IncomingOrdersPage() {
                       <option value={IncomingOrderStatus.CANCELLED}>Cancelled</option>
                     </select>
                   </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleViewSimilar(order.id, order.inventory?.productName ?? 'this item')}
+                      title="View similar available items"
+                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <Layers size={13} />
+                      Similar
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
@@ -235,7 +306,7 @@ export default function IncomingOrdersPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Create modal */}
       {modalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="relative bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -253,6 +324,57 @@ export default function IncomingOrdersPage() {
               isLoading={submitting}
               onCancel={() => setModalOpen(false)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Similar items modal */}
+      {similarModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-semibold">Similar Available Items</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Items matching "{similarModal.productName}"</p>
+              </div>
+              <button onClick={() => setSimilarModal((p) => ({ ...p, open: false }))} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {similarModal.loading ? (
+                <div className="flex justify-center py-10">
+                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              ) : similarModal.items.length === 0 ? (
+                <div className="text-center py-10">
+                  <Layers size={32} className="text-muted-foreground/40 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No similar items available in inventory</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      {['Product', 'Color', 'Storage', 'IMEI', 'Selling Price'].map((h) => (
+                        <th key={h} className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {similarModal.items.map((item) => (
+                      <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-3 py-2 font-medium">{item.productName}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{item.color || '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{item.storageGB || '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{item.imei || '—'}</td>
+                        <td className="px-3 py-2">₦{formatAmount(item.sellingPrice)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       )}
