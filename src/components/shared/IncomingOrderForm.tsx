@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { CreateIncomingOrderDto, InventoryItem } from '@/types';
 import { inventoryService } from '@/lib/services/inventory.service';
+import { formatAmount } from '@/lib/utils';
 import InventorySearchSelect from './InventorySearchSelect';
 
 const schema = z.object({
@@ -79,7 +80,12 @@ export default function IncomingOrderForm({ onSubmit, isLoading, onCancel }: Pro
         <InventorySearchSelect
           items={inventory}
           value={inventoryId}
-          onChange={(id) => setValue('inventoryId', id, { shouldValidate: true })}
+          onChange={(id) => {
+              setValue('inventoryId', id, { shouldValidate: true });
+              const item = inventory.find((i) => i.id === id);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              if (item) setValue('expectedAmount', formatAmount(item.sellingPrice) as any, { shouldValidate: true });
+            }}
           disabled={loadingInventory}
           placeholder={loadingInventory ? 'Loading…' : 'Select an item (optional)'}
         />
