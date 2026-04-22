@@ -14,6 +14,15 @@ export interface SaleFilters {
   customerPhone?: string;
 }
 
+type MaybeWrapped<T> = SuccessResponse<T> | T;
+
+function unwrapPaginated<T>(payload: MaybeWrapped<PaginatedResponse<T>>): PaginatedResponse<T> {
+  if (payload && 'success' in payload && 'data' in payload) {
+    return (payload as SuccessResponse<PaginatedResponse<T>>).data;
+  }
+  return payload as PaginatedResponse<T>;
+}
+
 export const salesService = {
   getAll: async (filters: SaleFilters = {}) => {
     const params = new URLSearchParams();
@@ -22,10 +31,10 @@ export const salesService = {
         params.append(key, String(value));
       }
     });
-    const response = await api.get<PaginatedResponse<Sale>>(
+    const response = await api.get<MaybeWrapped<PaginatedResponse<Sale>>>(
       `/sales?${params.toString()}`
     );
-    return response.data;
+    return unwrapPaginated(response.data);
   },
 
   getMySales: async (filters: SaleFilters = {}) => {
@@ -35,10 +44,10 @@ export const salesService = {
         params.append(key, String(value));
       }
     });
-    const response = await api.get<PaginatedResponse<Sale>>(
+    const response = await api.get<MaybeWrapped<PaginatedResponse<Sale>>>(
       `/sales/my-sales?${params.toString()}`
     );
-    return response.data;
+    return unwrapPaginated(response.data);
   },
 
   getById: async (id: string) => {
