@@ -26,25 +26,44 @@ export default function SummaryCards({ collectionsStats, creditStats }: Props) {
           </button>
         </div>
         {collectionsStats ? (
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                {collectionsStats.allTime.total}
-              </p>
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Total</p>
+                <p className="text-xl font-bold text-foreground mt-1">
+                  {collectionsStats.allTime.total}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Paid</p>
+                <p className="text-xl font-bold text-green-600 mt-1">
+                  {collectionsStats.allTime.paid}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Pending</p>
+                <p className="text-xl font-bold text-amber-500 mt-1">
+                  {collectionsStats.allTime.pending}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Paid</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                {collectionsStats.allTime.paid}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Pending</p>
-              <p className="text-xl font-bold text-foreground mt-1">
-                {collectionsStats.allTime.pending}
-              </p>
-            </div>
+            {/* Progress bar */}
+            {collectionsStats.allTime.total > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Conversion rate</span>
+                  <span className="font-medium text-foreground">
+                    {collectionsStats.allTime.conversionRate.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 rounded-full transition-all"
+                    style={{ width: `${Math.min(collectionsStats.allTime.conversionRate, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">Loading…</p>

@@ -90,12 +90,15 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Business overview and performance</p>
+          <h1 className="text-[22px] font-extrabold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {format(new Date(), "EEEE, MMMM d, yyyy")}
+          </p>
         </div>
         <button
           onClick={() => setRegisterModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+          style={{ boxShadow: "0 4px 12px rgba(37,99,235,0.3)" }}
         >
           <UserPlus size={16} />
           Register Staff

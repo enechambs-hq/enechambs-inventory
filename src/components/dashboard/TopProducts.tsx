@@ -13,10 +13,14 @@ const PREVIEW_COUNT = 5;
 function ProductRow({ p, i }: { p: TopProduct; i: number }) {
   return (
     <tr className="hover:bg-accent transition-colors group">
-      <td className="py-3 pr-3 text-xs font-medium text-muted-foreground w-6">
-        {i + 1}
+      <td className="py-3 pr-3 w-6">
+        {i === 0 ? (
+          <span className="text-base">①</span>
+        ) : (
+          <span className="text-xs font-medium text-muted-foreground">{i + 1}</span>
+        )}
       </td>
-      <td className="py-3 text-sm font-medium text-foreground">{p.productName}</td>
+      <td className={`py-3 text-sm font-medium ${i === 0 ? "text-primary" : "text-foreground"}`}>{p.productName}</td>
       <td className="py-3 text-sm text-muted-foreground">{p.totalSold}</td>
       <td className="py-3 text-sm text-foreground">₦{p.totalRevenue.toLocaleString()}</td>
       <td className="py-3 text-sm text-foreground">₦{p.totalProfit.toLocaleString()}</td>

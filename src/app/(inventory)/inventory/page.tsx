@@ -175,10 +175,8 @@ export default function InventoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your product stock
-          </p>
+          <h1 className="text-[22px] font-extrabold tracking-tight">Inventory</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage your product stock</p>
         </div>
         {user?.role === UserRole.ADMIN && (
           <button
@@ -186,7 +184,8 @@ export default function InventoryPage() {
               setEditItem(null);
               setModalOpen(true);
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+            style={{ boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}
           >
             <Plus size={16} />
             Add Product
@@ -226,19 +225,30 @@ export default function InventoryPage() {
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="relative bg-card rounded-xl border p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="relative bg-card rounded-2xl border border-border p-7 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl">
             {submitting && (
-              <div className="absolute inset-0 bg-card/80 rounded-xl flex items-center justify-center z-10">
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                  <span className="text-sm font-medium">Saving...</span>
-                </div>
+              <div className="absolute inset-0 bg-card/85 rounded-2xl flex items-center justify-center z-10 gap-3">
+                <div className="h-5 w-5 rounded-full border-[2.5px] border-primary border-t-transparent animate-spin" />
+                <span className="text-sm font-semibold">Saving…</span>
               </div>
             )}
-            <h2 className="text-lg font-semibold mb-4">
-              {editItem ? "Edit Product" : "Add Product"}
-            </h2>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h2 className="text-[17px] font-bold">
+                  {editItem ? 'Edit Product' : 'Add Product'}
+                </h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {editItem ? 'Update product details below' : 'Fill in the details to add a new product'}
+                </p>
+              </div>
+              <button
+                onClick={() => { setModalOpen(false); setEditItem(null); }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <Plus size={18} className="rotate-45" />
+              </button>
+            </div>
             <InventoryForm
               defaultValues={editItem || undefined}
               onSubmit={handleSubmit}

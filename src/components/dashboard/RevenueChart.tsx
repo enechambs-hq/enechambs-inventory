@@ -132,11 +132,11 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
             <Area
               type="monotone"
               dataKey="Revenue"
-              stroke="#1b1a1b"
-              strokeWidth={0}
+              stroke="#2563eb"
+              strokeWidth={2}
               fill="url(#revenueGradient)"
               dot={false}
-              activeDot={{ r: 5, fill: "hsl(var(--primary))", strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: "#2563eb", strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
