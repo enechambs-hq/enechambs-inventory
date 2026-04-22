@@ -13,7 +13,8 @@ import {
 import { useSalesStore } from '@/store/sales.store';
 import { salesService } from '@/lib/services/sales.service';
 import { dashboardService, DashboardStats, RevenueDataPoint } from '@/lib/services/dashboard.service';
-import { CreateSaleDto, Sale } from '@/types';
+import { CreateSaleDto, Sale, UserRole } from '@/types';
+import { useAuthStore } from '@/store/auth.store';
 import SaleForm from '@/components/shared/SaleForm';
 
 type ActiveTab = 'all' | 'mine';
@@ -75,30 +76,43 @@ function StatCard({
 }
 
 /* ── Revenue Chart ────────────────────────────────── */
-function RevenueChart({ data, startDate, endDate }: {
+function RevenueChart({ data, startDate, endDate, profitByDate }: {
   data: RevenueDataPoint[]; startDate: string; endDate: string;
+  profitByDate: Map<string, number>;
 }) {
   const filled = fillGaps(data, startDate, endDate);
-  const chartData = filled.map((d) => ({
-    date: format(new Date(d.date), 'MMM d'),
-    Revenue: Number(d.total),
-  }));
+  const chartData = filled.map((d) => {
+    const key = d.date.slice(0, 10);
+    return {
+      date: format(new Date(d.date), 'MMM d'),
+      Revenue: Number(d.total),
+      Profit: profitByDate.get(key) ?? 0,
+    };
+  });
+
+  const isEmpty = chartData.every((d) => d.Revenue === 0 && d.Profit === 0);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h2 className="text-[15px] font-bold">Sales Performance</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Revenue — last 14 days</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Revenue &amp; Profit — last 14 days</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-sm bg-blue-600" />
-          <span className="text-xs text-muted-foreground">Revenue</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-blue-600" />
+            <span className="text-xs text-muted-foreground">Revenue</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-green-500" />
+            <span className="text-xs text-muted-foreground">Profit</span>
+          </div>
         </div>
       </div>
-      {chartData.every((d) => d.Revenue === 0) ? (
+      {isEmpty ? (
         <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
-          No revenue data for this period
+          No data for this period
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
@@ -107,6 +121,10 @@ function RevenueChart({ data, startDate, endDate }: {
               <linearGradient id="salesRevGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#2563eb" stopOpacity={0.18} />
                 <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="salesProfitGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.18} />
+                <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -128,7 +146,7 @@ function RevenueChart({ data, startDate, endDate }: {
                 fontSize: 12,
                 boxShadow: '0 8px 24px rgba(20,40,100,0.12)',
               }}
-              formatter={(v) => [`₦${Number(v).toLocaleString()}`, 'Revenue']}
+              formatter={(v, name) => [`₦${Number(v).toLocaleString()}`, name]}
               cursor={{ stroke: '#5d8df4', strokeWidth: 1, strokeDasharray: '4 4' }}
             />
             <Area
@@ -136,6 +154,12 @@ function RevenueChart({ data, startDate, endDate }: {
               stroke="#2563eb" strokeWidth={2}
               fill="url(#salesRevGrad)" dot={false}
               activeDot={{ r: 5, fill: '#2563eb', strokeWidth: 0 }}
+            />
+            <Area
+              type="monotone" dataKey="Profit"
+              stroke="#22c55e" strokeWidth={2}
+              fill="url(#salesProfitGrad)" dot={false}
+              activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -267,6 +291,9 @@ export default function SalesPage() {
     isLoading, setSales, setMySales, setLoading, setPage,
   } = useSalesStore();
 
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === UserRole.ADMIN;
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -274,6 +301,7 @@ export default function SalesPage() {
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [chartData, setChartData] = useState<RevenueDataPoint[]>([]);
+  const [profitByDate, setProfitByDate] = useState<Map<string, number>>(new Map());
 
   // Animated search placeholder
   const [phIndex, setPhIndex] = useState(0);
@@ -287,11 +315,21 @@ export default function SalesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fetch stats + chart once
+  // Fetch stats + chart — admin only
   useEffect(() => {
+    if (!isAdmin) return;
     dashboardService.getStats().then(setStats).catch(() => {});
     dashboardService.getRevenueChart(CHART_START, CHART_END).then(setChartData).catch(() => {});
-  }, []);
+    salesService.getAll({ limit: 500 }).then((data) => {
+      const map = new Map<string, number>();
+      data.data.forEach((sale) => {
+        const key = sale.date?.slice(0, 10) ?? sale.createdAt?.slice(0, 10);
+        if (!key) return;
+        map.set(key, (map.get(key) ?? 0) + (sale.amount - sale.costPrice));
+      });
+      setProfitByDate(map);
+    }).catch(() => {});
+  }, [isAdmin]);
 
   const fetchSales = useCallback(async () => {
     try {
@@ -380,34 +418,36 @@ export default function SalesPage() {
         </button>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard
-          label="Total Sales"
-          value={stats ? stats.totalSales.toLocaleString() : '—'}
-          icon={<ShoppingCart size={16} className="text-blue-600" />}
-          accentColor="#2563eb"
-          iconBg="bg-blue-500/10"
-        />
-        <StatCard
-          label="Total Revenue"
-          value={stats ? `₦${(stats.totalRevenue / 1_000_000).toFixed(2)}M` : '—'}
-          sub={stats ? `₦${stats.totalRevenue.toLocaleString()} all time` : undefined}
-          icon={<Wallet size={16} className="text-purple-600" />}
-          accentColor="#7c3aed"
-          iconBg="bg-purple-500/10"
-        />
-        <StatCard
-          label="Avg. Sale Value"
-          value={stats ? `₦${avgSale.toLocaleString()}` : '—'}
-          icon={<TrendingUp size={16} className="text-amber-600" />}
-          accentColor="#d97706"
-          iconBg="bg-amber-500/10"
-        />
-      </div>
-
-      {/* Chart */}
-      <RevenueChart data={chartData} startDate={CHART_START} endDate={CHART_END} />
+      {/* Stat cards + chart — admin only */}
+      {isAdmin && (
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard
+              label="Total Sales"
+              value={stats ? stats.totalSales.toLocaleString() : '—'}
+              icon={<ShoppingCart size={16} className="text-blue-600" />}
+              accentColor="#2563eb"
+              iconBg="bg-blue-500/10"
+            />
+            <StatCard
+              label="Total Revenue"
+              value={stats ? `₦${(stats.totalRevenue / 1_000_000).toFixed(2)}M` : '—'}
+              sub={stats ? `₦${stats.totalRevenue.toLocaleString()} all time` : undefined}
+              icon={<Wallet size={16} className="text-purple-600" />}
+              accentColor="#7c3aed"
+              iconBg="bg-purple-500/10"
+            />
+            <StatCard
+              label="Avg. Sale Value"
+              value={stats ? `₦${avgSale.toLocaleString()}` : '—'}
+              icon={<TrendingUp size={16} className="text-amber-600" />}
+              accentColor="#d97706"
+              iconBg="bg-amber-500/10"
+            />
+          </div>
+          <RevenueChart data={chartData} startDate={CHART_START} endDate={CHART_END} profitByDate={profitByDate} />
+        </>
+      )}
 
       {/* Tabs + Search */}
       <div className="flex items-center justify-between border-b border-border">
