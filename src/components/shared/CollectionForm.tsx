@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 const collectionSchema = z.object({
   inventoryId: z.string().min(1, 'Select an inventory item'),
   date: z.string().min(1, 'Required'),
-  amount: z.coerce.number().min(0, 'Required').pipe(z.number()),
+  amount: z.coerce.number().min(0, 'Required'),
   collectorName: z.string().min(1, 'Required'),
 });
 

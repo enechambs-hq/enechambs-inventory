@@ -13,7 +13,7 @@ export default function SummaryCards({ collectionsStats, creditStats }: Props) {
   const overdue = creditStats?.byStatus[CreditStatus.OVERDUE] ?? 0;
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Collections */}
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
@@ -27,7 +27,7 @@ export default function SummaryCards({ collectionsStats, creditStats }: Props) {
         </div>
         {collectionsStats ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Total</p>
                 <p className="text-xl font-bold text-foreground mt-1">

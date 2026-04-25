@@ -39,7 +39,7 @@ export default function CollectionsStatsCards({ stats }: Props) {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
             {label}
           </p>
-          <div className="grid grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {cards.map(({ label: cardLabel, value }) => (
               <div key={cardLabel} className="rounded-xl border border-border bg-background p-4">
                 <p className="text-xs text-muted-foreground mb-1">{cardLabel}</p>

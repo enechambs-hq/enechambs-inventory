@@ -54,6 +54,7 @@ export default function InventoryTable({
   return (
     <>
       <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted border-b border-border">
@@ -150,6 +151,7 @@ export default function InventoryTable({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

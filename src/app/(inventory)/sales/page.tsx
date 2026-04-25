@@ -421,7 +421,7 @@ export default function SalesPage() {
       {/* Stat cards + chart — admin only */}
       {isAdmin && (
         <>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
               label="Total Sales"
               value={stats ? stats.totalSales.toLocaleString() : '—'}
@@ -468,7 +468,7 @@ export default function SalesPage() {
         </div>
 
         {activeTab === 'all' && (
-          <div className="relative w-60 mb-1.5">
+          <div className="relative w-full max-w-xs mb-1.5">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             {!searchQuery && (
               <span className="absolute left-8 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none flex items-center gap-1">
@@ -490,6 +490,7 @@ export default function SalesPage() {
 
       {/* Table */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted border-b border-border">
@@ -559,6 +560,7 @@ export default function SalesPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

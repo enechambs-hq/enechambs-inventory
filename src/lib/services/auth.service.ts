@@ -1,6 +1,12 @@
 import api from '@/lib/api';
 import { LoginDto, LoginResponse, SetupPasswordDto, RegisterStaffDto } from '@/types';
 
+export interface ChangePasswordDto {
+  oldPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+}
+
 export const authService = {
   login: async (data: LoginDto): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login', data);
@@ -22,5 +28,9 @@ export const authService = {
 
   registerStaff: async (data: RegisterStaffDto): Promise<void> => {
     await api.post('/auth/register-staff', data);
+  },
+
+  changePassword: async (data: ChangePasswordDto): Promise<void> => {
+    await api.post('/auth/change-password', data);
   },
 };
