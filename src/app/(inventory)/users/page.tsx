@@ -174,7 +174,7 @@ export default function UsersPage() {
       {activeTab === 'users' ? (
         <>
           {/* Search */}
-          <div className="relative w-72">
+          <div className="relative w-full max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               placeholder="Search by name or email..."
@@ -186,7 +186,8 @@ export default function UsersPage() {
 
           {/* Users table */}
           <div className="rounded-xl border bg-card overflow-hidden">
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-175 text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   {['Name', 'Email', 'Role', 'Status', 'Last Login', 'Joined', 'Actions'].map((h) => (
@@ -228,12 +229,12 @@ export default function UsersPage() {
                           {user.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         {user.lastLoginAt
                           ? format(new Date(user.lastLoginAt), 'MMM d, yyyy · h:mm a')
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
                         {format(new Date(user.createdAt), 'MMM d, yyyy')}
                       </td>
                       <td className="px-4 py-3">
@@ -264,6 +265,7 @@ export default function UsersPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Pagination */}
@@ -295,6 +297,7 @@ export default function UsersPage() {
       ) : (
         /* Performance table */
         <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr>
@@ -326,6 +329,7 @@ export default function UsersPage() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

@@ -66,7 +66,7 @@ export default function CreditStatsCard({ stats }: Props) {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {kpis.map(({ label, value }) => (
           <div key={label} className="rounded-xl border border-border bg-background p-4">
             <p className="text-xs text-muted-foreground mb-1">{label}</p>

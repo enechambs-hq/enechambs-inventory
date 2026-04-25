@@ -354,7 +354,7 @@ export default function CustomersPage() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-foreground">
             {activeTab === "all" ? "All Contacts" : activeTab === "customers" ? "Regular Customers" : "Vendors"}
@@ -364,7 +364,7 @@ export default function CustomersPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="relative w-full max-w-sm">
+          <div className="relative w-full max-w-xs">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"

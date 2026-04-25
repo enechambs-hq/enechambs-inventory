@@ -176,6 +176,7 @@ export default function CollectionsPage() {
 
       {/* Table */}
       <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
@@ -277,6 +278,7 @@ export default function CollectionsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

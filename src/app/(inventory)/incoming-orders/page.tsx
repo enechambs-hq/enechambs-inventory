@@ -150,14 +150,14 @@ export default function IncomingOrdersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Incoming Orders</h1>
           <p className="text-sm text-muted-foreground">Customer inquiries and product requests</p>
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors whitespace-nowrap shrink-0"
         >
           <Plus size={16} />
           New Inquiry
@@ -166,7 +166,7 @@ export default function IncomingOrdersPage() {
 
       {/* Stats — admin only */}
       {isAdmin && stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {STAT_CARDS.map(({ label, key, color, bg }) => {
             const value = key === 'total' ? stats.total : (stats.byStatus?.[key as IncomingOrderStatus] ?? 0);
             return (
@@ -224,6 +224,7 @@ export default function IncomingOrdersPage() {
 
       {/* Table */}
       <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
@@ -292,6 +293,7 @@ export default function IncomingOrdersPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Pagination */}

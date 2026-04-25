@@ -91,7 +91,7 @@ export default function ProfitReportPage() {
       ) : !report ? null : (
         <>
           {/* Summary KPIs */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard label="Total Revenue" value={`₦${s!.totalRevenue.toLocaleString()}`} />
             <StatCard label="Total Cost" value={`₦${s!.totalCost.toLocaleString()}`} />
             <StatCard
@@ -106,6 +106,7 @@ export default function ProfitReportPage() {
           {/* By Product */}
           <div className="rounded-xl border bg-card p-6">
             <h2 className="text-base font-semibold mb-4">By Product</h2>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr>
@@ -144,11 +145,13 @@ export default function ProfitReportPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* By Staff */}
           <div className="rounded-xl border bg-card p-6">
             <h2 className="text-base font-semibold mb-4">By Staff</h2>
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr>
@@ -171,6 +174,7 @@ export default function ProfitReportPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         </>
       )}

@@ -90,7 +90,9 @@ export default function TopProducts({ products }: Props) {
             No product data available
           </p>
         ) : (
-          <ProductTable products={preview} />
+          <div className="overflow-x-auto">
+            <ProductTable products={preview} />
+          </div>
         )}
       </div>
 

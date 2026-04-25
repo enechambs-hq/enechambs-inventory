@@ -58,7 +58,8 @@ export default function ActivityPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-xl border bg-card">
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b">
@@ -109,6 +110,7 @@ export default function ActivityPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
