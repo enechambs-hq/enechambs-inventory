@@ -7,17 +7,18 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
-  Wallet,
-  CreditCard,
   Users,
   TrendingUp,
   Contact,
   LogOut,
-  ClipboardList,
   KeyRound,
   Eye,
   EyeOff,
   X,
+  Tag,
+  Truck,
+  AlertTriangle,
+  BarChart2,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -27,7 +28,6 @@ import { authService } from "@/lib/services/auth.service";
 import { UserRole } from "@/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useCreditNotificationStore } from "@/store/creditNotification.store";
 
 const changePasswordSchema = z
   .object({
@@ -50,9 +50,10 @@ type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 const staffLinks = [
   { href: "/inventory", label: "Inventory", icon: Package },
   { href: "/sales", label: "Sales", icon: ShoppingCart },
-  { href: "/collections", label: "Collections", icon: Wallet },
-  { href: "/credits", label: "Credits", icon: CreditCard },
-  { href: "/incoming-orders", label: "Incoming Orders", icon: ClipboardList },
+  { href: "/categories", label: "Categories", icon: Tag },
+  { href: "/suppliers", label: "Suppliers", icon: Truck },
+  { href: "/stock-alerts", label: "Stock Alerts", icon: AlertTriangle },
+  { href: "/reports", label: "Reports", icon: BarChart2 },
 ];
 
 const adminLinks = [
@@ -67,8 +68,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
-  const overdueCount = useCreditNotificationStore((s) => s.overdueCount);
-
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -157,7 +156,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           </div>
           <div>
             <h1 className="text-base font-bold tracking-tight text-foreground">
-              Lmart
+              Enechambs
             </h1>
             <p className="text-[10px] text-[hsl(var(--sidebar-foreground))] opacity-60 -mt-0.5">
               Management System
@@ -168,10 +167,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {links.map(({ href, label, icon: Icon }) => {
-          const isCredits = href === '/credits';
-          const showBadge = isCredits && overdueCount > 0;
-          return (
+        {links.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -183,18 +179,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               )}
             >
               <Icon size={16} />
-              <span className="flex-1">{label}</span>
-              {showBadge && (
-                <span
-                  className="ml-auto min-w-4.5 h-4.5 px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--warning)', color: 'var(--warning-foreground)' }}
-                >
-                  {overdueCount > 99 ? '99+' : overdueCount}
-                </span>
-              )}
+              <span>{label}</span>
             </Link>
-          );
-        })}
+          ))}
       </nav>
 
       {/* User + Actions */}
