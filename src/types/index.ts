@@ -244,6 +244,17 @@ export interface Category {
   updatedAt?: string;
 }
 
+// ==================== SUPPLIERS ====================
+export interface Supplier {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // ==================== INVENTORY ====================
 export type InventoryUnit = 'kg' | 'piece' | 'litre' | 'pack' | 'bag' | 'carton' | 'dozen';
 

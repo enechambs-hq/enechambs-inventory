@@ -11,9 +11,7 @@ export interface InventoryFilters {
   page?: number;
   limit?: number;
   productName?: string;
-  imei?: string;
-  companyName?: string;
-  color?: string;
+  expiryTracking?: boolean;
 }
 
 export const inventoryService = {

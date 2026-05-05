@@ -1,4 +1,4 @@
-import { Package, ShoppingCart, Wallet, BarChart2, TrendingUp } from "lucide-react";
+import { Package, ShoppingCart, Wallet, AlertTriangle, TrendingUp } from "lucide-react";
 import { DashboardStats } from "@/lib/services/dashboard.service";
 
 interface Props {
@@ -47,14 +47,14 @@ const cards = [
     stripColor: "#0284c7",
   },
   {
-    label: "Collections",
-    value: (s: DashboardStats) => String(s.totalCollections),
-    icon: BarChart2,
-    iconBg: "bg-purple-500/10",
-    iconColor: "text-purple-600",
-    valueColor: "text-foreground",
-    patternColor: "#9333ea",
-    stripColor: "#9333ea",
+    label: "Stock Alerts",
+    value: (s: DashboardStats) => String(s.lowStockAlerts ?? 0),
+    icon: AlertTriangle,
+    iconBg: "bg-amber-500/10",
+    iconColor: "text-amber-600",
+    valueColor: "text-amber-600",
+    patternColor: "#d97706",
+    stripColor: "#d97706",
   },
 ];
 

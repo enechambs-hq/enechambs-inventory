@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format, subDays } from "date-fns";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { UserRole, UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct, CollectionsStats, CreditStats } from "@/types";
+import { UserRole, UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct } from "@/types";
 import type { ActivityLog } from "@/types";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
@@ -30,8 +30,6 @@ export default function DashboardPage() {
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
   const [monthly, setMonthly] = useState<MonthlySummary | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [collectionsStats, setCollectionsStats] = useState<CollectionsStats | null>(null);
-  const [creditStats, setCreditStats] = useState<CreditStats | null>(null);
   const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -62,8 +60,6 @@ export default function DashboardPage() {
         dashboardService.getWeekly().then(setWeekly).catch(() => {}),
         dashboardService.getMonthly().then(setMonthly).catch(() => {}),
         dashboardService.getTopProducts().then(setTopProducts).catch(() => toast.error("Failed to load top products")),
-        dashboardService.getCollectionsStats().then(setCollectionsStats).catch(() => {}),
-        dashboardService.getCreditStats().then(setCreditStats).catch(() => {}),
         dashboardService.getRecentActivity(15).then(setRecentActivities).catch(() => {}),
       ]);
       setIsLoading(false);
@@ -107,7 +103,7 @@ export default function DashboardPage() {
 
       {stats && <StatsCards stats={stats} />}
       <RevenueChart data={revenueData} dateRange={dateRange} onDateRangeChange={setDateRange} />
-      <SummaryCards collectionsStats={collectionsStats} creditStats={creditStats} />
+      <SummaryCards />
       <PeriodOverview daily={daily} weekly={weekly} monthly={monthly} />
 
       <TopProducts products={topProducts} />
