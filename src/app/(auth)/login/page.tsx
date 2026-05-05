@@ -70,10 +70,10 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-            <span className="text-white font-black text-base">L</span>
+            <span className="text-white font-black text-base">E</span>
           </div>
           <span className="text-white font-bold text-lg tracking-tight">
-            Lmart
+            Enechambs
           </span>
         </div>
 
@@ -96,7 +96,7 @@ export default function LoginPage() {
             {[
               "Inventory Tracking",
               "Sales Records",
-              "Collections",
+              "Stock Alerts",
               "Staff Management",
             ].map((feature) => (
               <span
@@ -111,7 +111,7 @@ export default function LoginPage() {
 
         {/* Bottom tagline */}
         <p className="text-white/40 text-xs">
-          © {new Date().getFullYear()} Lmart. All rights reserved.
+          © {new Date().getFullYear()} Enechambs. All rights reserved.
         </p>
       </div>
 
@@ -121,11 +121,11 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-8 md:hidden">
           <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center mb-3 shadow-lg shadow-primary/30">
             <span className="text-primary-foreground font-black text-xl">
-              L
+              E
             </span>
           </div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Lmart
+            Enechambs
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Management System

@@ -50,7 +50,7 @@ export default function InventoryLayout({ children }: { children: React.ReactNod
         </div>
         <h2 className="text-[18px] font-bold tracking-tight mb-2">Not available on mobile</h2>
         <p className="text-sm text-muted-foreground max-w-xs">
-          Lmart is designed for tablets and desktops. Please open it on a device with a larger screen.
+          Enechambs is designed for tablets and desktops. Please open it on a device with a larger screen.
         </p>
       </div>
 

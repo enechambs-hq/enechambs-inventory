@@ -109,7 +109,7 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
                 type="text"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
-                placeholder="e.g. LMart Team"
+                placeholder="e.g. Enechambs Team"
                 className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
