@@ -6,20 +6,14 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
 import { useInventoryStore } from "@/store/inventory.store";
 import { inventoryService } from "@/lib/services/inventory.service";
-import { collectionsService } from "@/lib/services/collections.service";
-import {
-  InventoryItem,
-  CreateInventoryDto,
-  UserRole,
-  CollectionStatus,
-} from "@/types";
+import { InventoryItem, CreateInventoryDto, UserRole } from "@/types";
 import InventoryForm from "@/components/shared/InventoryForm";
 import StockLevelCards from "@/components/inventory/StockLevelCards";
 import LowStockAlert from "@/components/inventory/LowStockAlert";
 import InventoryFilters from "@/components/inventory/InventoryFilters";
 import InventoryTable from "@/components/inventory/InventoryTable";
 
-type ActiveFilter = "all" | "available" | "sold" | "in-collection";
+type ActiveFilter = "all" | "available" | "sold";
 
 export default function InventoryPage() {
   const { user } = useAuthStore();
@@ -46,9 +40,6 @@ export default function InventoryPage() {
     sold: number;
   } | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
-  const [collectionSerials, setCollectionSerials] = useState<Set<string>>(
-    new Set(),
-  );
   const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(
     null,
   );
@@ -57,7 +48,7 @@ export default function InventoryPage() {
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await inventoryService.getAll({ page, limit, productName: search, companyName: search, color: search });
+      const data = await inventoryService.getAll({ page, limit, productName: search });
       setItems(data.data, data.meta);
     } catch {
       toast.error("Failed to load inventory");
@@ -71,25 +62,8 @@ export default function InventoryPage() {
   }, [fetchInventory]);
 
   useEffect(() => {
-    inventoryService
-      .getStockLevels()
-      .then(setStockLevels)
-      .catch(() => {});
-    inventoryService
-      .getLowStockAlerts()
-      .then(setLowStock)
-      .catch(() => {});
-    collectionsService
-      .getAll({ limit: 100 })
-      .then((data) => {
-        const serials = new Set(
-          data.data
-            .filter((c) => c.status === CollectionStatus.PENDING)
-            .map((c) => c.imei),
-        );
-        setCollectionSerials(serials);
-      })
-      .catch(() => {});
+    inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+    inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -100,7 +74,7 @@ export default function InventoryPage() {
     }
     setIsFilterLoading(true);
     inventoryService
-      .getAll({ limit: 100, productName: search, companyName: search, color: search })
+      .getAll({ limit: 100, productName: search })
       .then((data) => setFilterSnapshot(data.data))
       .catch(() => setFilterSnapshot([]))
       .finally(() => setIsFilterLoading(false));
@@ -111,9 +85,8 @@ export default function InventoryPage() {
     try {
       setSubmitting(true);
       if (editItem) {
-        const { dateAdded: _d, imei: _i, ...updateData } = data;
+        const { dateAdded: _d, ...updateData } = data;
         void _d;
-        void _i;
         await inventoryService.update(editItem.id, updateData);
         toast.success("Product updated successfully");
       } else {
@@ -132,9 +105,7 @@ export default function InventoryPage() {
         response?: { status?: number; data?: { message?: string | string[] } };
       };
       if (err.response?.status === 500) {
-        toast.error(
-          "Failed to save product. The IMEI may already exist — please use a unique one.",
-        );
+        toast.error("Failed to save product. Please try again.");
       } else {
         const msg = err.response?.data?.message || "Something went wrong";
         toast.error(Array.isArray(msg) ? msg[0] : msg);
@@ -161,12 +132,8 @@ export default function InventoryPage() {
 
   const baseItems = filterSnapshot !== null ? filterSnapshot : items;
   const filteredItems = baseItems.filter((item) => {
-    if (activeFilter === "available")
-      return item.isAvailable && !collectionSerials.has(item.imei);
-    if (activeFilter === "sold")
-      return !item.isAvailable && !collectionSerials.has(item.imei);
-    if (activeFilter === "in-collection")
-      return collectionSerials.has(item.imei);
+    if (activeFilter === "available") return item.isAvailable;
+    if (activeFilter === "sold") return !item.isAvailable;
     return true;
   });
 
@@ -210,7 +177,6 @@ export default function InventoryPage() {
         items={filteredItems}
         isLoading={isLoading || isFilterLoading}
         userRole={user?.role}
-        collectionSerials={collectionSerials}
         page={page}
         totalPages={totalPages}
         total={total}

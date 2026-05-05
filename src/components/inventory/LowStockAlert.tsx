@@ -28,7 +28,7 @@ export default function LowStockAlert({ items }: Props) {
                   key={item.id}
                   className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-500/12 text-amber-800 border border-amber-500/20"
                 >
-                  {item.productName} · {item.companyName} · {item.color}
+                  {item.productName} · {item.quantity} {item.unit} (min: {item.restockThreshold})
                 </span>
               ))}
             </div>

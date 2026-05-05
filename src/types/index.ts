@@ -236,49 +236,63 @@ export interface UserPerformance {
   totalrevenue: string;
 }
 
+// ==================== CATEGORIES ====================
+export interface Category {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // ==================== INVENTORY ====================
+export type InventoryUnit = 'kg' | 'piece' | 'litre' | 'pack' | 'bag' | 'carton' | 'dozen';
+
 export interface InventoryItem {
   id: string;
-  serialNumber: string;
+  serialNumber?: string;
   dateAdded: string;
   productName: string;
-  imei: string;
-  storageGB: string;
-  color: string;
-  productType: string;
-  companyName: string;
+  quantity: number;
+  unit: InventoryUnit;
   costPrice: number;
   sellingPrice: number;
-  thresholdPrice: number;
-  isAvailable: boolean;
-  isDeleted: boolean;
+  categoryId: string;
+  category?: { id: string; name: string };
+  supplierRef?: string;
+  restockThreshold: number;
+  expiryTracking: boolean;
+  expiryDate?: string;
+  isAvailable?: boolean;
+  isDeleted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateInventoryDto {
-  dateAdded: string;
   productName: string;
-  imei: string;
-  storageGB: string;
-  color: string;
-  productType: string;
-  companyName: string;
+  quantity: number;
+  unit: InventoryUnit;
   costPrice: number;
   sellingPrice: number;
-  thresholdPrice: number;
+  categoryId: string;
+  supplierRef?: string;
+  restockThreshold: number;
+  expiryTracking?: boolean;
+  expiryDate?: string;
+  dateAdded: string;
 }
 
 export interface UpdateInventoryDto {
   productName?: string;
-  imei?: string;
-  storageGB?: string;
-  color?: string;
-  productType?: string;
-  companyName?: string;
+  quantity?: number;
+  unit?: InventoryUnit;
   costPrice?: number;
   sellingPrice?: number;
-  thresholdPrice?: number;
+  categoryId?: string;
+  supplierRef?: string;
+  restockThreshold?: number;
+  expiryTracking?: boolean;
+  expiryDate?: string;
 }
 
 // ==================== SALES ====================

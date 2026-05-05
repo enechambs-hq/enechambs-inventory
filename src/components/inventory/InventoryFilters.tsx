@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 
-type ActiveFilter = 'all' | 'available' | 'sold' | 'in-collection';
+type ActiveFilter = 'all' | 'available' | 'sold';
 
 interface Props {
   activeFilter: ActiveFilter;
@@ -16,10 +16,9 @@ const FILTERS: { key: ActiveFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'available', label: 'Available' },
   { key: 'sold', label: 'Sold' },
-  { key: 'in-collection', label: 'In Collection' },
 ];
 
-const PLACEHOLDERS = ['product...', 'company...', 'color...'];
+const PLACEHOLDERS = ['product name...', 'category...', 'supplier...'];
 
 export default function InventoryFilters({ activeFilter, searchQuery, onFilterChange, onSearchChange }: Props) {
   const [phIndex, setPhIndex] = useState(0);

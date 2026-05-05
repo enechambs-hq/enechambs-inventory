@@ -80,13 +80,11 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
   });
 
   const inventoryId = useWatch({ control, name: 'inventoryId', defaultValue: '' });
-  const amountValue = useWatch({ control, name: 'amount', defaultValue: 0 });
   const { field: phoneField } = useController({ control, name: 'customerPhone', defaultValue: '' });
   const { field: nameField } = useController({ control, name: 'customerName', defaultValue: '' });
   const phoneLength = phoneField.value?.length ?? 0;
 
   const selectedItem = inventory.find((i) => i.id === inventoryId) ?? null;
-  const belowThreshold = selectedItem && Number(amountValue) > 0 && Number(amountValue) < selectedItem.thresholdPrice;
 
   const handleNameChange = (val: string) => {
     const capitalized = val.replace(/\b\w/g, (c) => c.toUpperCase());
@@ -158,13 +156,9 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           <input {...register('amount')} type="text" inputMode="decimal" className={field} />
           {errors.amount ? (
             <p className="text-xs text-destructive">{errors.amount.message}</p>
-          ) : belowThreshold ? (
-            <p className="text-xs text-amber-500 font-medium">
-              ⚠ Below threshold — min is ₦{formatAmount(selectedItem!.thresholdPrice)}
-            </p>
           ) : selectedItem ? (
-            <p className="text-xs font-semibold text-orange-500">
-              Floor price: ₦{selectedItem.thresholdPrice.toLocaleString()}
+            <p className="text-xs text-muted-foreground">
+              Selling price: ₦{selectedItem.sellingPrice.toLocaleString()}
             </p>
           ) : null}
         </div>
