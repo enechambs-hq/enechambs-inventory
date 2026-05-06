@@ -8,7 +8,6 @@ import {
   Package,
   ShoppingCart,
   Users,
-  TrendingUp,
   Contact,
   LogOut,
   KeyRound,
@@ -61,7 +60,6 @@ const adminLinks = [
   ...staffLinks,
   { href: "/customers", label: "Customers", icon: Contact },
   { href: "/users", label: "Users", icon: Users },
-  { href: "/profit-report", label: "Profit Report", icon: TrendingUp },
 ];
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
