@@ -42,10 +42,9 @@ export default function InventoryPage() {
   } | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(
-    null,
-  );
+  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(null);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const [filterPage, setFilterPage] = useState(1);
 
   const fetchInventory = useCallback(async () => {
     try {
@@ -76,8 +75,9 @@ export default function InventoryPage() {
       return;
     }
     setIsFilterLoading(true);
+    setFilterPage(1);
     inventoryService
-      .getAll({ limit: 100, productName: search })
+      .getAll({ limit: stockLevels?.total ?? 500, productName: search })
       .then((data) => setFilterSnapshot(data.data))
       .catch(() => setFilterSnapshot([]))
       .finally(() => setIsFilterLoading(false));
@@ -134,6 +134,12 @@ export default function InventoryPage() {
     return true;
   });
 
+  const isFiltered = activeFilter !== "all";
+  const filterTotalPages = Math.max(1, Math.ceil(filteredItems.length / limit));
+  const displayItems = isFiltered
+    ? filteredItems.slice((filterPage - 1) * limit, filterPage * limit)
+    : filteredItems;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -149,7 +155,7 @@ export default function InventoryPage() {
               setModalOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-            style={{ boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}
+            style={{ boxShadow: '0 4px 12px rgba(26,122,74,0.3)' }}
           >
             <Plus size={16} />
             Add Product
@@ -166,25 +172,26 @@ export default function InventoryPage() {
         onFilterChange={(f) => {
           setActiveFilter(f);
           setPage(1);
+          setFilterPage(1);
         }}
         onSearchChange={(value) => { setSearch(value); setPage(1); }}
       />
 
       <InventoryTable
-        items={filteredItems}
+        items={displayItems}
         categories={categories}
         isLoading={isLoading || isFilterLoading}
         userRole={user?.role}
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        showPagination={activeFilter === "all"}
+        page={isFiltered ? filterPage : page}
+        totalPages={isFiltered ? filterTotalPages : totalPages}
+        total={isFiltered ? filteredItems.length : total}
+        showPagination
         onEdit={(item) => {
           setEditItem(item);
           setModalOpen(true);
         }}
         onDelete={handleDelete}
-        onPageChange={setPage}
+        onPageChange={isFiltered ? setFilterPage : setPage}
       />
 
       {/* Modal */}

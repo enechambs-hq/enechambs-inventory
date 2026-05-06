@@ -5,7 +5,7 @@ import { useForm, useWatch, useController } from 'react-hook-form';
 import InventorySearchSelect from './InventorySearchSelect';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CreateSaleDto, SaleCondition, InventoryItem, Vendor } from '@/types';
+import { CreateSaleDto, InventoryItem, Vendor } from '@/types';
 import { inventoryService } from '@/lib/services/inventory.service';
 import { dashboardService } from '@/lib/services/dashboard.service';
 import { format } from 'date-fns';
@@ -15,7 +15,6 @@ const saleSchema = z.object({
   inventoryId: z.string().min(1, 'Select an inventory item'),
   date: z.string().min(1, 'Required'),
   amount: z.preprocess((v) => Number(String(v).replace(/,/g, '')), z.number().min(0, 'Required')),
-  condition: z.enum(SaleCondition),
   customerName: z.string().min(1, 'Required'),
   customerPhone: z.string().regex(/^\d{11}$/, 'Phone must be exactly 11 digits'),
   customerEmail: z.preprocess(
@@ -24,7 +23,6 @@ const saleSchema = z.object({
   ),
   customerId: z.string().optional(),
   accountPaidTo: z.string().min(1, 'Required'),
-  isVendor: z.boolean().optional().default(false),
 });
 
 type SaleFormInput = z.input<typeof saleSchema>;
@@ -75,7 +73,6 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     resolver: zodResolver(saleSchema),
     defaultValues: {
       date: format(new Date(), 'yyyy-MM-dd'),
-      condition: SaleCondition.NEW,
     },
   });
 
@@ -112,7 +109,6 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     setValue('customerId', customer.id);
     phoneField.onChange(customer.customerPhone ?? '');
     setValue('customerEmail', customer.customerEmail ?? '', { shouldValidate: true });
-    setValue('isVendor', customer.isVendor ?? false);
     setSuggestions([]);
     setShowSuggestions(false);
   };
@@ -161,16 +157,6 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
               Selling price: ₦{selectedItem.sellingPrice.toLocaleString()}
             </p>
           ) : null}
-        </div>
-
-        {/* Condition */}
-        <div className="space-y-1">
-          <label className="text-sm font-medium">Condition</label>
-          <select {...register('condition')} className={field}>
-            <option value={SaleCondition.NEW}>New</option>
-            <option value={SaleCondition.USED}>Used</option>
-          </select>
-          {errors.condition && <p className="text-xs text-destructive">{errors.condition.message}</p>}
         </div>
 
         {/* Customer Name with autocomplete */}
@@ -252,22 +238,6 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           {errors.accountPaidTo && <p className="text-xs text-destructive">{errors.accountPaidTo.message}</p>}
         </div>
 
-        {/* Vendor toggle */}
-        <div className="col-span-2 flex items-center justify-between rounded-md border border-border px-3 py-2.5">
-          <div>
-            <p className="text-sm font-medium">Mark as Vendor sale</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Check this if the buyer is a wholesale vendor, not a regular customer.
-            </p>
-          </div>
-          <label className="cursor-pointer ml-4 shrink-0">
-            <input
-              {...register('isVendor')}
-              type="checkbox"
-              className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
-            />
-          </label>
-        </div>
       </div>
 
       <input type="hidden" {...register('customerId')} />

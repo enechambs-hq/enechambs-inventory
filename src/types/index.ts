@@ -322,7 +322,6 @@ export interface Sale {
   amount: number;
   costPrice: number;
   thresholdPrice: number;
-  condition: SaleCondition;
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
@@ -335,13 +334,11 @@ export interface CreateSaleDto {
   inventoryId: string;
   date?: string;
   amount: number;
-  condition: SaleCondition;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
   customerId?: string;
   accountPaidTo: string;
-  isVendor?: boolean;
 }
 
 // ==================== COLLECTIONS ====================

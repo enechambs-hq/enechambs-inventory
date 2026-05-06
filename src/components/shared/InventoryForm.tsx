@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { Category, CreateInventoryDto, InventoryItem, InventoryUnit } from '@/types';
 import { categoriesService } from '@/lib/services/categories.service';
+import CustomSelect from '@/components/shared/CustomSelect';
 
 const UNITS: InventoryUnit[] = ['kg', 'piece', 'litre', 'pack', 'bag', 'carton', 'dozen'];
 
@@ -100,12 +101,19 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
         {/* Unit */}
         <div className="space-y-1">
           <label className={labelClass}>Unit</label>
-          <select {...register('unit')} className={inputClass}>
-            <option value="">Select unit</option>
-            {UNITS.map((u) => (
-              <option key={u} value={u}>{u}</option>
-            ))}
-          </select>
+          <Controller
+            control={control}
+            name="unit"
+            render={({ field }) => (
+              <CustomSelect
+                options={UNITS.map((u) => ({ value: u, label: u }))}
+                value={field.value ?? ''}
+                onChange={(v) => field.onChange(v)}
+                placeholder="Select unit"
+                hasError={!!errors.unit}
+              />
+            )}
+          />
           {errors.unit && <p className={errorClass}>{errors.unit.message}</p>}
         </div>
 
@@ -126,12 +134,19 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
         {/* Category */}
         <div className="space-y-1">
           <label className={labelClass}>Category</label>
-          <select {...register('categoryId')} className={inputClass}>
-            <option value="">Select category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <Controller
+            control={control}
+            name="categoryId"
+            render={({ field }) => (
+              <CustomSelect
+                options={categories.map((c) => ({ value: c.id, label: c.name }))}
+                value={field.value ?? ''}
+                onChange={(v) => field.onChange(Number(v))}
+                placeholder="Select category"
+                hasError={!!errors.categoryId}
+              />
+            )}
+          />
           {errors.categoryId && <p className={errorClass}>{errors.categoryId.message}</p>}
         </div>
 

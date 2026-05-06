@@ -101,11 +101,11 @@ function RevenueChart({ data, startDate, endDate, profitByDate }: {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm bg-blue-600" />
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: '#1a7a4a' }} />
             <span className="text-xs text-muted-foreground">Revenue</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm bg-green-500" />
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ background: '#34d399' }} />
             <span className="text-xs text-muted-foreground">Profit</span>
           </div>
         </div>
@@ -119,12 +119,12 @@ function RevenueChart({ data, startDate, endDate, profitByDate }: {
           <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 4, bottom: 0 }}>
             <defs>
               <linearGradient id="salesRevGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2563eb" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
+                <stop offset="0%" stopColor="#1a7a4a" stopOpacity={0.22} />
+                <stop offset="100%" stopColor="#1a7a4a" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="salesProfitGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#22c55e" stopOpacity={0} />
+                <stop offset="0%" stopColor="#34d399" stopOpacity={0.22} />
+                <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -147,19 +147,19 @@ function RevenueChart({ data, startDate, endDate, profitByDate }: {
                 boxShadow: '0 8px 24px rgba(20,40,100,0.12)',
               }}
               formatter={(v, name) => [`₦${Number(v).toLocaleString()}`, name]}
-              cursor={{ stroke: '#5d8df4', strokeWidth: 1, strokeDasharray: '4 4' }}
+              cursor={{ stroke: '#1a7a4a', strokeWidth: 1, strokeDasharray: '4 4' }}
             />
             <Area
               type="monotone" dataKey="Revenue"
-              stroke="#2563eb" strokeWidth={2}
+              stroke="#1a7a4a" strokeWidth={2}
               fill="url(#salesRevGrad)" dot={false}
-              activeDot={{ r: 5, fill: '#2563eb', strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#1a7a4a', strokeWidth: 0 }}
             />
             <Area
               type="monotone" dataKey="Profit"
-              stroke="#22c55e" strokeWidth={2}
+              stroke="#34d399" strokeWidth={2}
               fill="url(#salesProfitGrad)" dot={false}
-              activeDot={{ r: 5, fill: '#22c55e', strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#34d399', strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -204,29 +204,15 @@ function SaleDetailModal({ sale, onClose, onReceipt }: {
 
         {/* Product */}
         <div className="bg-background rounded-xl p-4 mb-3 border border-border">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">Product</p>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-2.5">
-            {([
-              ['Name', sale.productName],
-              ['Color', sale.color],
-              ['Storage', sale.storageGB],
-              ['IMEI', sale.imei],
-            ] as [string, string][]).map(([l, v]) => (
-              <div key={l}>
-                <p className="text-[11px] text-muted-foreground mb-0.5">{l}</p>
-                <p className={`text-[13.5px] font-semibold ${l === 'IMEI' ? 'font-mono text-xs' : ''}`}>
-                  {v || '—'}
-                </p>
-              </div>
-            ))}
-          </div>
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Product</p>
+          <p className="text-[14px] font-semibold">{sale.productName}</p>
         </div>
 
         {/* Financials */}
         <div className="grid grid-cols-3 gap-2.5 mb-3">
           {[
             { label: 'Cost', value: `₦${sale.costPrice.toLocaleString()}`, cls: 'text-muted-foreground' },
-            { label: 'Revenue', value: `₦${sale.amount.toLocaleString()}`, cls: 'text-blue-600' },
+            { label: 'Revenue', value: `₦${sale.amount.toLocaleString()}`, cls: 'text-[#1a7a4a]' },
             { label: 'Profit', value: `₦${profit.toLocaleString()}`, cls: profit >= 0 ? 'text-green-600' : 'text-red-500' },
           ].map(({ label, value, cls }) => (
             <div key={label} className="bg-background rounded-xl p-3 border border-border">
@@ -251,10 +237,6 @@ function SaleDetailModal({ sale, onClose, onReceipt }: {
             <div>
               <p className="text-[11px] text-muted-foreground mb-0.5">Account Paid To</p>
               <p className="text-[13.5px] font-semibold">{sale.accountPaidTo}</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-muted-foreground mb-0.5">Condition</p>
-              <p className="text-[13.5px] font-semibold capitalize">{sale.condition}</p>
             </div>
             <div>
               <p className="text-[11px] text-muted-foreground mb-0.5">Profit Margin</p>
@@ -334,11 +316,12 @@ export default function SalesPage() {
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
+      const isPhone = /^\d+$/.test(searchQuery.trim());
       const data = await salesService.getAll({
         page, limit,
-        productName: searchQuery,
-        customerName: searchQuery,
-        customerPhone: searchQuery,
+        ...(isPhone
+          ? { customerPhone: searchQuery }
+          : { productName: searchQuery, customerName: searchQuery }),
       });
       setSales(data.data, data.meta);
     } catch {
@@ -411,7 +394,7 @@ export default function SalesPage() {
         <button
           onClick={() => setModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-          style={{ boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}
+          style={{ boxShadow: '0 4px 12px rgba(26,122,74,0.3)' }}
         >
           <Plus size={15} />
           Record Sale
@@ -425,24 +408,24 @@ export default function SalesPage() {
             <StatCard
               label="Total Sales"
               value={stats ? stats.totalSales.toLocaleString() : '—'}
-              icon={<ShoppingCart size={16} className="text-blue-600" />}
-              accentColor="#2563eb"
-              iconBg="bg-blue-500/10"
+              icon={<ShoppingCart size={16} style={{ color: '#1a7a4a' }} />}
+              accentColor="#1a7a4a"
+              iconBg="bg-[#e8f5ee]"
             />
             <StatCard
               label="Total Revenue"
               value={stats ? `₦${(stats.totalRevenue / 1_000_000).toFixed(2)}M` : '—'}
               sub={stats ? `₦${stats.totalRevenue.toLocaleString()} all time` : undefined}
-              icon={<Wallet size={16} className="text-purple-600" />}
-              accentColor="#7c3aed"
-              iconBg="bg-purple-500/10"
+              icon={<Wallet size={16} style={{ color: '#0d9488' }} />}
+              accentColor="#0d9488"
+              iconBg="bg-teal-500/10"
             />
             <StatCard
               label="Avg. Sale Value"
               value={stats ? `₦${avgSale.toLocaleString()}` : '—'}
-              icon={<TrendingUp size={16} className="text-amber-600" />}
-              accentColor="#d97706"
-              iconBg="bg-amber-500/10"
+              icon={<TrendingUp size={16} style={{ color: '#16a34a' }} />}
+              accentColor="#16a34a"
+              iconBg="bg-green-500/10"
             />
           </div>
           <RevenueChart data={chartData} startDate={CHART_START} endDate={CHART_END} profitByDate={profitByDate} />
@@ -532,12 +515,7 @@ export default function SalesPage() {
                     <td className="px-3.5 py-3 text-xs font-medium text-muted-foreground">
                       {(page - 1) * limit + idx + 1}
                     </td>
-                    <td className="px-3.5 py-3">
-                      <p className="font-semibold text-[13.5px] leading-tight">{sale.productName}</p>
-                      <p className="text-[11.5px] text-muted-foreground mt-0.5">
-                        {sale.color} · {sale.storageGB}
-                      </p>
-                    </td>
+                    <td className="px-3.5 py-3 font-semibold text-[13.5px]">{sale.productName}</td>
                     <td className="px-3.5 py-3 text-[13px] text-muted-foreground">{sale.customerName}</td>
                     <td className="px-3.5 py-3 font-bold text-[14px]">₦{sale.amount.toLocaleString()}</td>
                     <td className={`px-3.5 py-3 font-semibold text-[13.5px] ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
