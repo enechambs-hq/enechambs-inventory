@@ -1,8 +1,9 @@
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { InventoryItem, UserRole } from '@/types';
+import { Category, InventoryItem, UserRole } from '@/types';
 
 interface Props {
   items: InventoryItem[];
+  categories: Category[];
   isLoading: boolean;
   userRole?: UserRole;
   page: number;
@@ -18,6 +19,7 @@ const HEADERS_BASE = ['Product', 'Qty', 'Category', 'Cost Price', 'Selling Price
 
 export default function InventoryTable({
   items,
+  categories,
   isLoading,
   userRole,
   page,
@@ -88,7 +90,7 @@ export default function InventoryTable({
 
                       {/* Category */}
                       <td className="px-3.5 py-3 text-muted-foreground">
-                        {item.category?.name ?? '—'}
+                        {item.category?.name ?? categories.find((c) => c.id === item.categoryId)?.name ?? '—'}
                       </td>
 
                       {/* Cost Price */}

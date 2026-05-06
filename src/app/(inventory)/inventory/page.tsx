@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
 import { useInventoryStore } from "@/store/inventory.store";
 import { inventoryService } from "@/lib/services/inventory.service";
-import { InventoryItem, CreateInventoryDto, UserRole } from "@/types";
+import { categoriesService } from "@/lib/services/categories.service";
+import { InventoryItem, CreateInventoryDto, UserRole, Category } from "@/types";
 import InventoryForm from "@/components/shared/InventoryForm";
 import StockLevelCards from "@/components/inventory/StockLevelCards";
 import LowStockAlert from "@/components/inventory/LowStockAlert";
@@ -40,6 +41,7 @@ export default function InventoryPage() {
     sold: number;
   } | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(
     null,
   );
@@ -64,6 +66,7 @@ export default function InventoryPage() {
   useEffect(() => {
     inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
     inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
+    categoriesService.getAll().then(setCategories).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -95,11 +98,8 @@ export default function InventoryPage() {
       }
       setModalOpen(false);
       setEditItem(null);
-      fetchInventory();
-      inventoryService
-        .getStockLevels()
-        .then(setStockLevels)
-        .catch(() => {});
+      await fetchInventory();
+      inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
     } catch (error) {
       const err = error as {
         response?: { status?: number; data?: { message?: string | string[] } };
@@ -120,11 +120,8 @@ export default function InventoryPage() {
     try {
       await inventoryService.delete(id);
       toast.success("Product deleted");
-      fetchInventory();
-      inventoryService
-        .getStockLevels()
-        .then(setStockLevels)
-        .catch(() => {});
+      await fetchInventory();
+      inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
     } catch {
       toast.error("Failed to delete product");
     }
@@ -175,6 +172,7 @@ export default function InventoryPage() {
 
       <InventoryTable
         items={filteredItems}
+        categories={categories}
         isLoading={isLoading || isFilterLoading}
         userRole={user?.role}
         page={page}

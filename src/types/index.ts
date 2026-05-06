@@ -271,8 +271,8 @@ export interface InventoryItem {
   unit: InventoryUnit;
   costPrice: number;
   sellingPrice: number;
-  categoryId: string;
-  category?: { id: string; name: string };
+  categoryId: number;
+  category?: { id: number; name: string };
   supplierRef?: string;
   restockThreshold: number;
   expiryTracking: boolean;
@@ -289,7 +289,7 @@ export interface CreateInventoryDto {
   unit: InventoryUnit;
   costPrice: number;
   sellingPrice: number;
-  categoryId: string;
+  categoryId: number;
   supplierRef?: string;
   restockThreshold: number;
   expiryTracking?: boolean;

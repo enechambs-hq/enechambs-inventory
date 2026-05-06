@@ -1,4 +1,4 @@
-import { Package, ShoppingCart, TrendingUp } from 'lucide-react';
+import { ShoppingCart, TrendingUp } from 'lucide-react';
 
 interface StockLevels {
   total: number;
@@ -11,14 +11,6 @@ interface Props {
 }
 
 const CARDS = [
-  {
-    label: 'All Time Stock',
-    key: 'total' as const,
-    icon: Package,
-    iconColor: 'text-blue-600',
-    iconBg: 'bg-blue-500/10',
-    valueColor: 'text-blue-600',
-  },
   {
     label: 'Available Now',
     key: 'available' as const,
@@ -39,7 +31,7 @@ const CARDS = [
 
 export default function StockLevelCards({ stockLevels }: Props) {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       {CARDS.map(({ label, key, icon: Icon, iconColor, iconBg, valueColor }) => (
         <div
           key={label}

@@ -16,7 +16,7 @@ const inventorySchema = z.object({
   unit: z.enum(['kg', 'piece', 'litre', 'pack', 'bag', 'carton', 'dozen'] as const),
   costPrice: z.coerce.number().min(0, 'Required'),
   sellingPrice: z.coerce.number().min(0, 'Required'),
-  categoryId: z.string().min(1, 'Required'),
+  categoryId: z.coerce.number().min(1, 'Required'),
   supplierRef: z.string().optional(),
   restockThreshold: z.coerce.number().min(0, 'Required'),
   expiryTracking: z.boolean().optional(),
