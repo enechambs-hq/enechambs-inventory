@@ -9,7 +9,7 @@ import { SalesReport, StockReport, CategoryReport, ProfitReport } from '@/types'
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 type Tab = 'sales' | 'stock' | 'category' | 'profit';
-type Preset = '7d' | '30d' | '90d';
+type Preset = 'month' | '7d' | '30d' | '90d';
 
 function fmtNGN(n: number) {
   return '₦' + Math.round(n).toLocaleString('en-NG');
@@ -21,6 +21,10 @@ function isoDate(d: Date) {
 
 function getPresetDates(preset: Preset): { startDate: string; endDate: string } {
   const end = new Date();
+  if (preset === 'month') {
+    const start = new Date(end.getFullYear(), end.getMonth(), 1);
+    return { startDate: isoDate(start), endDate: isoDate(end) };
+  }
   const start = new Date();
   start.setDate(end.getDate() - (preset === '7d' ? 7 : preset === '30d' ? 30 : 90));
   return { startDate: isoDate(start), endDate: isoDate(end) };
@@ -112,19 +116,24 @@ function DateRangePicker({
         />
       </div>
       <div className="flex gap-1.5">
-        {(['7d', '30d', '90d'] as Preset[]).map((p) => (
+        {([
+          { id: 'month', label: 'This Month' },
+          { id: '7d', label: '7d' },
+          { id: '30d', label: '30d' },
+          { id: '90d', label: '90d' },
+        ] as { id: Preset; label: string }[]).map((p) => (
           <button
-            key={p}
-            onClick={() => onPreset(p)}
+            key={p.id}
+            onClick={() => onPreset(p.id)}
             className="h-9 px-3 rounded-lg border text-[12.5px] font-medium transition-colors"
             style={{
-              background: activePreset === p ? '#e8f5ee' : '#fff',
-              color: activePreset === p ? '#155f3a' : '#3a4640',
-              borderColor: activePreset === p ? '#b6dfc9' : '#e5e7e6',
-              fontWeight: activePreset === p ? 600 : 500,
+              background: activePreset === p.id ? '#e8f5ee' : '#fff',
+              color: activePreset === p.id ? '#155f3a' : '#3a4640',
+              borderColor: activePreset === p.id ? '#b6dfc9' : '#e5e7e6',
+              fontWeight: activePreset === p.id ? 600 : 500,
             }}
           >
-            {p}
+            {p.label}
           </button>
         ))}
       </div>
@@ -316,13 +325,13 @@ function SalesTab({ report }: { report: SalesReport }) {
       {/* Summary cards */}
       <div className="flex gap-3">
         <StatCard
-          label="Total Revenue"
+          label="Monthly Revenue"
           value={fmtNGN(summary.totalRevenue)}
           icon={TrendingUp}
           green
         />
         <StatCard
-          label="Total Sales"
+          label="Monthly Sales"
           value={summary.totalSales.toLocaleString()}
           icon={ShoppingBag}
         />
@@ -672,9 +681,9 @@ function ProfitTab({ report }: { report: ProfitReport }) {
 
 export default function ReportsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('sales');
-  const [preset, setPreset] = useState<Preset>('30d');
-  const [startDate, setStartDate] = useState(getPresetDates('30d').startDate);
-  const [endDate, setEndDate] = useState(getPresetDates('30d').endDate);
+  const [preset, setPreset] = useState<Preset>('month');
+  const [startDate, setStartDate] = useState(getPresetDates('month').startDate);
+  const [endDate, setEndDate] = useState(getPresetDates('month').endDate);
   const [isLoading, setIsLoading] = useState(false);
 
   const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
@@ -728,8 +737,8 @@ export default function ReportsPage() {
   };
 
   const handleReset = () => {
-    applyPreset('30d');
-    fetchReport(activeTab, getPresetDates('30d').startDate, getPresetDates('30d').endDate);
+    applyPreset('month');
+    fetchReport(activeTab, getPresetDates('month').startDate, getPresetDates('month').endDate);
   };
 
   const showDatePicker = activeTab !== 'stock';
