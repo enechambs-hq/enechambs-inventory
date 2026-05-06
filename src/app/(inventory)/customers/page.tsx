@@ -21,7 +21,6 @@ interface BroadcastResult {
 function BroadcastModal({ onClose }: { onClose: () => void }) {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [senderName, setSenderName] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<BroadcastResult | null>(null);
 
@@ -29,7 +28,7 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
     if (!subject.trim() || !message.trim()) return;
     try {
       setSending(true);
-      const res = await dashboardService.broadcastEmail(subject.trim(), message.trim(), senderName.trim() || undefined);
+      const res = await dashboardService.broadcastEmail(subject.trim(), message.trim());
       setResult({
         subject: res.subject,
         totalRecipients: res.totalRecipients,
@@ -98,18 +97,6 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm text-muted-foreground">
               This will send an email to all customers who have an email address on record.
             </p>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Sender Name <span className="text-muted-foreground/60">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={senderName}
-                onChange={(e) => setSenderName(e.target.value)}
-                placeholder="e.g. Enechambs Team"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Subject</label>
               <input
