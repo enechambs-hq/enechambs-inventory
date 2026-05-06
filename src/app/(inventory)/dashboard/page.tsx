@@ -101,7 +101,7 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {stats && <StatsCards stats={stats} />}
+      {stats && <StatsCards stats={stats} monthly={monthly} />}
       <RevenueChart data={revenueData} dateRange={dateRange} onDateRangeChange={setDateRange} />
       <SummaryCards />
       <PeriodOverview daily={daily} weekly={weekly} monthly={monthly} />
