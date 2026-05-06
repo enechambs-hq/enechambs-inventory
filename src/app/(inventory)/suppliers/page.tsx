@@ -1,127 +1,110 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Search, Pencil, Trash2, Tag } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Truck } from 'lucide-react';
 import { toast } from 'sonner';
-import { categoriesService } from '@/lib/services/categories.service';
-import { Category } from '@/types';
+import { suppliersService } from '@/lib/services/suppliers.service';
+import { Supplier } from '@/types';
 import SkeletonRow from '@/components/shared/SkeletonRow';
-import EmptyState from '@/components/categories/EmptyState';
-import CategoryModal from '@/components/categories/CategoryModal';
-import DeleteDialog from '@/components/categories/DeleteDialog';
+import EmptyState from '@/components/suppliers/EmptyState';
+import SupplierModal, { SupplierFormData } from '@/components/suppliers/SupplierModal';
+import DeleteDialog from '@/components/suppliers/DeleteDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ModalState {
   open: boolean;
   mode: 'add' | 'edit';
-  category: Category | null;
+  supplier: Supplier | null;
 }
 
 interface DeleteState {
   open: boolean;
-  category: Category | null;
-}
-
-interface FormData {
-  name: string;
-  description: string;
-  isActive: boolean;
+  supplier: Supplier | null;
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+export default function SuppliersPage() {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<ModalState>({ open: false, mode: 'add', category: null });
-  const [deleteState, setDeleteState] = useState<DeleteState>({ open: false, category: null });
+  const [modal, setModal] = useState<ModalState>({ open: false, mode: 'add', supplier: null });
+  const [deleteState, setDeleteState] = useState<DeleteState>({ open: false, supplier: null });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchCategories = useCallback(async () => {
+  const fetchSuppliers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await categoriesService.getAll();
-      setCategories(data);
+      const data = await suppliersService.getAll();
+      setSuppliers(data);
     } catch {
-      toast.error('Failed to load categories');
+      toast.error('Failed to load suppliers');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    fetchSuppliers();
+  }, [fetchSuppliers]);
 
-  const filtered = categories.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = suppliers.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()));
 
-  const openAdd = () => setModal({ open: true, mode: 'add', category: null });
-  const openEdit = (cat: Category) => setModal({ open: true, mode: 'edit', category: cat });
-  const closeModal = () => setModal({ open: false, mode: 'add', category: null });
-  const openDelete = (cat: Category) => setDeleteState({ open: true, category: cat });
-  const closeDelete = () => setDeleteState({ open: false, category: null });
+  const openAdd = () => setModal({ open: true, mode: 'add', supplier: null });
+  const openEdit = (s: Supplier) => setModal({ open: true, mode: 'edit', supplier: s });
+  const closeModal = () => setModal({ open: false, mode: 'add', supplier: null });
+  const openDelete = (s: Supplier) => setDeleteState({ open: true, supplier: s });
+  const closeDelete = () => setDeleteState({ open: false, supplier: null });
 
-  const handleSave = async (form: FormData) => {
+  const handleSave = async (form: SupplierFormData) => {
     setIsSaving(true);
     try {
       if (modal.mode === 'add') {
-        await categoriesService.create({
+        await suppliersService.create({
           name: form.name.trim(),
-          description: form.description.trim() || undefined,
-          isActive: form.isActive,
+          contactName: form.contactName.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          email: form.email.trim() || undefined,
+          address: form.address.trim() || undefined,
+          notes: form.notes.trim() || undefined,
         });
-        toast.success('Category added successfully');
-      } else if (modal.category) {
-        await categoriesService.update(modal.category.id, {
+        toast.success('Supplier added successfully');
+      } else if (modal.supplier) {
+        await suppliersService.update(modal.supplier.id, {
           name: form.name.trim(),
-          description: form.description.trim() || undefined,
-          isActive: form.isActive,
+          contactName: form.contactName.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          email: form.email.trim() || undefined,
+          address: form.address.trim() || undefined,
+          notes: form.notes.trim() || undefined,
         });
-        toast.success('Category updated successfully');
+        toast.success('Supplier updated successfully');
       }
       closeModal();
-      await fetchCategories();
+      await fetchSuppliers();
     } catch {
-      toast.error(modal.mode === 'add' ? 'Failed to add category' : 'Failed to update category');
+      toast.error(modal.mode === 'add' ? 'Failed to add supplier' : 'Failed to update supplier');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteState.category) return;
+    if (!deleteState.supplier) return;
     setIsDeleting(true);
     try {
-      await categoriesService.remove(deleteState.category.id);
-      toast.success('Category deleted');
+      await suppliersService.remove(deleteState.supplier.id);
+      toast.success('Supplier deleted');
       closeDelete();
-      await fetchCategories();
+      await fetchSuppliers();
     } catch {
-      toast.error('Failed to delete category');
+      toast.error('Failed to delete supplier');
     } finally {
       setIsDeleting(false);
     }
   };
-
-  const handleQuickAdd = async (name: string) => {
-    try {
-      await categoriesService.create({ name });
-      toast.success(`"${name}" added`);
-      await fetchCategories();
-    } catch {
-      toast.error('Failed to add category');
-    }
-  };
-
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-NG', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
 
   return (
     <>
@@ -129,15 +112,15 @@ export default function CategoriesPage() {
         {/* Page Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage your product categories</p>
+            <h1 className="text-2xl font-bold text-gray-900">Suppliers</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Manage your product suppliers</p>
           </div>
           <button
             onClick={openAdd}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1a7a4a] text-white text-sm font-medium rounded-lg hover:bg-[#145c37] transition-colors shadow-sm"
           >
             <Plus size={16} />
-            Add Category
+            Add Supplier
           </button>
         </div>
 
@@ -154,7 +137,7 @@ export default function CategoriesPage() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search categories..."
+                placeholder="Search suppliers..."
                 className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#1a7a4a] focus:ring-1 focus:ring-[#1a7a4a]/20 transition-colors"
               />
             </div>
@@ -165,28 +148,30 @@ export default function CategoriesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {['Name', 'Description', 'Status', 'Date Created', 'Actions'].map((h, i) => (
-                    <th
-                      key={h}
-                      className={`px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide ${
-                        i === 4 ? 'text-right' : 'text-left'
-                      }`}
-                    >
-                      {h}
-                    </th>
-                  ))}
+                  {['Supplier Name', 'Contact Name', 'Phone', 'Email', 'Address', 'Actions'].map(
+                    (h, i) => (
+                      <th
+                        key={h}
+                        className={`px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide ${
+                          i === 5 ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} widths={[200, 300, 80, 120, 80]} />)
+                  Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} widths={[200, 160, 120, 200, 220, 80]} />)
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>
+                    <td colSpan={6}>
                       {search ? (
                         <div className="py-16 text-center">
                           <p className="text-sm text-gray-500">
-                            No categories match &ldquo;
+                            No suppliers match &ldquo;
                             <span className="font-medium">{search}</span>&rdquo;
                           </p>
                           <button
@@ -197,54 +182,59 @@ export default function CategoriesPage() {
                           </button>
                         </div>
                       ) : (
-                        <EmptyState onAdd={openAdd} onQuickAdd={handleQuickAdd} />
+                        <EmptyState onAdd={openAdd} />
                       )}
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((cat) => (
+                  filtered.map((supplier) => (
                     <tr
-                      key={cat.id}
+                      key={supplier.id}
                       className="border-b border-gray-50 hover:bg-gray-50/60 transition-colors"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-lg bg-[#e8f5ee] flex items-center justify-center flex-shrink-0">
-                            <Tag size={13} className="text-[#1a7a4a]" />
+                          <div className="w-7 h-7 rounded-lg bg-[#e8f5ee] flex items-center justify-center shrink-0">
+                            <Truck size={13} className="text-[#1a7a4a]" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{cat.name}</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{supplier.name}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-500">
-                          {cat.description || <span className="text-gray-300 italic">—</span>}
+                        <span className="text-sm text-gray-600">
+                          {supplier.contactName ?? (
+                            <span className="text-gray-300 italic">—</span>
+                          )}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                            cat.isActive
-                              ? 'bg-[#e8f5ee] text-[#1a7a4a]'
-                              : 'bg-gray-100 text-gray-500'
-                          }`}
-                        >
-                          {cat.isActive ? 'Active' : 'Inactive'}
+                        <span className="text-sm text-gray-600">
+                          {supplier.phone ?? <span className="text-gray-300 italic">—</span>}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-500">{formatDate(cat.createdAt)}</span>
+                        <span className="text-sm text-gray-600">
+                          {supplier.email ?? <span className="text-gray-300 italic">—</span>}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {supplier.address ?? <span className="text-gray-300 italic">—</span>}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => openEdit(cat)}
+                            onClick={() => openEdit(supplier)}
                             className="p-2 text-gray-400 hover:text-[#1a7a4a] hover:bg-[#e8f5ee] rounded-lg transition-colors"
                             title="Edit"
                           >
                             <Pencil size={15} />
                           </button>
                           <button
-                            onClick={() => openDelete(cat)}
+                            onClick={() => openDelete(supplier)}
                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             title="Delete"
                           >
@@ -264,14 +254,14 @@ export default function CategoriesPage() {
             <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50/40">
               <p className="text-xs text-gray-400">
                 Showing <span className="font-medium text-gray-600">{filtered.length}</span> of{' '}
-                <span className="font-medium text-gray-600">{categories.length}</span> categories
+                <span className="font-medium text-gray-600">{suppliers.length}</span> suppliers
               </p>
             </div>
           )}
         </div>
       </div>
 
-      <CategoryModal modal={modal} onClose={closeModal} onSave={handleSave} isSaving={isSaving} />
+      <SupplierModal modal={modal} onClose={closeModal} onSave={handleSave} isSaving={isSaving} />
       <DeleteDialog
         deleteState={deleteState}
         onClose={closeDelete}

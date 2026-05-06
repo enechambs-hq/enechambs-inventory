@@ -238,21 +238,25 @@ export interface UserPerformance {
 
 // ==================== CATEGORIES ====================
 export interface Category {
-  id: string;
+  id: number;
   name: string;
-  createdAt?: string;
-  updatedAt?: string;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ==================== SUPPLIERS ====================
 export interface Supplier {
-  id: string;
+  id: number;
   name: string;
-  contactPerson?: string;
+  contactName?: string;
   phone?: string;
   email?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  address?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ==================== INVENTORY ====================
@@ -453,6 +457,61 @@ export interface CreateIncomingOrderDto {
 export interface IncomingOrderStats {
   total: number;
   byStatus: Record<IncomingOrderStatus, number>;
+}
+
+// ==================== REPORTS ====================
+export interface SalesTopProduct {
+  productName: string;
+  qtySold: number;
+  revenue: number;
+  date: string;
+}
+
+export interface SalesReport {
+  period: { startDate: string; endDate: string };
+  summary: {
+    totalSales: number;
+    totalRevenue: number;
+    averageSaleValue: number;
+    topProduct: { name: string; qtySold: number; revenue: number } | null;
+  };
+  topProducts: SalesTopProduct[];
+  dailyBreakdown: { date: string; totalSales: number; revenue: number }[];
+}
+
+export interface StockReportItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  restockThreshold: number;
+  unit: string;
+  categoryId: number;
+  categoryName: string | null;
+  supplierRef: string | null;
+  isLowStock: boolean;
+  isAvailable: boolean;
+}
+
+export interface StockReport {
+  totalProducts: number;
+  lowStockCount: number;
+  items: StockReportItem[];
+}
+
+export interface CategoryReportItem {
+  categoryId: number;
+  categoryName: string;
+  unitsSold: number;
+  totalTransactions: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  profitMargin: number;
+}
+
+export interface CategoryReport {
+  period: { startDate: string; endDate: string };
+  categories: CategoryReportItem[];
 }
 
 // ==================== API RESPONSES ====================

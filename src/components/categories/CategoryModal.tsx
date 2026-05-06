@@ -7,13 +7,13 @@ interface ModalState {
   category: Category | null;
 }
 
-interface FormData {
+interface CategoryFormData {
   name: string;
   description: string;
   isActive: boolean;
 }
 
-const DEFAULT_FORM: FormData = { name: '', description: '', isActive: true };
+const DEFAULT_FORM: CategoryFormData = { name: '', description: '', isActive: true };
 
 function CategoryModal({
   modal,
@@ -23,11 +23,11 @@ function CategoryModal({
 }: {
   modal: ModalState;
   onClose: () => void;
-  onSave: (data: FormData) => Promise<void>;
+  onSave: (data: CategoryFormData) => Promise<void>;
   isSaving: boolean;
 }) {
-  const [form, setForm] = useState<FormData>(DEFAULT_FORM);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [form, setForm] = useState<CategoryFormData>(DEFAULT_FORM);
+  const [errors, setErrors] = useState<Partial<Record<keyof CategoryFormData, string>>>({});
 
   useEffect(() => {
     if (modal.open) {
@@ -45,7 +45,7 @@ function CategoryModal({
   }, [modal]);
 
   const validate = (): boolean => {
-    const e: Partial<Record<keyof FormData, string>> = {};
+    const e: Partial<Record<keyof CategoryFormData, string>> = {};
     if (!form.name.trim()) e.name = 'Category name is required';
     setErrors(e);
     return Object.keys(e).length === 0;
