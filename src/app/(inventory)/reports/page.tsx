@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { BarChart2, Package, TrendingUp, ShoppingBag, Award } from 'lucide-react';
+import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { reportsService } from '@/lib/services/reports.service';
-import { SalesReport, StockReport, CategoryReport } from '@/types';
+import { SalesReport, StockReport, CategoryReport, ProfitReport } from '@/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Tab = 'sales' | 'stock' | 'category';
+type Tab = 'sales' | 'stock' | 'category' | 'profit';
 type Preset = '7d' | '30d' | '90d';
 
 function fmtNGN(n: number) {
@@ -39,6 +39,7 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
     { id: 'sales', label: 'Sales Report' },
     { id: 'stock', label: 'Stock Report' },
     { id: 'category', label: 'Category Report' },
+    { id: 'profit', label: 'Profit Report' },
   ];
   return (
     <div className="flex gap-1 border-b border-gray-200 mb-5">
@@ -550,6 +551,123 @@ function CategoryTab({ report }: { report: CategoryReport }) {
   );
 }
 
+// ─── Profit Tab ───────────────────────────────────────────────────────────────
+
+function ProfitTab({ report }: { report: ProfitReport }) {
+  const { summary, byProduct, byStaff } = report;
+  const maxProfit = Math.max(...byProduct.map((p) => p.profit), 1);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary cards */}
+      <div className="flex gap-3">
+        <StatCard label="Total Revenue" value={fmtNGN(summary.totalRevenue)} icon={TrendingUp} green />
+        <StatCard label="Total Cost" value={fmtNGN(summary.totalCost)} icon={ShoppingBag} />
+        <StatCard
+          label="Total Profit"
+          value={fmtNGN(summary.totalProfit)}
+          sub={`${summary.profitMargin.toFixed(1)}% margin`}
+          icon={DollarSign}
+          green
+        />
+        <StatCard
+          label="Avg Sale Value"
+          value={fmtNGN(summary.averageSale)}
+          sub={`${summary.totalSales} sales`}
+          icon={BarChart2}
+        />
+      </div>
+
+      {/* By product */}
+      <ReportCard>
+        <CardHeader title="Profit by product" count={byProduct.length} hint="Sorted by profit" />
+        <div
+          className="grid px-5 py-2.5 bg-gray-50/60 border-b border-gray-100"
+          style={{ gridTemplateColumns: '2fr 2fr 150px 150px' }}
+        >
+          {[
+            { label: 'Product', align: 'left' },
+            { label: 'Profit', align: 'left' },
+            { label: 'Revenue', align: 'right' },
+            { label: 'Cost', align: 'right' },
+          ].map((c) => (
+            <div key={c.label} className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide" style={{ textAlign: c.align as 'left' | 'right' }}>
+              {c.label}
+            </div>
+          ))}
+        </div>
+        {byProduct.map((p, i) => (
+          <div
+            key={p.productName}
+            className="grid items-center px-5 py-3.5"
+            style={{ gridTemplateColumns: '2fr 2fr 150px 150px', borderBottom: i < byProduct.length - 1 ? '1px solid #f3f4f3' : 'none' }}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-[#e8f5ee] flex items-center justify-center shrink-0">
+                <Package size={15} className="text-[#1a7a4a]" strokeWidth={1.7} />
+              </div>
+              <span className="text-[13.5px] font-semibold text-gray-900 truncate">{p.productName}</span>
+            </div>
+            <div className="flex items-center gap-3 pr-4">
+              <div className="flex-1 h-2 rounded-full bg-[#f0f9f4] overflow-hidden">
+                <div className="h-full rounded-full bg-[#1a7a4a]" style={{ width: `${(p.profit / maxProfit) * 100}%` }} />
+              </div>
+              <span className="text-[13.5px] font-semibold tabular-nums text-[#155f3a] min-w-[80px] text-right">{fmtNGN(p.profit)}</span>
+            </div>
+            <div className="text-right text-[13px] tabular-nums text-gray-500">{fmtNGN(p.revenue)}</div>
+            <div className="text-right text-[13px] tabular-nums text-gray-400">{fmtNGN(p.cost)}</div>
+          </div>
+        ))}
+        {byProduct.length === 0 && (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">No data for this period</div>
+        )}
+      </ReportCard>
+
+      {/* By staff */}
+      <ReportCard>
+        <CardHeader title="Profit by staff" count={byStaff.length} />
+        <div
+          className="grid px-5 py-2.5 bg-gray-50/60 border-b border-gray-100"
+          style={{ gridTemplateColumns: '2fr 120px 150px 150px 150px' }}
+        >
+          {[
+            { label: 'Staff', align: 'left' },
+            { label: 'Sales', align: 'right' },
+            { label: 'Revenue', align: 'right' },
+            { label: 'Cost', align: 'right' },
+            { label: 'Profit', align: 'right' },
+          ].map((c) => (
+            <div key={c.label} className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide" style={{ textAlign: c.align as 'left' | 'right' }}>
+              {c.label}
+            </div>
+          ))}
+        </div>
+        {byStaff.map((s, i) => (
+          <div
+            key={s.staffName}
+            className="grid items-center px-5 py-3.5"
+            style={{ gridTemplateColumns: '2fr 120px 150px 150px 150px', borderBottom: i < byStaff.length - 1 ? '1px solid #f3f4f3' : 'none' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#e8f5ee] flex items-center justify-center shrink-0">
+                <Users size={14} className="text-[#1a7a4a]" strokeWidth={1.7} />
+              </div>
+              <span className="text-[13.5px] font-semibold text-gray-900">{s.staffName}</span>
+            </div>
+            <div className="text-right text-[13px] tabular-nums text-gray-500">{s.totalSales}</div>
+            <div className="text-right text-[13px] tabular-nums text-gray-500">{fmtNGN(s.revenue)}</div>
+            <div className="text-right text-[13px] tabular-nums text-gray-400">{fmtNGN(s.cost)}</div>
+            <div className="text-right text-[13.5px] font-semibold tabular-nums text-[#155f3a]">{fmtNGN(s.profit)}</div>
+          </div>
+        ))}
+        {byStaff.length === 0 && (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">No data for this period</div>
+        )}
+      </ReportCard>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
@@ -562,6 +680,7 @@ export default function ReportsPage() {
   const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
   const [stockReport, setStockReport] = useState<StockReport | null>(null);
   const [categoryReport, setCategoryReport] = useState<CategoryReport | null>(null);
+  const [profitReport, setProfitReport] = useState<ProfitReport | null>(null);
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
@@ -580,9 +699,12 @@ export default function ReportsPage() {
         } else if (tab === 'stock') {
           const data = await reportsService.getStockReport();
           setStockReport(data);
-        } else {
+        } else if (tab === 'category') {
           const data = await reportsService.getCategoryReport(sd, ed);
           setCategoryReport(data);
+        } else {
+          const data = await reportsService.getProfitReport(sd, ed);
+          setProfitReport(data);
         }
       } catch {
         toast.error('Failed to load report');
@@ -611,6 +733,7 @@ export default function ReportsPage() {
   };
 
   const showDatePicker = activeTab !== 'stock';
+  const hasEmptyState = activeTab === 'sales' || activeTab === 'category' || activeTab === 'profit';
 
   return (
     <div className="min-h-screen bg-[#f0f2f0] p-6">
@@ -647,13 +770,19 @@ export default function ReportsPage() {
           <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
         ) : null
       ) : activeTab === 'stock' ? (
-        stockReport ? (
-          <StockTab report={stockReport} />
+        stockReport ? <StockTab report={stockReport} /> : null
+      ) : activeTab === 'category' ? (
+        categoryReport && categoryReport.categories.length > 0 ? (
+          <CategoryTab report={categoryReport} />
+        ) : categoryReport ? (
+          <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
         ) : null
-      ) : categoryReport && categoryReport.categories.length > 0 ? (
-        <CategoryTab report={categoryReport} />
-      ) : categoryReport ? (
-        <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
+      ) : activeTab === 'profit' ? (
+        profitReport && profitReport.byProduct.length > 0 ? (
+          <ProfitTab report={profitReport} />
+        ) : profitReport ? (
+          <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
+        ) : null
       ) : null}
     </div>
   );
