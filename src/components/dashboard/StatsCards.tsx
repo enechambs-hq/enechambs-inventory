@@ -1,4 +1,4 @@
-import { Package, ShoppingCart, Wallet, TrendingUp, BarChart3 } from "lucide-react";
+import { ShoppingCart, Wallet, TrendingUp, BarChart3 } from "lucide-react";
 import { DashboardStats } from "@/lib/services/dashboard.service";
 import { MonthlySummary } from "@/types";
 
@@ -57,9 +57,9 @@ export default function StatsCards({ stats, monthly }: Props) {
 
   const cards: CardConfig[] = [
     {
-      label: "Total Inventory",
-      value: String(stats.totalInventory),
-      icon: Package,
+      label: "Available Now",
+      value: String(stats.availableInventory),
+      icon: TrendingUp,
       iconBg: "bg-[#e8f5ee]",
       iconColor: "text-[#1a7a4a]",
       valueColor: "text-foreground",
@@ -99,20 +99,10 @@ export default function StatsCards({ stats, monthly }: Props) {
       patternColor: "#15803d",
       stripColor: "#15803d",
     },
-    {
-      label: "Available Now",
-      value: String(stats.availableInventory),
-      icon: TrendingUp,
-      iconBg: "bg-[#e8f5ee]",
-      iconColor: "text-[#1a7a4a]",
-      valueColor: "text-foreground",
-      patternColor: "#1a7a4a",
-      stripColor: "#1a7a4a",
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       {cards.map((card) => (
         <StatCard key={card.label} {...card} />
       ))}
