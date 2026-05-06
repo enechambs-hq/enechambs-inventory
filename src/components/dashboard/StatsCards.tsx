@@ -1,4 +1,4 @@
-import { Package, ShoppingCart, Wallet, AlertTriangle, TrendingUp } from "lucide-react";
+import { Package, ShoppingCart, Wallet, TrendingUp } from "lucide-react";
 import { DashboardStats } from "@/lib/services/dashboard.service";
 
 interface Props {
@@ -46,21 +46,11 @@ const cards = [
     patternColor: "#1a7a4a",
     stripColor: "#1a7a4a",
   },
-  {
-    label: "Stock Alerts",
-    value: (s: DashboardStats) => String(s.lowStockAlerts ?? 0),
-    icon: AlertTriangle,
-    iconBg: "bg-amber-500/10",
-    iconColor: "text-amber-600",
-    valueColor: "text-amber-600",
-    patternColor: "#d97706",
-    stripColor: "#d97706",
-  },
 ];
 
 export default function StatsCards({ stats }: Props) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
       {cards.map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, patternColor, stripColor }) => (
         <div
           key={label}

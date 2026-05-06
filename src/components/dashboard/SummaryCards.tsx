@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Tag, Truck, CalendarClock } from "lucide-react";
+import { Tag, Truck, CalendarClock } from "lucide-react";
 import { categoriesService } from "@/lib/services/categories.service";
 import { suppliersService } from "@/lib/services/suppliers.service";
 import { inventoryService } from "@/lib/services/inventory.service";
@@ -16,21 +16,15 @@ interface SummaryMetric {
   iconBg: string;
   iconColor: string;
   accent: string;
-  warning?: boolean;
 }
 
 export default function SummaryCards() {
   const router = useRouter();
-  const [lowStock, setLowStock] = useState<number | null>(null);
   const [categoryCount, setCategoryCount] = useState<number | null>(null);
   const [supplierCount, setSupplierCount] = useState<number | null>(null);
   const [expiryCount, setExpiryCount] = useState<number | null>(null);
 
   useEffect(() => {
-    inventoryService.getLowStockAlerts()
-      .then((items) => setLowStock(items.length))
-      .catch(() => setLowStock(0));
-
     categoriesService.getAll()
       .then((items) => setCategoryCount(items.length))
       .catch(() => setCategoryCount(0));
@@ -46,25 +40,14 @@ export default function SummaryCards() {
 
   const metrics: SummaryMetric[] = [
     {
-      label: "Low Stock",
-      value: lowStock,
-      href: "/stock-alerts",
-      linkLabel: "View Alerts",
-      icon: AlertTriangle,
-      iconBg: "bg-amber-500/10",
-      iconColor: "text-amber-600",
-      accent: "border-l-amber-400",
-      warning: (lowStock ?? 0) > 0,
-    },
-    {
       label: "Categories",
       value: categoryCount,
       href: "/categories",
       linkLabel: "Manage",
       icon: Tag,
-      iconBg: "bg-blue-500/10",
-      iconColor: "text-blue-600",
-      accent: "border-l-blue-400",
+      iconBg: "bg-[#e8f5ee]",
+      iconColor: "text-[#1a7a4a]",
+      accent: "border-l-[#1a7a4a]",
     },
     {
       label: "Suppliers",
@@ -72,9 +55,9 @@ export default function SummaryCards() {
       href: "/suppliers",
       linkLabel: "Manage",
       icon: Truck,
-      iconBg: "bg-green-500/10",
-      iconColor: "text-green-600",
-      accent: "border-l-green-400",
+      iconBg: "bg-teal-500/10",
+      iconColor: "text-[#0d9488]",
+      accent: "border-l-[#0d9488]",
     },
     {
       label: "Expiry Tracked",
@@ -82,15 +65,15 @@ export default function SummaryCards() {
       href: "/inventory",
       linkLabel: "View Inventory",
       icon: CalendarClock,
-      iconBg: "bg-purple-500/10",
-      iconColor: "text-purple-600",
-      accent: "border-l-purple-400",
+      iconBg: "bg-green-500/10",
+      iconColor: "text-green-600",
+      accent: "border-l-green-500",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {metrics.map(({ label, value, href, linkLabel, icon: Icon, iconBg, iconColor, accent, warning }) => (
+    <div className="grid grid-cols-3 gap-4">
+      {metrics.map(({ label, value, href, linkLabel, icon: Icon, iconBg, iconColor, accent }) => (
         <div
           key={label}
           className={`rounded-2xl border border-border bg-card p-5 shadow-sm border-l-4 ${accent}`}
@@ -110,9 +93,7 @@ export default function SummaryCards() {
           {value === null ? (
             <div className="h-7 w-12 rounded-md bg-muted animate-pulse" />
           ) : (
-            <p className={`text-2xl font-bold tracking-tight ${warning ? "text-amber-600" : "text-foreground"}`}>
-              {value}
-            </p>
+            <p className="text-2xl font-bold tracking-tight text-foreground">{value}</p>
           )}
         </div>
       ))}
