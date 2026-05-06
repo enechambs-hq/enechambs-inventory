@@ -188,7 +188,7 @@ function SaleDetailModal({ sale, onClose, onReceipt }: {
               <Receipt size={17} className="text-primary" />
             </div>
             <div>
-              <h3 className="text-[15px] font-bold">Sale #{sale.serialNumber}</h3>
+              <h3 className="text-[15px] font-bold">Sale #{sale.id.slice(0, 8).toUpperCase()}</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {format(new Date(sale.date), 'MMM d, yyyy')}
               </p>

@@ -184,13 +184,6 @@ interface PeriodSalesMetrics {
   averageSale: number;
 }
 
-interface PeriodCollections {
-  total: number;
-  pending: number;
-  paid: number;
-  returned: number;
-}
-
 export interface PeriodBreakdownItem {
   date: string;
   count: string;
@@ -210,20 +203,17 @@ export interface TopProduct {
 export interface DailySummary {
   date: string;
   sales: PeriodSalesMetrics;
-  collections: PeriodCollections;
 }
 
 export interface WeeklySummary {
   period: { start: string; end: string };
   sales: PeriodSalesMetrics;
-  collections: PeriodCollections;
   dailyBreakdown: PeriodBreakdownItem[];
 }
 
 export interface MonthlySummary {
   period: { start: string; end: string; month: string };
   sales: PeriodSalesMetrics & { profitMargin: number };
-  collections: PeriodCollections;
   dailyBreakdown: PeriodBreakdownItem[];
 }
 
@@ -303,7 +293,7 @@ export interface UpdateInventoryDto {
   unit?: InventoryUnit;
   costPrice?: number;
   sellingPrice?: number;
-  categoryId?: string;
+  categoryId?: number;
   supplierRef?: string;
   restockThreshold?: number;
   expiryTracking?: boolean;
@@ -313,20 +303,18 @@ export interface UpdateInventoryDto {
 // ==================== SALES ====================
 export interface Sale {
   id: string;
-  serialNumber: string;
+  inventoryId: string;
   date: string;
   productName: string;
-  imei: string;
-  storageGB: string;
-  color: string;
   amount: number;
   costPrice: number;
-  thresholdPrice: number;
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
   accountPaidTo: string;
+  isVendor: boolean;
   createdById: string;
+  createdBy?: { id: string; email: string; firstName: string; lastName: string };
   createdAt: string;
 }
 

@@ -23,6 +23,10 @@ function unwrapPaginated<T>(payload: MaybeWrapped<PaginatedResponse<T>>): Pagina
   return payload as PaginatedResponse<T>;
 }
 
+function coerceSale(s: Sale): Sale {
+  return { ...s, amount: Number(s.amount), costPrice: Number(s.costPrice) };
+}
+
 export const salesService = {
   getAll: async (filters: SaleFilters = {}) => {
     const params = new URLSearchParams();
@@ -34,7 +38,8 @@ export const salesService = {
     const response = await api.get<MaybeWrapped<PaginatedResponse<Sale>>>(
       `/sales?${params.toString()}`
     );
-    return unwrapPaginated(response.data);
+    const result = unwrapPaginated(response.data);
+    return { ...result, data: result.data.map(coerceSale) };
   },
 
   getMySales: async (filters: SaleFilters = {}) => {
@@ -47,7 +52,8 @@ export const salesService = {
     const response = await api.get<MaybeWrapped<PaginatedResponse<Sale>>>(
       `/sales/my-sales?${params.toString()}`
     );
-    return unwrapPaginated(response.data);
+    const result = unwrapPaginated(response.data);
+    return { ...result, data: result.data.map(coerceSale) };
   },
 
   getById: async (id: string) => {

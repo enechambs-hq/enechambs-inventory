@@ -94,7 +94,7 @@ export default function DashboardPage() {
         <button
           onClick={() => setRegisterModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          style={{ boxShadow: "0 4px 12px rgba(37,99,235,0.3)" }}
+          style={{ boxShadow: "0 4px 12px rgba(26,122,74,0.3)" }}
         >
           <UserPlus size={16} />
           Register Staff

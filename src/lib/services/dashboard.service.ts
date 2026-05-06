@@ -6,14 +6,11 @@ export interface DashboardStats {
   totalSales: number;
   totalRevenue: number;
   availableInventory: number;
-  totalCollections: number;
   lowStockAlerts: number;
-  credits: {
-    total: number;
-    paid: number;
-    outstanding: number;
-    overdue: number;
-  };
+  vendorSales: number;
+  vendorRevenue: number;
+  regularSales: number;
+  regularRevenue: number;
   recentActivities: import('@/types').ActivityLog[];
   recentSales: import('@/types').Sale[];
 }

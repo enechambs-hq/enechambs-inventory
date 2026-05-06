@@ -140,7 +140,7 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
             render={({ field }) => (
               <CustomSelect
                 options={categories.map((c) => ({ value: c.id, label: c.name }))}
-                value={field.value ?? ''}
+                value={(field.value as number) || ''}
                 onChange={(v) => field.onChange(Number(v))}
                 placeholder="Select category"
                 hasError={!!errors.categoryId}
