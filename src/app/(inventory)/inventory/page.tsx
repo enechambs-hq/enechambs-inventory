@@ -7,7 +7,8 @@ import { useAuthStore } from "@/store/auth.store";
 import { useInventoryStore } from "@/store/inventory.store";
 import { inventoryService } from "@/lib/services/inventory.service";
 import { categoriesService } from "@/lib/services/categories.service";
-import { InventoryItem, CreateInventoryDto, UserRole, Category } from "@/types";
+import { dashboardService } from "@/lib/services/dashboard.service";
+import { InventoryItem, CreateInventoryDto, UserRole, Category, DailySummary } from "@/types";
 import InventoryForm from "@/components/shared/InventoryForm";
 import StockLevelCards from "@/components/inventory/StockLevelCards";
 import LowStockAlert from "@/components/inventory/LowStockAlert";
@@ -40,6 +41,7 @@ export default function InventoryPage() {
     available: number;
     sold: number;
   } | null>(null);
+  const [daily, setDaily] = useState<DailySummary | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(null);
@@ -66,6 +68,7 @@ export default function InventoryPage() {
     inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
     inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
     categoriesService.getAll().then(setCategories).catch(() => {});
+    dashboardService.getDaily().then(setDaily).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -100,6 +103,7 @@ export default function InventoryPage() {
       setEditItem(null);
       await fetchInventory();
       inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+      dashboardService.getDaily().then(setDaily).catch(() => {});
     } catch (error) {
       const err = error as {
         response?: { status?: number; data?: { message?: string | string[] } };
@@ -122,6 +126,7 @@ export default function InventoryPage() {
       toast.success("Product deleted");
       await fetchInventory();
       inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+      dashboardService.getDaily().then(setDaily).catch(() => {});
     } catch {
       toast.error("Failed to delete product");
     }
@@ -163,7 +168,12 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {stockLevels && <StockLevelCards stockLevels={stockLevels} />}
+      {stockLevels && (
+        <StockLevelCards
+          available={stockLevels.available}
+          soldToday={daily?.sales.count ?? 0}
+        />
+      )}
       {user?.role === UserRole.ADMIN && <LowStockAlert items={lowStock} />}
 
       <InventoryFilters
