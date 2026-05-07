@@ -12,8 +12,8 @@ import {
 } from 'recharts';
 import { useSalesStore } from '@/store/sales.store';
 import { salesService } from '@/lib/services/sales.service';
-import { dashboardService, DashboardStats, RevenueDataPoint } from '@/lib/services/dashboard.service';
-import { CreateSaleDto, Sale, UserRole } from '@/types';
+import { dashboardService, RevenueDataPoint } from '@/lib/services/dashboard.service';
+import { CreateSaleDto, Sale, UserRole, MonthlySummary } from '@/types';
 import { useAuthStore } from '@/store/auth.store';
 import SaleForm from '@/components/shared/SaleForm';
 import { StatCard } from '@/components/shared/StatCard';
@@ -243,7 +243,7 @@ export default function SalesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [detailSale, setDetailSale] = useState<Sale | null>(null);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [monthly, setMonthly] = useState<MonthlySummary | null>(null);
   const [chartData, setChartData] = useState<RevenueDataPoint[]>([]);
   const [profitByDate, setProfitByDate] = useState<Map<string, number>>(new Map());
 
@@ -262,7 +262,7 @@ export default function SalesPage() {
   // Fetch stats + chart — admin only
   useEffect(() => {
     if (!isAdmin) return;
-    dashboardService.getStats().then(setStats).catch(() => {});
+    dashboardService.getMonthly().then(setMonthly).catch(() => {});
     dashboardService.getRevenueChart(CHART_START, CHART_END).then(setChartData).catch(() => {});
     salesService.getAll({ limit: 500 }).then((data) => {
       const map = new Map<string, number>();
@@ -317,7 +317,7 @@ export default function SalesPage() {
       toast.success('Sale recorded successfully');
       setModalOpen(false);
       fetchSales();
-      dashboardService.getStats().then(setStats).catch(() => {});
+      dashboardService.getMonthly().then(setMonthly).catch(() => {});
     } catch (error) {
       const message =
         (error as { response?: { data?: { message?: string | string[] } } })
@@ -339,9 +339,7 @@ export default function SalesPage() {
   };
 
   const displayedSales = (activeTab === 'all' ? sales : mySales) ?? [];
-  const avgSale = stats && stats.totalSales > 0
-    ? Math.round(stats.totalRevenue / stats.totalSales)
-    : 0;
+  const monthLabel = monthly?.period.month ?? '';
 
   return (
     <div className="space-y-6">
@@ -350,7 +348,7 @@ export default function SalesPage() {
         <div>
           <h1 className="text-[22px] font-extrabold tracking-tight">Sales</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Track all sales records{stats ? ` · ${stats.totalSales.toLocaleString()} total` : ''}
+            Track all sales records{monthly ? ` · ${monthly.sales.count.toLocaleString()} this month` : ''}
           </p>
         </div>
         <button
@@ -368,17 +366,18 @@ export default function SalesPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatCard
-              label="Total Sales"
-              value={stats ? stats.totalSales.toLocaleString() : '—'}
+              label="Monthly Sales"
+              value={monthly ? monthly.sales.count.toLocaleString() : '—'}
+              sub={monthLabel}
               icon={ShoppingCart}
               accentColor="#1a7a4a"
               iconBg="bg-[#e8f5ee]"
               iconColor="text-[#1a7a4a]"
             />
             <StatCard
-              label="Total Revenue"
-              value={stats ? `₦${(stats.totalRevenue / 1_000_000).toFixed(2)}M` : '—'}
-              sub={stats ? `₦${stats.totalRevenue.toLocaleString()} all time` : undefined}
+              label="Monthly Revenue"
+              value={monthly ? `₦${monthly.sales.revenue.toLocaleString()}` : '—'}
+              sub={monthLabel}
               icon={Wallet}
               accentColor="#0d9488"
               iconBg="bg-teal-500/10"
@@ -386,7 +385,8 @@ export default function SalesPage() {
             />
             <StatCard
               label="Avg. Sale Value"
-              value={stats ? `₦${avgSale.toLocaleString()}` : '—'}
+              value={monthly ? `₦${Math.round(monthly.sales.averageSale).toLocaleString()}` : '—'}
+              sub={monthLabel}
               icon={TrendingUp}
               accentColor="#16a34a"
               iconBg="bg-green-500/10"
