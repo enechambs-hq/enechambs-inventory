@@ -234,8 +234,7 @@ export default function LoginPage() {
     if (isAuthenticated && user) {
       router.replace(user.role === UserRole.ADMIN ? "/dashboard" : "/inventory");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isAuthenticated, user, router]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -246,7 +245,7 @@ export default function LoginPage() {
       setIsLoading(true);
       const response = await authService.login(data);
       setAuth(response.user, response.access_token);
-      router.push(response.user.role === UserRole.ADMIN ? "/dashboard" : "/inventory");
+      // redirect handled by useEffect watching isAuthenticated + user
     } catch (error) {
       const err = error as { response?: { data?: { message?: string | string[] } }; message?: string };
       const msg = err.response?.data?.message || err.message || "Something went wrong";
