@@ -146,18 +146,35 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     >
       {/* Logo */}
       <div className="px-6 py-5 border-b border-[hsl(var(--sidebar-border))]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-black text-sm">
-              L
-            </span>
-          </div>
+        <div className="flex items-center gap-3">
+          <svg width="36" height="36" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+            <defs>
+              <linearGradient id="sidebarBg" x1="0" y1="0" x2="1" y2="1">
+                <stop stopColor="#1a9155"/>
+                <stop offset="1" stopColor="#0b3d22"/>
+              </linearGradient>
+            </defs>
+            <rect width="40" height="40" rx="9" fill="url(#sidebarBg)"/>
+            <ellipse cx="20" cy="3.5" rx="13" ry="5" fill="white" fillOpacity="0.07"/>
+            {/* Spine */}
+            <rect x="9" y="7" width="3.5" height="27" rx="1.75" fill="white"/>
+            {/* Top arm */}
+            <path d="M9 7H22C25 7 27 8.6 27 10.5C27 12.4 25 14 22 14H9V7Z" fill="white"/>
+            {/* Middle arm */}
+            <path d="M9 18H18C20.8 18 22.5 19.3 22.5 21C22.5 22.7 20.8 24 18 24H9V18Z" fill="white"/>
+            {/* Bottom arm */}
+            <path d="M9 27H22C25 27 27 28.6 27 30.5C27 32.4 25 34 22 34H9V27Z" fill="white"/>
+            {/* Seed dots */}
+            <circle cx="27" cy="10.5" r="2.2" fill="#a3f0c0" fillOpacity="0.9"/>
+            <circle cx="22.5" cy="21" r="1.8" fill="#a3f0c0" fillOpacity="0.8"/>
+            <circle cx="27" cy="30.5" r="2.2" fill="#a3f0c0" fillOpacity="0.9"/>
+          </svg>
           <div>
-            <h1 className="text-base font-bold tracking-tight text-foreground">
+            <h1 className="text-base font-bold tracking-tight text-foreground leading-none">
               Enechambs
             </h1>
-            <p className="text-[10px] text-[hsl(var(--sidebar-foreground))] opacity-60 -mt-0.5">
-              Management System
+            <p className="text-[10px] text-[hsl(var(--sidebar-foreground))] opacity-50 mt-0.5 tracking-wide uppercase">
+              Food Inventory
             </p>
           </div>
         </div>

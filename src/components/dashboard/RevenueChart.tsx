@@ -88,9 +88,9 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
           >
             <defs>
               <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stopColor="#2563eb" stopOpacity={0.4}  />
-                <stop offset="40%"  stopColor="#3b82f6" stopOpacity={0.2}  />
-                <stop offset="100%" stopColor="#93c5fd" stopOpacity={0}    />
+                <stop offset="0%"   stopColor="#1a7a4a" stopOpacity={0.35} />
+                <stop offset="40%"  stopColor="#1a7a4a" stopOpacity={0.15} />
+                <stop offset="100%" stopColor="#1a7a4a" stopOpacity={0}    />
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -118,25 +118,24 @@ export default function RevenueChart({ data, dateRange, onDateRangeChange }: Pro
               contentStyle={{
                 backgroundColor: "hsl(var(--card))",
                 // border: "1px solid hsl(var(--border))",
-                // borderLeft: "3px solid #2563eb",
                 borderRadius: "10px",
                 fontSize: "12px",
-                boxShadow: "0 4px 16px rgba(37,99,235,0.12)",
+                boxShadow: "0 4px 16px rgba(26,122,74,0.12)",
               }}
               formatter={(value) => [
                 `₦${Number(value).toLocaleString()}`,
                 "Revenue",
               ]}
-              cursor={{ stroke: "#5d8df4", strokeWidth: 1, strokeDasharray: "4 4" }}
+              cursor={{ stroke: "#1a7a4a", strokeWidth: 1, strokeDasharray: "4 4" }}
             />
             <Area
               type="monotone"
               dataKey="Revenue"
-              stroke="#2563eb"
+              stroke="#1a7a4a"
               strokeWidth={2}
               fill="url(#revenueGradient)"
               dot={false}
-              activeDot={{ r: 5, fill: "#2563eb", strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: "#1a7a4a", strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>
