@@ -16,6 +16,7 @@ import { dashboardService, DashboardStats, RevenueDataPoint } from '@/lib/servic
 import { CreateSaleDto, Sale, UserRole } from '@/types';
 import { useAuthStore } from '@/store/auth.store';
 import SaleForm from '@/components/shared/SaleForm';
+import { StatCard } from '@/components/shared/StatCard';
 
 type ActiveTab = 'all' | 'mine';
 
@@ -35,45 +36,6 @@ function fillGaps(data: RevenueDataPoint[], start: string, end: string): Revenue
   return result;
 }
 
-/* ── StatCard ─────────────────────────────────────── */
-function StatCard({
-  label, value, sub, icon, accentColor, iconBg,
-}: {
-  label: string; value: string; sub?: string;
-  icon: React.ReactNode; accentColor: string; iconBg: string;
-}) {
-  return (
-    <div
-      className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-      style={{ borderTop: `3px solid ${accentColor}` }}
-    >
-      <div
-        className="absolute inset-0"
-        style={{
-          backgroundImage: `radial-gradient(circle, ${accentColor} 1px, transparent 1px)`,
-          backgroundSize: '18px 18px',
-          opacity: 0.13,
-        }}
-      />
-      <div
-        className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl"
-        style={{ backgroundColor: accentColor, opacity: 0.15 }}
-      />
-      <div className="relative z-10">
-        <div className="flex items-start justify-between mb-3">
-          <p className="text-[11.5px] font-medium text-muted-foreground leading-tight">{label}</p>
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-            {icon}
-          </div>
-        </div>
-        <p className="text-[25px] font-extrabold tracking-tight leading-none" style={{ color: accentColor }}>
-          {value}
-        </p>
-        {sub && <p className="text-[11.5px] text-muted-foreground mt-1.5">{sub}</p>}
-      </div>
-    </div>
-  );
-}
 
 /* ── Revenue Chart ────────────────────────────────── */
 function RevenueChart({ data, startDate, endDate, profitByDate }: {
@@ -408,24 +370,27 @@ export default function SalesPage() {
             <StatCard
               label="Total Sales"
               value={stats ? stats.totalSales.toLocaleString() : '—'}
-              icon={<ShoppingCart size={16} style={{ color: '#1a7a4a' }} />}
+              icon={ShoppingCart}
               accentColor="#1a7a4a"
               iconBg="bg-[#e8f5ee]"
+              iconColor="text-[#1a7a4a]"
             />
             <StatCard
               label="Total Revenue"
               value={stats ? `₦${(stats.totalRevenue / 1_000_000).toFixed(2)}M` : '—'}
               sub={stats ? `₦${stats.totalRevenue.toLocaleString()} all time` : undefined}
-              icon={<Wallet size={16} style={{ color: '#0d9488' }} />}
+              icon={Wallet}
               accentColor="#0d9488"
               iconBg="bg-teal-500/10"
+              iconColor="text-[#0d9488]"
             />
             <StatCard
               label="Avg. Sale Value"
               value={stats ? `₦${avgSale.toLocaleString()}` : '—'}
-              icon={<TrendingUp size={16} style={{ color: '#16a34a' }} />}
+              icon={TrendingUp}
               accentColor="#16a34a"
               iconBg="bg-green-500/10"
+              iconColor="text-green-600"
             />
           </div>
           <RevenueChart data={chartData} startDate={CHART_START} endDate={CHART_END} profitByDate={profitByDate} />

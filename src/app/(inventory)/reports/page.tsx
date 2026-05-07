@@ -5,6 +5,7 @@ import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users }
 import { toast } from 'sonner';
 import { reportsService } from '@/lib/services/reports.service';
 import { SalesReport, StockReport, CategoryReport, ProfitReport } from '@/types';
+import { StatCard } from '@/components/shared/StatCard';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -150,40 +151,6 @@ function DateRangePicker({
   );
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-  green,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  green?: boolean;
-  icon: React.ElementType;
-}) {
-  return (
-    <div className="flex-1 bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex flex-col gap-1 min-w-0">
-      <div className="flex items-center gap-2">
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: green ? '#1a7a4a' : '#e8f5ee', color: green ? '#fff' : '#155f3a' }}
-        >
-          <Icon size={14} strokeWidth={1.8} />
-        </div>
-        <p className="text-[12px] text-gray-400 font-medium">{label}</p>
-      </div>
-      <p
-        className="text-[22px] font-bold tracking-tight tabular-nums mt-0.5"
-        style={{ color: green ? '#155f3a' : '#111827' }}
-      >
-        {value}
-      </p>
-      {sub && <p className="text-[11.5px] text-gray-400">{sub}</p>}
-    </div>
-  );
-}
 
 function ReportCard({ children }: { children: React.ReactNode }) {
   return (
@@ -323,22 +290,30 @@ function SalesTab({ report }: { report: SalesReport }) {
   return (
     <div className="space-y-4">
       {/* Summary cards */}
-      <div className="flex gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard
           label="Monthly Revenue"
           value={fmtNGN(summary.totalRevenue)}
           icon={TrendingUp}
-          green
+          accentColor="#1a7a4a"
+          iconBg="bg-[#e8f5ee]"
+          iconColor="text-[#1a7a4a]"
         />
         <StatCard
           label="Monthly Sales"
           value={summary.totalSales.toLocaleString()}
           icon={ShoppingBag}
+          accentColor="#0d9488"
+          iconBg="bg-teal-500/10"
+          iconColor="text-[#0d9488]"
         />
         <StatCard
           label="Avg Sale Value"
           value={fmtNGN(summary.averageSaleValue)}
           icon={BarChart2}
+          accentColor="#16a34a"
+          iconBg="bg-green-500/10"
+          iconColor="text-green-600"
         />
         <StatCard
           label="Top Product"
@@ -349,6 +324,9 @@ function SalesTab({ report }: { report: SalesReport }) {
               : undefined
           }
           icon={Award}
+          accentColor="#155f3a"
+          iconBg="bg-[#e8f5ee]"
+          iconColor="text-[#155f3a]"
         />
       </div>
 
@@ -569,21 +547,40 @@ function ProfitTab({ report }: { report: ProfitReport }) {
   return (
     <div className="space-y-4">
       {/* Summary cards */}
-      <div className="flex gap-3">
-        <StatCard label="Total Revenue" value={fmtNGN(summary.totalRevenue)} icon={TrendingUp} green />
-        <StatCard label="Total Cost" value={fmtNGN(summary.totalCost)} icon={ShoppingBag} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Revenue"
+          value={fmtNGN(summary.totalRevenue)}
+          icon={TrendingUp}
+          accentColor="#1a7a4a"
+          iconBg="bg-[#e8f5ee]"
+          iconColor="text-[#1a7a4a]"
+        />
+        <StatCard
+          label="Total Cost"
+          value={fmtNGN(summary.totalCost)}
+          icon={ShoppingBag}
+          accentColor="#6b7280"
+          iconBg="bg-gray-100"
+          iconColor="text-gray-500"
+        />
         <StatCard
           label="Total Profit"
           value={fmtNGN(summary.totalProfit)}
           sub={`${summary.profitMargin.toFixed(1)}% margin`}
           icon={DollarSign}
-          green
+          accentColor="#15803d"
+          iconBg="bg-green-500/10"
+          iconColor="text-green-700"
         />
         <StatCard
           label="Avg Sale Value"
           value={fmtNGN(summary.averageSale)}
           sub={`${summary.totalSales} sales`}
           icon={BarChart2}
+          accentColor="#0d9488"
+          iconBg="bg-teal-500/10"
+          iconColor="text-[#0d9488]"
         />
       </div>
 
