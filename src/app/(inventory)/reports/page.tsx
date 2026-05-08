@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users } from 'lucide-react';
+import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users, TrendingDown, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { reportsService } from '@/lib/services/reports.service';
-import { SalesReport, StockReport, CategoryReport, ProfitReport } from '@/types';
+import { expensesService } from '@/lib/services/expenses.service';
+import { SalesReport, StockReport, CategoryReport, ProfitReport, ExpenseSummary, ExpenseCategoryType } from '@/types';
 import { StatCard } from '@/components/shared/StatCard';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Tab = 'sales' | 'stock' | 'category' | 'profit';
+type Tab = 'sales' | 'stock' | 'category' | 'profit' | 'expenses';
 type Preset = 'month' | '7d' | '30d' | '90d';
 
 function fmtNGN(n: number) {
@@ -45,6 +46,7 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
     { id: 'stock', label: 'Stock Report' },
     { id: 'category', label: 'Category Report' },
     { id: 'profit', label: 'Profit Report' },
+    { id: 'expenses', label: 'Expenses Report' },
   ];
   return (
     <div className="flex gap-1 border-b border-gray-200 mb-5">
@@ -540,14 +542,15 @@ function CategoryTab({ report }: { report: CategoryReport }) {
 
 // ─── Profit Tab ───────────────────────────────────────────────────────────────
 
-function ProfitTab({ report }: { report: ProfitReport }) {
+function ProfitTab({ report, expenseTotal }: { report: ProfitReport; expenseTotal: number }) {
   const { summary, byProduct, byStaff } = report;
   const maxProfit = Math.max(...byProduct.map((p) => p.profit), 1);
+  const netProfit = summary.totalProfit - expenseTotal;
 
   return (
     <div className="space-y-4">
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <StatCard
           label="Total Revenue"
           value={fmtNGN(summary.totalRevenue)}
@@ -557,30 +560,22 @@ function ProfitTab({ report }: { report: ProfitReport }) {
           iconColor="text-[#1a7a4a]"
         />
         <StatCard
-          label="Total Cost"
-          value={fmtNGN(summary.totalCost)}
-          icon={ShoppingBag}
-          accentColor="#6b7280"
-          iconBg="bg-gray-100"
-          iconColor="text-gray-500"
-        />
-        <StatCard
-          label="Total Profit"
+          label="Gross Profit"
           value={fmtNGN(summary.totalProfit)}
-          sub={`${summary.profitMargin.toFixed(1)}% margin`}
+          sub={`${summary.profitMargin.toFixed(1)}% margin · ${summary.totalSales} sales`}
           icon={DollarSign}
           accentColor="#15803d"
           iconBg="bg-green-500/10"
           iconColor="text-green-700"
         />
         <StatCard
-          label="Avg Sale Value"
-          value={fmtNGN(summary.averageSale)}
-          sub={`${summary.totalSales} sales`}
+          label="Net Profit (after expenses)"
+          value={fmtNGN(netProfit)}
+          sub={expenseTotal > 0 ? `−${fmtNGN(expenseTotal)} expenses` : 'No expenses recorded'}
           icon={BarChart2}
-          accentColor="#0d9488"
-          iconBg="bg-teal-500/10"
-          iconColor="text-[#0d9488]"
+          accentColor={netProfit >= 0 ? '#0d9488' : '#dc2626'}
+          iconBg={netProfit >= 0 ? 'bg-teal-500/10' : 'bg-red-500/10'}
+          iconColor={netProfit >= 0 ? 'text-[#0d9488]' : 'text-red-600'}
         />
       </div>
 
@@ -674,6 +669,158 @@ function ProfitTab({ report }: { report: ProfitReport }) {
   );
 }
 
+// ─── Expenses Tab ─────────────────────────────────────────────────────────────
+
+const TYPE_CLS: Record<ExpenseCategoryType, string> = {
+  overhead: 'bg-amber-500/10 text-amber-700',
+  operational: 'bg-blue-500/10 text-blue-700',
+  other: 'bg-gray-100 text-gray-500',
+};
+
+function ExpensesTab({ report }: { report: ExpenseSummary }) {
+  const { totalAmount, byCategory, byMonth } = report;
+  const totalEntries = byCategory.reduce((s, c) => s + c.count, 0);
+  const topCat = [...byCategory].sort((a, b) => b.total - a.total)[0];
+  const maxCatTotal = Math.max(...byCategory.map((c) => c.total), 1);
+
+  return (
+    <div className="space-y-4">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <StatCard
+          label="Total Expenses"
+          value={fmtNGN(totalAmount)}
+          icon={TrendingDown}
+          accentColor="#e05a3a"
+          iconBg="bg-red-500/10"
+          iconColor="text-red-500"
+        />
+        <StatCard
+          label="Total Entries"
+          value={totalEntries.toLocaleString()}
+          sub="individual expense records"
+          icon={Tag}
+          accentColor="#0369a1"
+          iconBg="bg-blue-500/10"
+          iconColor="text-blue-600"
+        />
+        <StatCard
+          label="Biggest Category"
+          value={topCat?.categoryName ?? '—'}
+          sub={topCat ? `${fmtNGN(topCat.total)} · ${topCat.count} entries` : undefined}
+          icon={BarChart2}
+          accentColor="#b45309"
+          iconBg="bg-amber-500/10"
+          iconColor="text-amber-600"
+        />
+      </div>
+
+      {/* By category */}
+      <ReportCard>
+        <CardHeader title="Breakdown by category" count={byCategory.length} hint="Sorted by amount" />
+        <div
+          className="grid px-5 py-2.5 bg-gray-50/60 border-b border-gray-100"
+          style={{ gridTemplateColumns: '2fr 2fr 120px 100px' }}
+        >
+          {[
+            { label: 'Category', align: 'left' },
+            { label: 'Total Spend', align: 'left' },
+            { label: 'Entries', align: 'right' },
+            { label: 'Type', align: 'left' },
+          ].map((c) => (
+            <div
+              key={c.label}
+              className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide"
+              style={{ textAlign: c.align as 'left' | 'right' }}
+            >
+              {c.label}
+            </div>
+          ))}
+        </div>
+        {[...byCategory]
+          .sort((a, b) => b.total - a.total)
+          .map((cat, i) => (
+            <div
+              key={cat.categoryId}
+              className="grid items-center px-5 py-3.5"
+              style={{
+                gridTemplateColumns: '2fr 2fr 120px 100px',
+                borderBottom: i < byCategory.length - 1 ? '1px solid #f3f4f3' : 'none',
+              }}
+            >
+              <span className="text-[13.5px] font-semibold text-gray-900">{cat.categoryName}</span>
+              <div className="flex items-center gap-3 pr-4">
+                <div className="flex-1 h-2 rounded-full bg-red-50 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-red-400"
+                    style={{ width: `${(cat.total / maxCatTotal) * 100}%` }}
+                  />
+                </div>
+                <span className="text-[13.5px] font-semibold tabular-nums text-red-600 min-w-[90px] text-right">
+                  {fmtNGN(cat.total)}
+                </span>
+              </div>
+              <div className="text-right text-[13px] tabular-nums text-gray-500">{cat.count}</div>
+              <div>
+                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize ${TYPE_CLS[cat.type]}`}>
+                  {cat.type}
+                </span>
+              </div>
+            </div>
+          ))}
+        {byCategory.length === 0 && (
+          <div className="px-5 py-8 text-center text-sm text-gray-400">No expenses in this period</div>
+        )}
+      </ReportCard>
+
+      {/* By month */}
+      {byMonth.length > 1 && (
+        <ReportCard>
+          <CardHeader title="Month-by-month spending" count={byMonth.length} />
+          <div
+            className="grid px-5 py-2.5 bg-gray-50/60 border-b border-gray-100"
+            style={{ gridTemplateColumns: '1fr 2fr 140px' }}
+          >
+            {['Month', 'Amount', 'Share'].map((h) => (
+              <div key={h} className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide">
+                {h}
+              </div>
+            ))}
+          </div>
+          {(() => {
+            const maxMonth = Math.max(...byMonth.map((m) => Number(m.total)), 1);
+            return [...byMonth].reverse().map((m, i, arr) => (
+              <div
+                key={m.month}
+                className="grid items-center px-5 py-3.5"
+                style={{ gridTemplateColumns: '1fr 2fr 140px', borderBottom: i < arr.length - 1 ? '1px solid #f3f4f3' : 'none' }}
+              >
+                <span className="text-[13.5px] font-semibold text-gray-800">
+                  {new Date(`${m.month}-01`).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })}
+                </span>
+                <div className="flex items-center gap-3 pr-4">
+                  <div className="flex-1 h-2 rounded-full bg-red-50 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-red-400"
+                      style={{ width: `${(Number(m.total) / maxMonth) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-[13.5px] font-semibold tabular-nums text-red-600 min-w-[90px] text-right">
+                    {fmtNGN(Number(m.total))}
+                  </span>
+                </div>
+                <span className="text-[13px] tabular-nums text-gray-400">
+                  {totalAmount > 0 ? `${((Number(m.total) / totalAmount) * 100).toFixed(1)}%` : '—'}
+                </span>
+              </div>
+            ));
+          })()}
+        </ReportCard>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
@@ -687,6 +834,8 @@ export default function ReportsPage() {
   const [stockReport, setStockReport] = useState<StockReport | null>(null);
   const [categoryReport, setCategoryReport] = useState<CategoryReport | null>(null);
   const [profitReport, setProfitReport] = useState<ProfitReport | null>(null);
+  const [expensesReport, setExpensesReport] = useState<ExpenseSummary | null>(null);
+  const [profitExpenseTotal, setProfitExpenseTotal] = useState(0);
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
@@ -708,9 +857,16 @@ export default function ReportsPage() {
         } else if (tab === 'category') {
           const data = await reportsService.getCategoryReport(sd, ed);
           setCategoryReport(data);
+        } else if (tab === 'expenses') {
+          const data = await expensesService.getSummary(sd, ed);
+          setExpensesReport(data);
         } else {
-          const data = await reportsService.getProfitReport(sd, ed);
-          setProfitReport(data);
+          const [profit, expenses] = await Promise.all([
+            reportsService.getProfitReport(sd, ed),
+            expensesService.getSummary(sd, ed).catch(() => null),
+          ]);
+          setProfitReport(profit);
+          setProfitExpenseTotal(expenses?.totalAmount ?? 0);
         }
       } catch {
         toast.error('Failed to load report');
@@ -739,7 +895,7 @@ export default function ReportsPage() {
   };
 
   const showDatePicker = activeTab !== 'stock';
-  const hasEmptyState = activeTab === 'sales' || activeTab === 'category' || activeTab === 'profit';
+  const hasEmptyState = activeTab === 'sales' || activeTab === 'category' || activeTab === 'profit' || activeTab === 'expenses';
 
   return (
     <div className="min-h-screen bg-[#f0f2f0] p-6">
@@ -785,8 +941,14 @@ export default function ReportsPage() {
         ) : null
       ) : activeTab === 'profit' ? (
         profitReport && profitReport.byProduct.length > 0 ? (
-          <ProfitTab report={profitReport} />
+          <ProfitTab report={profitReport} expenseTotal={profitExpenseTotal} />
         ) : profitReport ? (
+          <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
+        ) : null
+      ) : activeTab === 'expenses' ? (
+        expensesReport && expensesReport.byCategory.length > 0 ? (
+          <ExpensesTab report={expensesReport} />
+        ) : expensesReport ? (
           <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
         ) : null
       ) : null}

@@ -548,6 +548,81 @@ export interface CategoryReport {
   categories: CategoryReportItem[];
 }
 
+// ==================== EXPENSES ====================
+export type ExpenseCategoryType = 'overhead' | 'operational' | 'other';
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  type: ExpenseCategoryType;
+  description?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseCategoryDto {
+  name: string;
+  type?: ExpenseCategoryType;
+  description?: string;
+}
+
+export interface UpdateExpenseCategoryDto {
+  name?: string;
+  type?: ExpenseCategoryType;
+  description?: string;
+  isActive?: boolean;
+}
+
+export interface Expense {
+  id: string;
+  date: string;
+  categoryId: number;
+  category: { id: number; name: string; type: ExpenseCategoryType };
+  description?: string | null;
+  amount: number;
+  paidTo: string;
+  recordedById: string;
+  recordedBy?: { id: string; firstName: string; lastName: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseDto {
+  date: string;
+  categoryId: number;
+  description?: string;
+  amount: number;
+  paidTo: string;
+}
+
+export interface UpdateExpenseDto {
+  date?: string;
+  categoryId?: number;
+  description?: string;
+  amount?: number;
+  paidTo?: string;
+}
+
+export interface ExpenseSummaryByCategory {
+  categoryId: number;
+  categoryName: string;
+  type: ExpenseCategoryType;
+  total: number;
+  count: number;
+}
+
+export interface ExpenseSummaryByMonth {
+  month: string;
+  total: number;
+}
+
+export interface ExpenseSummary {
+  totalAmount: number;
+  byCategory: ExpenseSummaryByCategory[];
+  byMonth: ExpenseSummaryByMonth[];
+}
+
 // ==================== API RESPONSES ====================
 export interface SuccessResponse<T> {
   success: true;

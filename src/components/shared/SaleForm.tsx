@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Plus, Trash2 } from 'lucide-react';
 import InventorySearchSelect from './InventorySearchSelect';
+import { NumericInput } from './NumericInput';
 import { BulkSaleDto, CreateSaleDto, InventoryItem, SaleSubmitPayload, Vendor } from '@/types';
 import { inventoryService } from '@/lib/services/inventory.service';
 import { dashboardService } from '@/lib/services/dashboard.service';
@@ -352,11 +353,11 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-muted-foreground">Qty</label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={row.quantity}
-                      onChange={(e) => onChangeQty(row.id, parseInt(e.target.value) || 1)}
+                    <NumericInput
+                      value={row.quantity === 1 ? '' : row.quantity}
+                      onChange={(v) => onChangeQty(row.id, parseInt(v) || 1)}
+                      decimals={false}
+                      placeholder="1"
                       className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>

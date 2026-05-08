@@ -18,6 +18,7 @@ import {
   Truck,
   AlertTriangle,
   BarChart2,
+  TrendingDown,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,6 +50,7 @@ type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 const staffLinks = [
   { href: "/inventory", label: "Inventory", icon: Package },
   { href: "/sales", label: "Sales", icon: ShoppingCart },
+  { href: "/expenses", label: "Expenses", icon: TrendingDown },
   { href: "/categories", label: "Categories", icon: Tag },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/stock-alerts", label: "Stock Alerts", icon: AlertTriangle },

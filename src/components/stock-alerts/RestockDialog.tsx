@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { X, Check, Package } from 'lucide-react';
 import { InventoryItem } from '@/types';
+import { NumericInput } from '@/components/shared/NumericInput';
 
 interface Props {
   item: InventoryItem;
@@ -70,11 +71,10 @@ export default function RestockDialog({ item, onClose, onConfirm, isLoading }: P
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             New quantity <span className="text-gray-400 font-normal">(after restocking)</span>
           </label>
-          <input
-            type="number"
-            min={0}
+          <NumericInput
             value={qty}
-            onChange={(e) => setQty(e.target.value)}
+            onChange={(v) => setQty(v)}
+            decimals={false}
             placeholder={`e.g. ${defaultQty}`}
             className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#1a7a4a] focus:ring-1 focus:ring-[#1a7a4a]/20 transition-colors"
           />

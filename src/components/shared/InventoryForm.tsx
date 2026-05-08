@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useForm, useWatch, Controller } from 'react-hook-form';
+import { useForm, useWatch, Controller, useController } from 'react-hook-form';
+import { NumericInput } from '@/components/shared/NumericInput';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -70,6 +71,13 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
 
   const expiryTracking = useWatch({ control, name: 'expiryTracking' });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = control as any;
+  const { field: qtyField } = useController({ control: c, name: 'quantity' });
+  const { field: costField } = useController({ control: c, name: 'costPrice' });
+  const { field: sellField } = useController({ control: c, name: 'sellingPrice' });
+  const { field: threshField } = useController({ control: c, name: 'restockThreshold' });
+
   const handleFormSubmit = handleSubmit((data: InventoryFormOutput) => {
     const payload: CreateInventoryDto = {
       ...data,
@@ -94,7 +102,14 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
         {/* Quantity */}
         <div className="space-y-1">
           <label className={labelClass}>Quantity</label>
-          <input {...register('quantity')} type="number" min={0} className={inputClass} />
+          <NumericInput
+            value={qtyField.value}
+            onChange={(v) => qtyField.onChange(v)}
+            onBlur={qtyField.onBlur}
+            name={qtyField.name}
+            decimals={false}
+            className={inputClass}
+          />
           {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
         </div>
 
@@ -120,14 +135,28 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
         {/* Cost Price */}
         <div className="space-y-1">
           <label className={labelClass}>Cost Price (₦)</label>
-          <input {...register('costPrice')} type="number" min={0} className={inputClass} />
+          <NumericInput
+            value={costField.value}
+            onChange={(v) => costField.onChange(v)}
+            onBlur={costField.onBlur}
+            name={costField.name}
+            decimals={true}
+            className={inputClass}
+          />
           {errors.costPrice && <p className={errorClass}>{errors.costPrice.message}</p>}
         </div>
 
         {/* Selling Price */}
         <div className="space-y-1">
           <label className={labelClass}>Selling Price (₦)</label>
-          <input {...register('sellingPrice')} type="number" min={0} className={inputClass} />
+          <NumericInput
+            value={sellField.value}
+            onChange={(v) => sellField.onChange(v)}
+            onBlur={sellField.onBlur}
+            name={sellField.name}
+            decimals={true}
+            className={inputClass}
+          />
           {errors.sellingPrice && <p className={errorClass}>{errors.sellingPrice.message}</p>}
         </div>
 
@@ -159,7 +188,14 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
         {/* Restock Threshold */}
         <div className="space-y-1">
           <label className={labelClass}>Restock Threshold</label>
-          <input {...register('restockThreshold')} type="number" min={0} className={inputClass} />
+          <NumericInput
+            value={threshField.value}
+            onChange={(v) => threshField.onChange(v)}
+            onBlur={threshField.onBlur}
+            name={threshField.name}
+            decimals={false}
+            className={inputClass}
+          />
           {errors.restockThreshold && <p className={errorClass}>{errors.restockThreshold.message}</p>}
         </div>
 
