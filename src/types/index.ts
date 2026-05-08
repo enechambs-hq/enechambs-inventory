@@ -304,8 +304,10 @@ export interface UpdateInventoryDto {
 export interface Sale {
   id: string;
   inventoryId: string;
+  transactionId: string;
   date: string;
   productName: string;
+  quantity: number;
   amount: number;
   costPrice: number;
   customerName: string;
@@ -321,12 +323,59 @@ export interface Sale {
 export interface CreateSaleDto {
   inventoryId: string;
   date?: string;
+  quantity?: number;
   amount: number;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
   customerId?: string;
   accountPaidTo: string;
+}
+
+export interface BulkSaleItemDto {
+  inventoryId: string;
+  quantity: number;
+  amount: number;
+}
+
+export interface BulkSaleDto {
+  date?: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  customerId?: string;
+  accountPaidTo: string;
+  items: BulkSaleItemDto[];
+}
+
+export type SaleSubmitPayload =
+  | { type: 'single'; data: CreateSaleDto }
+  | { type: 'bulk'; data: BulkSaleDto };
+
+export interface SaleItem {
+  id: string;
+  inventoryId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  costPrice: number;
+}
+
+export interface SaleTransaction {
+  transactionId: string;
+  date: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string | null;
+  accountPaidTo: string;
+  isVendor: boolean;
+  createdById: string;
+  createdBy?: { id: string; email: string; firstName: string; lastName: string };
+  createdAt: string;
+  itemCount: number;
+  total: number;
+  items: SaleItem[];
 }
 
 // ==================== COLLECTIONS ====================

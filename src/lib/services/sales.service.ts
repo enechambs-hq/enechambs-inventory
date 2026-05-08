@@ -2,6 +2,8 @@ import api from '@/lib/api';
 import {
   Sale,
   CreateSaleDto,
+  BulkSaleDto,
+  SaleTransaction,
   SuccessResponse,
   PaginatedResponse,
 } from '@/types';
@@ -12,6 +14,7 @@ export interface SaleFilters {
   productName?: string;
   customerName?: string;
   customerPhone?: string;
+  isVendor?: boolean;
 }
 
 type MaybeWrapped<T> = SuccessResponse<T> | T;
@@ -23,37 +26,46 @@ function unwrapPaginated<T>(payload: MaybeWrapped<PaginatedResponse<T>>): Pagina
   return payload as PaginatedResponse<T>;
 }
 
-function coerceSale(s: Sale): Sale {
-  return { ...s, amount: Number(s.amount), costPrice: Number(s.costPrice) };
+function coerceItem(item: SaleTransaction['items'][number]) {
+  return {
+    ...item,
+    amount: Number(item.amount),
+    costPrice: Number(item.costPrice),
+    unitPrice: Number(item.unitPrice),
+  };
+}
+
+function coerceTransaction(t: SaleTransaction): SaleTransaction {
+  return {
+    ...t,
+    total: Number(t.total),
+    items: (t.items ?? []).map(coerceItem),
+  };
 }
 
 export const salesService = {
   getAll: async (filters: SaleFilters = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        params.append(key, String(value));
-      }
+      if (value !== undefined && value !== '') params.append(key, String(value));
     });
-    const response = await api.get<MaybeWrapped<PaginatedResponse<Sale>>>(
+    const response = await api.get<MaybeWrapped<PaginatedResponse<SaleTransaction>>>(
       `/sales?${params.toString()}`
     );
     const result = unwrapPaginated(response.data);
-    return { ...result, data: result.data.map(coerceSale) };
+    return { ...result, data: result.data.map(coerceTransaction) };
   },
 
   getMySales: async (filters: SaleFilters = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== '') {
-        params.append(key, String(value));
-      }
+      if (value !== undefined && value !== '') params.append(key, String(value));
     });
-    const response = await api.get<MaybeWrapped<PaginatedResponse<Sale>>>(
+    const response = await api.get<MaybeWrapped<PaginatedResponse<SaleTransaction>>>(
       `/sales/my-sales?${params.toString()}`
     );
     const result = unwrapPaginated(response.data);
-    return { ...result, data: result.data.map(coerceSale) };
+    return { ...result, data: result.data.map(coerceTransaction) };
   },
 
   getById: async (id: string) => {
@@ -66,8 +78,13 @@ export const salesService = {
     return response.data;
   },
 
-  getReceipt: async (id: string) => {
-    const response = await api.get<string>(`/sales/receipt/${id}`, {
+  bulkCreate: async (data: BulkSaleDto) => {
+    const response = await api.post<SuccessResponse<SaleTransaction>>('/sales/bulk', data);
+    return response.data;
+  },
+
+  getReceipt: async (transactionId: string) => {
+    const response = await api.get<string>(`/sales/receipt/${transactionId}`, {
       responseType: 'text',
     });
     return response.data;
