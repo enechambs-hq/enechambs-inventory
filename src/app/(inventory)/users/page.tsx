@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Search, Pencil, Trash2, Activity } from 'lucide-react';
+import { Pencil, Trash2, Activity } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +35,6 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(
     searchParams.get('tab') === 'performance' ? 'performance' : 'users'
   );
-  const [search, setSearch] = useState('');
   const [performance, setPerformance] = useState<UserPerformance[]>([]);
   const [perfLoading, setPerfLoading] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -59,14 +58,14 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await usersService.getAll({ page, limit, search });
+      const data = await usersService.getAll({ page, limit });
       setUsers(data.data, data.meta);
     } catch {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, setUsers, setLoading]);
+  }, [page, limit, setUsers, setLoading]);
 
   const fetchPerformance = useCallback(async () => {
     try {
@@ -173,17 +172,6 @@ export default function UsersPage() {
 
       {activeTab === 'users' ? (
         <>
-          {/* Search */}
-          <div className="relative w-full max-w-xs">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              placeholder="Search by name or email..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="w-full pl-8 pr-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
           {/* Users table */}
           <div className="rounded-xl border bg-card overflow-hidden">
             <div className="overflow-x-auto">

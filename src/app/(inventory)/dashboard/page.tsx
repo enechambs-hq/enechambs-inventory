@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { format, subDays } from "date-fns";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { UserRole, UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct, CollectionsStats, CreditStats } from "@/types";
+import { UserRole, UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct } from "@/types";
 import type { ActivityLog } from "@/types";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
@@ -30,8 +30,6 @@ export default function DashboardPage() {
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
   const [monthly, setMonthly] = useState<MonthlySummary | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [collectionsStats, setCollectionsStats] = useState<CollectionsStats | null>(null);
-  const [creditStats, setCreditStats] = useState<CreditStats | null>(null);
   const [recentActivities, setRecentActivities] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -62,8 +60,6 @@ export default function DashboardPage() {
         dashboardService.getWeekly().then(setWeekly).catch(() => {}),
         dashboardService.getMonthly().then(setMonthly).catch(() => {}),
         dashboardService.getTopProducts().then(setTopProducts).catch(() => toast.error("Failed to load top products")),
-        dashboardService.getCollectionsStats().then(setCollectionsStats).catch(() => {}),
-        dashboardService.getCreditStats().then(setCreditStats).catch(() => {}),
         dashboardService.getRecentActivity(15).then(setRecentActivities).catch(() => {}),
       ]);
       setIsLoading(false);
@@ -98,16 +94,16 @@ export default function DashboardPage() {
         <button
           onClick={() => setRegisterModalOpen(true)}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-          style={{ boxShadow: "0 4px 12px rgba(37,99,235,0.3)" }}
+          style={{ boxShadow: "0 4px 12px rgba(26,122,74,0.3)" }}
         >
           <UserPlus size={16} />
           Register Staff
         </button>
       </div>
 
-      {stats && <StatsCards stats={stats} />}
+      {stats && <StatsCards stats={stats} monthly={monthly} />}
       <RevenueChart data={revenueData} dateRange={dateRange} onDateRangeChange={setDateRange} />
-      <SummaryCards collectionsStats={collectionsStats} creditStats={creditStats} />
+      <SummaryCards />
       <PeriodOverview daily={daily} weekly={weekly} monthly={monthly} />
 
       <TopProducts products={topProducts} />

@@ -1,106 +1,54 @@
-import { Package, ShoppingCart, Wallet, BarChart2, TrendingUp } from "lucide-react";
+import { ShoppingCart, Wallet, TrendingUp, BarChart3 } from "lucide-react";
 import { DashboardStats } from "@/lib/services/dashboard.service";
+import { MonthlySummary } from "@/types";
+import { StatCard } from "@/components/shared/StatCard";
 
 interface Props {
   stats: DashboardStats;
+  monthly: MonthlySummary | null;
 }
 
-const cards = [
-  {
-    label: "Total Inventory",
-    value: (s: DashboardStats) => String(s.totalInventory),
-    icon: Package,
-    iconBg: "bg-blue-500/10",
-    iconColor: "text-blue-600",
-    valueColor: "text-foreground",
-    patternColor: "#2563eb",
-    stripColor: "#2563eb",
-  },
-  {
-    label: "Total Sales",
-    value: (s: DashboardStats) => String(s.totalSales),
-    icon: ShoppingCart,
-    iconBg: "bg-green-500/10",
-    iconColor: "text-green-600",
-    valueColor: "text-green-600",
-    patternColor: "#16a34a",
-    stripColor: "#16a34a",
-  },
-  {
-    label: "Total Revenue",
-    value: (s: DashboardStats) => `₦${(s.totalRevenue ?? 0).toLocaleString()}`,
-    icon: Wallet,
-    iconBg: "bg-primary/10",
-    iconColor: "text-primary",
-    valueColor: "text-primary",
-    patternColor: "#2563eb",
-    stripColor: "#2563eb",
-  },
-  {
-    label: "Available Now",
-    value: (s: DashboardStats) => String(s.availableInventory),
-    icon: TrendingUp,
-    iconBg: "bg-sky-500/10",
-    iconColor: "text-sky-600",
-    valueColor: "text-foreground",
-    patternColor: "#0284c7",
-    stripColor: "#0284c7",
-  },
-  {
-    label: "Collections",
-    value: (s: DashboardStats) => String(s.totalCollections),
-    icon: BarChart2,
-    iconBg: "bg-purple-500/10",
-    iconColor: "text-purple-600",
-    valueColor: "text-foreground",
-    patternColor: "#9333ea",
-    stripColor: "#9333ea",
-  },
-];
+export default function StatsCards({ stats, monthly }: Props) {
+  const monthLabel = monthly?.period.month ?? "This Month";
+  const loading = "—";
 
-export default function StatsCards({ stats }: Props) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-      {cards.map(({ label, value, icon: Icon, iconBg, iconColor, valueColor, patternColor, stripColor }) => (
-        <div
-          key={label}
-          className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
-          style={{ borderTop: `3px solid ${stripColor}` }}
-        >
-          {/* Dot pattern */}
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `radial-gradient(circle, ${patternColor} 1px, transparent 1px)`,
-              backgroundSize: "18px 18px",
-              opacity: 0.15,
-            }}
-          />
-
-          {/* Corner glow */}
-          <div
-            className="absolute -top-6 -right-6 w-24 h-24 rounded-full blur-2xl opacity-20"
-            style={{ backgroundColor: patternColor }}
-          />
-
-          {/* Content */}
-          <div className="relative z-10">
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground leading-tight truncate">
-                {label}
-              </p>
-              <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
-              >
-                <Icon size={16} className={iconColor} />
-              </div>
-            </div>
-            <p className={`text-2xl font-bold tracking-tight ${valueColor}`}>
-              {value(stats)}
-            </p>
-          </div>
-        </div>
-      ))}
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <StatCard
+        label="Available Now"
+        value={String(stats.availableInventory)}
+        icon={TrendingUp}
+        accentColor="#1a7a4a"
+        iconBg="bg-[#e8f5ee]"
+        iconColor="text-[#1a7a4a]"
+      />
+      <StatCard
+        label="Monthly Sales"
+        value={monthly ? String(monthly.sales.count) : loading}
+        sub={monthLabel}
+        icon={ShoppingCart}
+        accentColor="#16a34a"
+        iconBg="bg-green-500/10"
+        iconColor="text-green-600"
+      />
+      <StatCard
+        label="Monthly Revenue"
+        value={monthly ? `₦${monthly.sales.revenue.toLocaleString()}` : loading}
+        sub={monthLabel}
+        icon={Wallet}
+        accentColor="#0d9488"
+        iconBg="bg-teal-500/10"
+        iconColor="text-[#0d9488]"
+      />
+      <StatCard
+        label="Monthly Profit"
+        value={monthly ? `₦${monthly.sales.profit.toLocaleString()}` : loading}
+        sub={monthly ? `${monthly.sales.profitMargin.toFixed(1)}% margin` : undefined}
+        icon={BarChart3}
+        accentColor="#15803d"
+        iconBg="bg-green-500/10"
+        iconColor="text-green-700"
+      />
     </div>
   );
 }

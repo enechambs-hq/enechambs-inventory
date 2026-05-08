@@ -5,11 +5,7 @@ import { Search, ChevronDown, Check } from 'lucide-react';
 import { InventoryItem } from '@/types';
 
 function itemSearchText(item: InventoryItem): string {
-  return `${item.productName} ${item.color} ${item.storageGB} ${item.imei || ''}`.toLowerCase();
-}
-
-function itemSummary(item: InventoryItem): string {
-  return `${item.productName} — ${item.color}, ${item.storageGB}`;
+  return `${item.productName} ${item.unit}`.toLowerCase();
 }
 
 interface Props {
@@ -61,7 +57,7 @@ export default function InventorySearchSelect({
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{selected.productName}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {selected.color} · {selected.storageGB} · {selected.imei || 'N/A'}
+              {selected.quantity} {selected.unit}
             </p>
           </div>
         ) : (
@@ -81,7 +77,7 @@ export default function InventorySearchSelect({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name, color, IMEI…"
+                placeholder="Search by name or unit…"
                 className="w-full pl-8 pr-3 py-1.5 text-sm rounded-sm border bg-background focus:outline-none focus:ring-1 focus:ring-ring"
               />
             </div>
@@ -113,7 +109,7 @@ export default function InventorySearchSelect({
                         {item.productName}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {item.color} · {item.storageGB} · <span className="font-mono">{item.imei || 'N/A'}</span>
+                        {item.quantity} {item.unit} · ₦{item.sellingPrice.toLocaleString()}
                       </p>
                     </div>
                   </li>

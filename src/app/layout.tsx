@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Lmart Inventory',
-  description: 'Lmart staff inventory management',
+  title: 'Enechambs Inventory',
+  description: 'Enechambs Food inventory management',
 };
 
 export default function RootLayout({

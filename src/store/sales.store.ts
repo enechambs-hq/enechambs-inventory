@@ -1,16 +1,16 @@
 import { create } from 'zustand';
-import { Sale } from '@/types';
+import { SaleTransaction } from '@/types';
 
 interface SalesState {
-  sales: Sale[];
-  mySales: Sale[];
+  sales: SaleTransaction[];
+  mySales: SaleTransaction[];
   total: number;
   page: number;
   limit: number;
   totalPages: number;
   isLoading: boolean;
-  setSales: (sales: Sale[], meta: { total: number; page: number; limit: number; totalPages: number }) => void;
-  setMySales: (sales: Sale[], meta: { total: number; page: number; limit: number; totalPages: number }) => void;
+  setSales: (sales: SaleTransaction[], meta: { total: number; page: number; limit: number; totalPages: number }) => void;
+  setMySales: (sales: SaleTransaction[], meta: { total: number; page: number; limit: number; totalPages: number }) => void;
   setLoading: (loading: boolean) => void;
   setPage: (page: number) => void;
 }

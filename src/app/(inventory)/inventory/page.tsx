@@ -6,20 +6,16 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
 import { useInventoryStore } from "@/store/inventory.store";
 import { inventoryService } from "@/lib/services/inventory.service";
-import { collectionsService } from "@/lib/services/collections.service";
-import {
-  InventoryItem,
-  CreateInventoryDto,
-  UserRole,
-  CollectionStatus,
-} from "@/types";
+import { categoriesService } from "@/lib/services/categories.service";
+import { dashboardService } from "@/lib/services/dashboard.service";
+import { InventoryItem, CreateInventoryDto, UserRole, Category, DailySummary } from "@/types";
 import InventoryForm from "@/components/shared/InventoryForm";
 import StockLevelCards from "@/components/inventory/StockLevelCards";
 import LowStockAlert from "@/components/inventory/LowStockAlert";
 import InventoryFilters from "@/components/inventory/InventoryFilters";
 import InventoryTable from "@/components/inventory/InventoryTable";
 
-type ActiveFilter = "all" | "available" | "sold" | "in-collection";
+type ActiveFilter = "all" | "available" | "sold";
 
 export default function InventoryPage() {
   const { user } = useAuthStore();
@@ -45,19 +41,17 @@ export default function InventoryPage() {
     available: number;
     sold: number;
   } | null>(null);
+  const [daily, setDaily] = useState<DailySummary | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
-  const [collectionSerials, setCollectionSerials] = useState<Set<string>>(
-    new Set(),
-  );
-  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(
-    null,
-  );
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(null);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
+  const [filterPage, setFilterPage] = useState(1);
 
   const fetchInventory = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await inventoryService.getAll({ page, limit, productName: search, companyName: search, color: search });
+      const data = await inventoryService.getAll({ page, limit, productName: search });
       setItems(data.data, data.meta);
     } catch {
       toast.error("Failed to load inventory");
@@ -71,25 +65,10 @@ export default function InventoryPage() {
   }, [fetchInventory]);
 
   useEffect(() => {
-    inventoryService
-      .getStockLevels()
-      .then(setStockLevels)
-      .catch(() => {});
-    inventoryService
-      .getLowStockAlerts()
-      .then(setLowStock)
-      .catch(() => {});
-    collectionsService
-      .getAll({ limit: 100 })
-      .then((data) => {
-        const serials = new Set(
-          data.data
-            .filter((c) => c.status === CollectionStatus.PENDING)
-            .map((c) => c.imei),
-        );
-        setCollectionSerials(serials);
-      })
-      .catch(() => {});
+    inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+    inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
+    categoriesService.getAll().then(setCategories).catch(() => {});
+    dashboardService.getDaily().then(setDaily).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -99,8 +78,9 @@ export default function InventoryPage() {
       return;
     }
     setIsFilterLoading(true);
+    setFilterPage(1);
     inventoryService
-      .getAll({ limit: 100, productName: search, companyName: search, color: search })
+      .getAll({ limit: stockLevels?.total ?? 500, productName: search })
       .then((data) => setFilterSnapshot(data.data))
       .catch(() => setFilterSnapshot([]))
       .finally(() => setIsFilterLoading(false));
@@ -111,9 +91,8 @@ export default function InventoryPage() {
     try {
       setSubmitting(true);
       if (editItem) {
-        const { dateAdded: _d, imei: _i, ...updateData } = data;
+        const { dateAdded: _d, ...updateData } = data;
         void _d;
-        void _i;
         await inventoryService.update(editItem.id, updateData);
         toast.success("Product updated successfully");
       } else {
@@ -122,19 +101,15 @@ export default function InventoryPage() {
       }
       setModalOpen(false);
       setEditItem(null);
-      fetchInventory();
-      inventoryService
-        .getStockLevels()
-        .then(setStockLevels)
-        .catch(() => {});
+      await fetchInventory();
+      inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+      dashboardService.getDaily().then(setDaily).catch(() => {});
     } catch (error) {
       const err = error as {
         response?: { status?: number; data?: { message?: string | string[] } };
       };
       if (err.response?.status === 500) {
-        toast.error(
-          "Failed to save product. The IMEI may already exist — please use a unique one.",
-        );
+        toast.error("Failed to save product. Please try again.");
       } else {
         const msg = err.response?.data?.message || "Something went wrong";
         toast.error(Array.isArray(msg) ? msg[0] : msg);
@@ -149,11 +124,9 @@ export default function InventoryPage() {
     try {
       await inventoryService.delete(id);
       toast.success("Product deleted");
-      fetchInventory();
-      inventoryService
-        .getStockLevels()
-        .then(setStockLevels)
-        .catch(() => {});
+      await fetchInventory();
+      inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+      dashboardService.getDaily().then(setDaily).catch(() => {});
     } catch {
       toast.error("Failed to delete product");
     }
@@ -161,14 +134,16 @@ export default function InventoryPage() {
 
   const baseItems = filterSnapshot !== null ? filterSnapshot : items;
   const filteredItems = baseItems.filter((item) => {
-    if (activeFilter === "available")
-      return item.isAvailable && !collectionSerials.has(item.imei);
-    if (activeFilter === "sold")
-      return !item.isAvailable && !collectionSerials.has(item.imei);
-    if (activeFilter === "in-collection")
-      return collectionSerials.has(item.imei);
+    if (activeFilter === "available") return item.isAvailable;
+    if (activeFilter === "sold") return !item.isAvailable;
     return true;
   });
+
+  const isFiltered = activeFilter !== "all";
+  const filterTotalPages = Math.max(1, Math.ceil(filteredItems.length / limit));
+  const displayItems = isFiltered
+    ? filteredItems.slice((filterPage - 1) * limit, filterPage * limit)
+    : filteredItems;
 
   return (
     <div className="space-y-6">
@@ -185,7 +160,7 @@ export default function InventoryPage() {
               setModalOpen(true);
             }}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
-            style={{ boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}
+            style={{ boxShadow: '0 4px 12px rgba(26,122,74,0.3)' }}
           >
             <Plus size={16} />
             Add Product
@@ -193,7 +168,12 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {stockLevels && <StockLevelCards stockLevels={stockLevels} />}
+      {stockLevels && (
+        <StockLevelCards
+          available={stockLevels.available}
+          soldToday={daily?.sales.count ?? 0}
+        />
+      )}
       {user?.role === UserRole.ADMIN && <LowStockAlert items={lowStock} />}
 
       <InventoryFilters
@@ -202,25 +182,26 @@ export default function InventoryPage() {
         onFilterChange={(f) => {
           setActiveFilter(f);
           setPage(1);
+          setFilterPage(1);
         }}
         onSearchChange={(value) => { setSearch(value); setPage(1); }}
       />
 
       <InventoryTable
-        items={filteredItems}
+        items={displayItems}
+        categories={categories}
         isLoading={isLoading || isFilterLoading}
         userRole={user?.role}
-        collectionSerials={collectionSerials}
-        page={page}
-        totalPages={totalPages}
-        total={total}
-        showPagination={activeFilter === "all"}
+        page={isFiltered ? filterPage : page}
+        totalPages={isFiltered ? filterTotalPages : totalPages}
+        total={isFiltered ? filteredItems.length : total}
+        showPagination
         onEdit={(item) => {
           setEditItem(item);
           setModalOpen(true);
         }}
         onDelete={handleDelete}
-        onPageChange={setPage}
+        onPageChange={isFiltered ? setFilterPage : setPage}
       />
 
       {/* Modal */}

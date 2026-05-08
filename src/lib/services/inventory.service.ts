@@ -11,9 +11,17 @@ export interface InventoryFilters {
   page?: number;
   limit?: number;
   productName?: string;
-  imei?: string;
-  companyName?: string;
-  color?: string;
+  expiryTracking?: boolean;
+}
+
+function coerceItem(item: InventoryItem): InventoryItem {
+  return {
+    ...item,
+    quantity: Number(item.quantity),
+    costPrice: Number(item.costPrice),
+    sellingPrice: Number(item.sellingPrice),
+    restockThreshold: Number(item.restockThreshold),
+  };
 }
 
 export const inventoryService = {
@@ -27,14 +35,20 @@ export const inventoryService = {
     const response = await api.get<PaginatedResponse<InventoryItem>>(
       `/inventory?${params.toString()}`
     );
-    return response.data;
+    const result = response.data;
+    if (result?.data && Array.isArray(result.data)) {
+      result.data = result.data.map(coerceItem);
+    }
+    return result;
   },
 
   getById: async (id: string) => {
     const response = await api.get<SuccessResponse<InventoryItem>>(
       `/inventory/${id}`
     );
-    return response.data;
+    const result = response.data;
+    if (result?.data) result.data = coerceItem(result.data);
+    return result;
   },
 
   create: async (data: CreateInventoryDto) => {
@@ -72,7 +86,8 @@ export const inventoryService = {
       '/inventory/alerts/low-stock'
     );
     const payload = response.data;
-    return Array.isArray(payload) ? payload : (payload.data ?? []);
+    const items = Array.isArray(payload) ? payload : (payload.data ?? []);
+    return items.map(coerceItem);
   },
 
   getAvailableForSale: async () => {
@@ -80,6 +95,7 @@ export const inventoryService = {
       '/inventory/available-for-sale'
     );
     const payload = response.data;
-    return Array.isArray(payload) ? payload : (payload.data ?? []);
+    const items = Array.isArray(payload) ? payload : (payload.data ?? []);
+    return items.map(coerceItem);
   },
 };

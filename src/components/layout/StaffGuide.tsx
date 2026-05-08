@@ -67,14 +67,14 @@ function GettingStarted() {
       <SectionHeading icon={BookOpen} title="Getting Started" />
 
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Welcome to <strong className="text-foreground">Lmart</strong> — your all-in-one business management platform. Whether you're recording a sale, tracking inventory, or managing customer credit, everything you need lives right here. Let's get you up to speed! 🎉
+        Welcome to <strong className="text-foreground">Enechambs</strong> — your all-in-one business management platform. Whether you're recording a sale, tracking inventory, or managing customer credit, everything you need lives right here. Let's get you up to speed! 🎉
       </p>
 
       <Tip>You only need your email and password to get in. If you haven't set a password yet, check your email for a setup link from your admin.</Tip>
 
       <H3>Logging In</H3>
       <div className="space-y-3">
-        <Step n={1} text="Go to the Lmart login page." />
+        <Step n={1} text="Go to the Enechambs login page." />
         <Step n={2} text="Enter your work email address and your password." />
         <Step n={3} text="Hit Sign In — you'll land on your home page automatically." />
       </div>
@@ -211,7 +211,7 @@ function SalesGuide() {
         <Step n={4} text='Choose the condition: "New" for brand-new items, "Used" for pre-owned.' />
         <Step n={5} text="Start typing the customer's name — a dropdown will suggest returning customers. Select one to auto-fill their phone and email." />
         <Step n={6} text="If it's a new customer, finish typing their name, then enter their 11-digit phone number and optionally their email." />
-        <Step n={7} text='"Account Paid To" — enter the bank account or payment method the customer paid into (e.g. Lmart company, personal account name, POS).' />
+        <Step n={7} text='"Account Paid To" — enter the bank account or payment method the customer paid into (e.g. Enechambs company, personal account name, POS).' />
         <Step n={8} text='If this sale is to a wholesale vendor, tick "Mark as Vendor sale" at the bottom of the form.' />
         <Step n={9} text='"Record Sale" — the item status switches to Sold and a receipt is generated.' />
       </div>
@@ -220,7 +220,7 @@ function SalesGuide() {
 
       <H3>Returning Customer Auto-fill</H3>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        When you type a customer's name in the Customer Name field, Lmart searches existing customers and shows suggestions after 2 characters. Selecting a suggestion fills in their phone number, email, and vendor status automatically — saving you time and reducing typos.
+        When you type a customer's name in the Customer Name field, Enechambs searches existing customers and shows suggestions after 2 characters. Selecting a suggestion fills in their phone number, email, and vendor status automatically — saving you time and reducing typos.
       </p>
       <Tip>Customer names auto-capitalise as you type — no need to worry about case.</Tip>
 
@@ -298,7 +298,7 @@ function CreditsGuide() {
       <SectionHeading icon={CreditCard} title="Credits" />
 
       <p className="text-sm text-muted-foreground leading-relaxed">
-        A <strong className="text-foreground">credit</strong> in Lmart means a customer has taken a product and is paying for it over time — in instalments or after a delay. The Credits page helps you track exactly how much each customer owes and how much they've paid.
+        A <strong className="text-foreground">credit</strong> in Enechambs means a customer has taken a product and is paying for it over time — in instalments or after a delay. The Credits page helps you track exactly how much each customer owes and how much they've paid.
       </p>
 
       <Tip>Credits are different from collections. A credit always involves partial or deferred payment tracking. Collections focus on whether the item is returned.</Tip>
@@ -356,7 +356,7 @@ function MyAccountGuide() {
       <SectionHeading icon={User} title="My Account" />
 
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Your account is how Lmart knows who's doing what. Every sale, credit, and collection you record is linked to your name — so keeping your account secure matters.
+        Your account is how Enechambs knows who's doing what. Every sale, credit, and collection you record is linked to your name — so keeping your account secure matters.
       </p>
 
       <H3>Logging Out</H3>
@@ -370,7 +370,7 @@ function MyAccountGuide() {
 
       <H3>Forgot Your Password?</H3>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Lmart doesn't have a self-serve password reset — your admin handles this for security reasons. Here's what to do:
+        Enechambs doesn't have a self-serve password reset — your admin handles this for security reasons. Here's what to do:
       </p>
       <div className="space-y-3">
         <Step n={1} text="Contact your admin and let them know you need a password reset." />
@@ -462,7 +462,7 @@ function CustomersVendorsGuide() {
       <SectionHeading icon={Users} title="Customers & Vendors" />
 
       <p className="text-sm text-muted-foreground leading-relaxed">
-        The <strong className="text-foreground">Customers page</strong> (admin only) gives you a full picture of everyone who has bought from Lmart. It's split into three tabs to keep retail customers and wholesale vendors clearly separated.
+        The <strong className="text-foreground">Customers page</strong> (admin only) gives you a full picture of everyone who has bought from Enechambs. It's split into three tabs to keep retail customers and wholesale vendors clearly separated.
       </p>
 
       <H3>The Three Tabs</H3>
@@ -481,7 +481,7 @@ function CustomersVendorsGuide() {
 
       <H3>What Each Row Shows</H3>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        For <strong className="text-foreground">Regular Customers</strong>, you can see their total purchases, total amount spent, credit history, and when they last bought from Lmart.
+        For <strong className="text-foreground">Regular Customers</strong>, you can see their total purchases, total amount spent, credit history, and when they last bought from Enechambs.
       </p>
       <p className="text-sm text-muted-foreground leading-relaxed">
         For <strong className="text-foreground">Vendors</strong>, you see their order count, total purchase value, and when they were first added.
@@ -493,7 +493,7 @@ function CustomersVendorsGuide() {
       </p>
       <div className="space-y-3">
         <Step n={1} text='Click "Broadcast Email" in the top-right corner.' />
-        <Step n={2} text="Optionally enter a sender name (e.g. Lmart Team)." />
+        <Step n={2} text="Optionally enter a sender name (e.g. Enechambs Team)." />
         <Step n={3} text="Write a subject line and your message." />
         <Step n={4} text='"Send Broadcast" — a summary shows how many emails were delivered successfully.' />
       </div>
@@ -597,7 +597,7 @@ export default function StaffGuide() {
           <div className="px-6 py-4 border-b flex items-center justify-between shrink-0">
             <div>
               <h1 className="text-base font-bold text-foreground">Staff Guide</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Everything you need to know about Lmart</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Everything you need to know about Enechambs</p>
             </div>
             <button
               onClick={() => setOpen(false)}
