@@ -118,7 +118,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     setShowSuggestions(false);
   };
 
-  const addRow = () => setCart((prev) => [...prev, newRow()]);
+  const addRow = () => setCart((prev) => [newRow(), ...prev]);
 
   const removeRow = (id: string) => {
     if (cart.length === 1) return;
