@@ -108,7 +108,7 @@ export default function InventoryTable({
                               : 'bg-red-500/10 text-red-600'
                           }`}
                         >
-                          {item.isAvailable ? 'Available' : 'Sold'}
+                          {item.isAvailable ? 'Available' : 'Out of Stock'}
                         </span>
                       </td>
 

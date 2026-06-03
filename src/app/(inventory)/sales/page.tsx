@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { format, subDays, addDays, parseISO } from 'date-fns';
 import {
   Plus, Receipt, ChevronLeft, ChevronRight, X, Search,
@@ -445,10 +445,9 @@ export default function SalesPage() {
                   const profit = txn.items.reduce((s, i) => s + (i.amount - i.costPrice), 0);
 
                   return (
-                    <>
+                    <React.Fragment key={txn.transactionId}>
                       {/* Transaction row */}
                       <tr
-                        key={txn.transactionId}
                         className={`hover:bg-primary/5 transition-colors ${isExpanded ? 'bg-primary/[0.03]' : ''}`}
                       >
                         {/* Expand toggle */}
@@ -518,7 +517,7 @@ export default function SalesPage() {
                           <td colSpan={2} />
                         </tr>
                       ))}
-                    </>
+                    </React.Fragment>
                   );
                 })
               )}
