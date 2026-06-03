@@ -259,6 +259,7 @@ export interface InventoryItem {
   productName: string;
   quantity: number;
   unit: InventoryUnit;
+  variant: string;
   costPrice: number;
   sellingPrice: number;
   categoryId: number;
@@ -277,6 +278,7 @@ export interface CreateInventoryDto {
   productName: string;
   quantity: number;
   unit: InventoryUnit;
+  variant: string;
   costPrice: number;
   sellingPrice: number;
   categoryId: number;
@@ -291,6 +293,7 @@ export interface UpdateInventoryDto {
   productName?: string;
   quantity?: number;
   unit?: InventoryUnit;
+  variant?: string;
   costPrice?: number;
   sellingPrice?: number;
   categoryId?: number;

@@ -74,7 +74,16 @@ export default function InventoryTable({
                   return (
                     <tr key={item.id} className="hover:bg-primary/5 transition-colors">
                       {/* Product */}
-                      <td className="px-3.5 py-3 font-semibold text-[13.5px]">{item.productName}</td>
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-[13.5px]">{item.productName}</span>
+                          {item.variant && (
+                            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-green-500/10 text-green-700 border border-green-500/20 whitespace-nowrap">
+                              {item.variant}
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
                       {/* Qty + unit + low stock badge */}
                       <td className="px-3.5 py-3">
