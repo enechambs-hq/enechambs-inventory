@@ -16,6 +16,7 @@ const inventorySchema = z.object({
   productName: z.string().min(1, 'Required'),
   quantity: z.coerce.number().min(0, 'Required'),
   unit: z.enum(['kg', 'piece', 'litre', 'pack', 'bag', 'carton', 'dozen'] as const),
+  variant: z.string().min(1, 'Required'),
   costPrice: z.coerce.number().min(0, 'Required'),
   sellingPrice: z.coerce.number().min(0, 'Required'),
   categoryId: z.coerce.number().min(1, 'Required'),
@@ -57,6 +58,7 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
     defaultValues: defaultValues
       ? {
           ...defaultValues,
+          variant: defaultValues.variant ?? '',
           expiryTracking: defaultValues.expiryTracking ?? false,
           expiryDate: defaultValues.expiryDate ?? '',
           supplierRef: defaultValues.supplierRef ?? '',
@@ -66,10 +68,12 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
           dateAdded: format(new Date(), 'yyyy-MM-dd'),
           restockThreshold: 10,
           expiryTracking: false,
+          variant: '',
         },
   });
 
   const expiryTracking = useWatch({ control, name: 'expiryTracking' });
+  const productNameWatch = useWatch({ control, name: 'productName' });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = control as any;
@@ -77,6 +81,7 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
   const { field: costField } = useController({ control: c, name: 'costPrice' });
   const { field: sellField } = useController({ control: c, name: 'sellingPrice' });
   const { field: threshField } = useController({ control: c, name: 'restockThreshold' });
+  const { field: variantField } = useController({ control: c, name: 'variant' });
 
   const handleFormSubmit = handleSubmit((data: InventoryFormOutput) => {
     const payload: CreateInventoryDto = {
@@ -98,6 +103,36 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
           <input {...register('productName')} type="text" className={inputClass} />
           {errors.productName && <p className={errorClass}>{errors.productName.message}</p>}
         </div>
+
+        {/* Size / Variant */}
+        <div className="space-y-1 col-span-2">
+          <label className={labelClass}>Size / Variant</label>
+          <input
+            {...variantField}
+            type="text"
+            placeholder="e.g. 5kg, 25 litres, 50kg"
+            className={inputClass}
+          />
+          <p className="text-xs text-muted-foreground">
+            Distinguishes this product from other sizes of the same item
+          </p>
+          {errors.variant && (
+            <p className={errorClass}>{errors.variant.message}</p>
+          )}
+        </div>
+
+        {/* Live preview */}
+        {(productNameWatch || variantField.value) && (
+          <div className="col-span-2 flex items-center gap-2 px-3 py-2 rounded-md bg-muted border border-border text-sm">
+            <span className="text-muted-foreground text-xs">Will appear as →</span>
+            <span className="font-medium">{productNameWatch || ''}</span>
+            {variantField.value && (
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-700 border border-green-500/20">
+                {variantField.value}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Quantity */}
         <div className="space-y-1">
