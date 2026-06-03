@@ -12,7 +12,7 @@ interface Props {
 const FILTERS: { key: ActiveFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'available', label: 'Available' },
-  { key: 'sold', label: 'Sold' },
+  { key: 'sold', label: 'Out of Stock' },
 ];
 
 

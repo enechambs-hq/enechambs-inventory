@@ -20,7 +20,7 @@ const inventorySchema = z.object({
   sellingPrice: z.coerce.number().min(0, 'Required'),
   categoryId: z.coerce.number().min(1, 'Required'),
   supplierRef: z.string().optional(),
-  restockThreshold: z.coerce.number().min(0, 'Required'),
+  restockThreshold: z.coerce.number().min(1, 'Must be at least 1'),
   expiryTracking: z.boolean().optional(),
   expiryDate: z.string().optional(),
   dateAdded: z.string().min(1, 'Required'),

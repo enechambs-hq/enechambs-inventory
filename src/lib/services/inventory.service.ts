@@ -74,8 +74,16 @@ export const inventoryService = {
     return response.data;
   },
 
+  restock: async (id: string, qty: number) => {
+    const response = await api.patch<SuccessResponse<InventoryItem>>(
+      `/inventory/${id}/restock`,
+      { quantity: qty },
+    );
+    return response.data;
+  },
+
   getStockLevels: async () => {
-    const response = await api.get<{ total: number; available: number; sold: number }>(
+    const response = await api.get<{ total: number; available: number; outOfStock: number }>(
       '/inventory/stock-levels'
     );
     return response.data;

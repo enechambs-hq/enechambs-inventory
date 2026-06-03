@@ -39,7 +39,7 @@ export default function InventoryPage() {
   const [stockLevels, setStockLevels] = useState<{
     total: number;
     available: number;
-    sold: number;
+    outOfStock: number;
   } | null>(null);
   const [daily, setDaily] = useState<DailySummary | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);

@@ -58,7 +58,7 @@ export default function StockAlertsPage() {
     if (!restockItem) return;
     setIsRestocking(true);
     try {
-      await inventoryService.update(restockItem.id, { quantity: newQty });
+      await inventoryService.restock(restockItem.id, newQty);
       await stockAlertsService.resolve(restockItem.id);
       toast.success(`${restockItem.productName} restocked`);
       setRestockItem(null);

@@ -17,8 +17,8 @@ export default function RestockDialog({ item, onClose, onConfirm, isLoading }: P
   const [qty, setQty] = useState(String(defaultQty));
 
   const handleConfirm = () => {
-    const parsed = parseInt(qty, 10);
-    onConfirm(isNaN(parsed) || parsed < 0 ? defaultQty : parsed);
+    const parsed = Number(qty);
+    onConfirm(isNaN(parsed) || parsed <= 0 ? defaultQty : parsed);
   };
 
   return (
@@ -69,7 +69,7 @@ export default function RestockDialog({ item, onClose, onConfirm, isLoading }: P
         {/* New quantity */}
         <div className="px-6 py-4">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            New quantity <span className="text-gray-400 font-normal">(after restocking)</span>
+            Units to add
           </label>
           <NumericInput
             value={qty}
@@ -78,6 +78,7 @@ export default function RestockDialog({ item, onClose, onConfirm, isLoading }: P
             placeholder={`e.g. ${defaultQty}`}
             className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#1a7a4a] focus:ring-1 focus:ring-[#1a7a4a]/20 transition-colors"
           />
+          <p className="text-xs text-gray-400 mt-1.5">How many units are you adding to the current stock?</p>
         </div>
 
         {/* Actions */}
