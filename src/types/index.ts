@@ -250,7 +250,7 @@ export interface Supplier {
 }
 
 // ==================== INVENTORY ====================
-export type InventoryUnit = 'kg' | 'piece' | 'litre' | 'pack' | 'bag' | 'carton' | 'dozen';
+export type InventoryUnit = 'carton' | 'bag' | 'bottle' | 'pack' | 'piece' | 'dozen' | 'gallon' | 'crate' | 'bucket' | 'box';
 
 export interface InventoryItem {
   id: string;

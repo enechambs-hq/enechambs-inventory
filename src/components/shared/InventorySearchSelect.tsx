@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import { InventoryItem } from '@/types';
+import { formatUnit } from '@/lib/formatUnit';
 
 function itemSearchText(item: InventoryItem): string {
   return `${item.productName} ${item.unit}`.toLowerCase();
@@ -57,7 +58,7 @@ export default function InventorySearchSelect({
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground truncate">{selected.productName}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {selected.quantity} {selected.unit}
+              {formatUnit(selected.quantity, selected.unit)}
             </p>
           </div>
         ) : (
@@ -109,7 +110,7 @@ export default function InventorySearchSelect({
                         {item.productName}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {item.quantity} {item.unit} · ₦{item.sellingPrice.toLocaleString()}
+                        {formatUnit(item.quantity, item.unit)} · ₦{item.sellingPrice.toLocaleString()}
                       </p>
                     </div>
                   </li>
