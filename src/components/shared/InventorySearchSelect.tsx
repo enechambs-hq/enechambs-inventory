@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, ChevronDown, Check } from 'lucide-react';
 import { InventoryItem } from '@/types';
-import { formatUnit } from '@/lib/formatUnit';
+import { formatUnit } from '@/lib/utils';
 
 function itemSearchText(item: InventoryItem): string {
   return `${item.productName} ${item.unit}`.toLowerCase();

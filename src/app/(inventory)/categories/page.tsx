@@ -8,7 +8,7 @@ import { Category } from '@/types';
 import SkeletonRow from '@/components/shared/SkeletonRow';
 import EmptyState from '@/components/categories/EmptyState';
 import CategoryModal from '@/components/categories/CategoryModal';
-import DeleteDialog from '@/components/categories/DeleteDialog';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -272,11 +272,13 @@ export default function CategoriesPage() {
       </div>
 
       <CategoryModal modal={modal} onClose={closeModal} onSave={handleSave} isSaving={isSaving} />
-      <DeleteDialog
-        deleteState={deleteState}
+      <ConfirmDialog
+        open={deleteState.open}
+        itemName={deleteState.category?.name ?? null}
+        entityLabel="category"
         onClose={closeDelete}
         onConfirm={handleDelete}
-        isDeleting={isDeleting}
+        isLoading={isDeleting}
       />
     </>
   );

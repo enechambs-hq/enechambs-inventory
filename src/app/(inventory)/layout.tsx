@@ -6,10 +6,8 @@ import { usePathname } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
 import ActivityPanel from '@/components/layout/ActivityPanel';
-import StaffGuide from '@/components/layout/StaffGuide';
 import GlobalSearch from '@/components/layout/GlobalSearch';
 import api from '@/lib/api';
-import { useCreditNotificationStore } from '@/store/creditNotification.store';
 
 export default function InventoryLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthGuard();
@@ -18,19 +16,10 @@ export default function InventoryLayout({ children }: { children: React.ReactNod
   const [activityOpen, setActivityOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const isActivityPage = pathname === '/activity';
-  const fetchOverdueCount = useCreditNotificationStore((s) => s.fetch);
-
   useEffect(() => {
     setMounted(true);
     api.get('/inventory?limit=1').catch(() => {});
   }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetchOverdueCount();
-    const interval = setInterval(fetchOverdueCount, 5 * 60 * 1000); // every 5 min
-    return () => clearInterval(interval);
-  }, [isAuthenticated, fetchOverdueCount]);
 
   // Close sidebar when navigating on tablet
   useEffect(() => {
@@ -89,7 +78,6 @@ export default function InventoryLayout({ children }: { children: React.ReactNod
           <main className="flex-1 p-4 lg:p-8">{children}</main>
         </div>
         <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
-        <StaffGuide />
       </div>
     </>
   );

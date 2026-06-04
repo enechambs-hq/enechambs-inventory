@@ -17,3 +17,12 @@ export function formatActivityDescription(desc: string): string {
     .replace(/\$\s*([\d,]+(?:\.\d+)?)/g, (_, n) => `₦${formatAmount(Number(n.replace(/,/g, '')))}`)
     .replace(/Amount:\s*([\d,]+(?:\.\d+)?)/g, (_, n) => `Amount: ₦${formatAmount(Number(n.replace(/,/g, '')))}`);
 }
+
+const IRREGULAR_UNITS: Record<string, string> = {
+  dozen: 'dozen',
+};
+
+export function formatUnit(quantity: number, unit: string): string {
+  const plural = IRREGULAR_UNITS[unit] ?? `${unit}s`;
+  return `${quantity} ${quantity === 1 ? unit : plural}`;
+}
