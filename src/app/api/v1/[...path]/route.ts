@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const BACKEND = 'https://enechambs-api.onrender.com';
+const BACKEND =
+  process.env.BACKEND_URL ?? 'https://enechambs-api.onrender.com';
 
 type Params = Promise<{ path: string[] }>;
 

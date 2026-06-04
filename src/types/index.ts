@@ -522,6 +522,7 @@ export interface StockReportItem {
   quantity: number;
   restockThreshold: number;
   unit: string;
+  variant?: string;
   categoryId: number;
   categoryName: string | null;
   supplierRef: string | null;
