@@ -40,7 +40,7 @@ export default function SuppliersPage() {
       const data = await suppliersService.getAll();
       setSuppliers(data);
     } catch {
-      toast.error('Failed to load suppliers');
+      // fail silently
     } finally {
       setIsLoading(false);
     }

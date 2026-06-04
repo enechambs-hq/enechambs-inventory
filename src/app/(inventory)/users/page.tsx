@@ -61,7 +61,7 @@ export default function UsersPage() {
       const data = await usersService.getAll({ page, limit });
       setUsers(data.data, data.meta);
     } catch {
-      toast.error('Failed to load users');
+      // fail silently
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function UsersPage() {
       const data = await usersService.getPerformance();
       setPerformance(data);
     } catch {
-      toast.error('Failed to load performance data');
+      // fail silently
     } finally {
       setPerfLoading(false);
     }

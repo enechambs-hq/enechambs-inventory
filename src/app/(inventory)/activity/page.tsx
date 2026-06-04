@@ -41,7 +41,7 @@ export default function ActivityPage() {
       setTotal(data.meta.total);
       setTotalPages(data.meta.totalPages);
     } catch {
-      toast.error('Failed to load activity logs');
+      // fail silently
     } finally {
       setIsLoading(false);
     }

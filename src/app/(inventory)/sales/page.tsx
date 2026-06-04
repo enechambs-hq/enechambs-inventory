@@ -266,7 +266,7 @@ export default function SalesPage() {
       });
       setSales(data.data, data.meta);
     } catch {
-      toast.error('Failed to load sales');
+      // fail silently
     } finally {
       setLoading(false);
     }
@@ -278,7 +278,7 @@ export default function SalesPage() {
       const data = await salesService.getMySales({ page, limit });
       setMySales(data.data, data.meta);
     } catch {
-      toast.error('Failed to load your sales');
+      // fail silently
     } finally {
       setLoading(false);
     }
@@ -317,7 +317,7 @@ export default function SalesPage() {
       const blob = new Blob([html], { type: 'text/html' });
       window.open(URL.createObjectURL(blob), '_blank');
     } catch {
-      toast.error('Failed to load receipt');
+      // fail silently
     }
   };
 
