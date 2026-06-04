@@ -1,5 +1,6 @@
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Category, InventoryItem, UserRole } from '@/types';
+import { formatUnit } from '@/lib/formatUnit';
 
 interface Props {
   items: InventoryItem[];
@@ -88,7 +89,7 @@ export default function InventoryTable({
                       {/* Qty + unit + low stock badge */}
                       <td className="px-3.5 py-3">
                         <div className="flex items-center gap-2">
-                          <span>{item.quantity} {item.unit}</span>
+                          <span>{formatUnit(item.quantity, item.unit)}</span>
                           {isLowStock && (
                             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 border border-amber-500/20 whitespace-nowrap">
                               Low stock

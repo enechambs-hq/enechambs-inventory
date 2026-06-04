@@ -10,12 +10,12 @@ import { Category, CreateInventoryDto, InventoryItem, InventoryUnit } from '@/ty
 import { categoriesService } from '@/lib/services/categories.service';
 import CustomSelect from '@/components/shared/CustomSelect';
 
-const UNITS: InventoryUnit[] = ['kg', 'piece', 'litre', 'pack', 'bag', 'carton', 'dozen'];
+const UNITS: InventoryUnit[] = ['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'];
 
 const inventorySchema = z.object({
   productName: z.string().min(1, 'Required'),
   quantity: z.coerce.number().min(0, 'Required'),
-  unit: z.enum(['kg', 'piece', 'litre', 'pack', 'bag', 'carton', 'dozen'] as const),
+  unit: z.enum(['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'] as const),
   variant: z.string().min(1, 'Required'),
   costPrice: z.coerce.number().min(0, 'Required'),
   sellingPrice: z.coerce.number().min(0, 'Required'),
