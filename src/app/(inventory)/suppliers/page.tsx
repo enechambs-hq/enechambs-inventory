@@ -8,7 +8,7 @@ import { Supplier } from '@/types';
 import SkeletonRow from '@/components/shared/SkeletonRow';
 import EmptyState from '@/components/suppliers/EmptyState';
 import SupplierModal, { SupplierFormData } from '@/components/suppliers/SupplierModal';
-import DeleteDialog from '@/components/suppliers/DeleteDialog';
+import ConfirmDialog from '@/components/shared/ConfirmDialog';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -262,11 +262,13 @@ export default function SuppliersPage() {
       </div>
 
       <SupplierModal modal={modal} onClose={closeModal} onSave={handleSave} isSaving={isSaving} />
-      <DeleteDialog
-        deleteState={deleteState}
+      <ConfirmDialog
+        open={deleteState.open}
+        itemName={deleteState.supplier?.name ?? null}
+        entityLabel="supplier"
         onClose={closeDelete}
         onConfirm={handleDelete}
-        isDeleting={isDeleting}
+        isLoading={isDeleting}
       />
     </>
   );

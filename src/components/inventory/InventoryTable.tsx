@@ -1,6 +1,6 @@
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Category, InventoryItem, UserRole } from '@/types';
-import { formatUnit } from '@/lib/formatUnit';
+import { formatUnit } from '@/lib/utils';
 
 interface Props {
   items: InventoryItem[];
