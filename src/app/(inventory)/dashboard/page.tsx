@@ -42,7 +42,7 @@ export default function DashboardPage() {
       const data = await dashboardService.getRevenueChart(range.startDate, range.endDate);
       setRevenueData(data);
     } catch {
-      toast.error("Failed to load revenue data");
+      // fail silently;
     }
   };
 
@@ -50,7 +50,7 @@ export default function DashboardPage() {
     const fetchAll = async () => {
       setIsLoading(true);
       await Promise.all([
-        dashboardService.getStats().then(setStats).catch(() => toast.error("Failed to load stats")),
+        dashboardService.getStats().then(setStats).catch(() => {}),
         usersService.getPerformance()
           .then((data) => setStaffPerformance(
             [...data].sort((a, b) => Number(b.totalrevenue) - Number(a.totalrevenue)).slice(0, 2)
@@ -59,7 +59,7 @@ export default function DashboardPage() {
         dashboardService.getDaily().then(setDaily).catch(() => {}),
         dashboardService.getWeekly().then(setWeekly).catch(() => {}),
         dashboardService.getMonthly().then(setMonthly).catch(() => {}),
-        dashboardService.getTopProducts().then(setTopProducts).catch(() => toast.error("Failed to load top products")),
+        dashboardService.getTopProducts().then(setTopProducts).catch(() => {}),
         dashboardService.getRecentActivity(15).then(setRecentActivities).catch(() => {}),
       ]);
       setIsLoading(false);

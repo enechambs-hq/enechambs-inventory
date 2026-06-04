@@ -54,7 +54,7 @@ export default function InventoryPage() {
       const data = await inventoryService.getAll({ page, limit, productName: search });
       setItems(data.data, data.meta);
     } catch {
-      toast.error("Failed to load inventory");
+      // fail silently
     } finally {
       setLoading(false);
     }

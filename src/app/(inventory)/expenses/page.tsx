@@ -579,7 +579,7 @@ export default function ExpensesPage() {
       });
       setExpenses(data.data, data.meta);
     } catch {
-      toast.error('Failed to load expenses');
+      // fail silently — empty state handles this
     } finally {
       setLoading(false);
     }

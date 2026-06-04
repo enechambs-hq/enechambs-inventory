@@ -877,7 +877,7 @@ export default function ReportsPage() {
           setProfitExpenseTotal(expenses?.totalAmount ?? 0);
         }
       } catch {
-        toast.error('Failed to load report');
+        // fail silently
       } finally {
         setIsLoading(false);
       }

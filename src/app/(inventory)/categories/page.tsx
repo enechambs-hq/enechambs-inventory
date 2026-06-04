@@ -1,20 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { Plus, Search, Pencil, Trash2, Tag } from 'lucide-react';
-import { toast } from 'sonner';
-import { categoriesService } from '@/lib/services/categories.service';
-import { Category } from '@/types';
-import SkeletonRow from '@/components/shared/SkeletonRow';
-import EmptyState from '@/components/categories/EmptyState';
-import CategoryModal from '@/components/categories/CategoryModal';
-import ConfirmDialog from '@/components/shared/ConfirmDialog';
+import { useEffect, useState, useCallback } from "react";
+import { Plus, Search, Pencil, Trash2, Tag } from "lucide-react";
+import { toast } from "sonner";
+import { categoriesService } from "@/lib/services/categories.service";
+import { Category } from "@/types";
+import SkeletonRow from "@/components/shared/SkeletonRow";
+import EmptyState from "@/components/categories/EmptyState";
+import CategoryModal from "@/components/categories/CategoryModal";
+import ConfirmDialog from "@/components/shared/ConfirmDialog";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ModalState {
   open: boolean;
-  mode: 'add' | 'edit';
+  mode: "add" | "edit";
   category: Category | null;
 }
 
@@ -34,9 +34,16 @@ interface FormData {
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<ModalState>({ open: false, mode: 'add', category: null });
-  const [deleteState, setDeleteState] = useState<DeleteState>({ open: false, category: null });
+  const [search, setSearch] = useState("");
+  const [modal, setModal] = useState<ModalState>({
+    open: false,
+    mode: "add",
+    category: null,
+  });
+  const [deleteState, setDeleteState] = useState<DeleteState>({
+    open: false,
+    category: null,
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -46,7 +53,7 @@ export default function CategoriesPage() {
       const data = await categoriesService.getAll();
       setCategories(data);
     } catch {
-      toast.error('Failed to load categories');
+      // fail silently — empty state handles this
     } finally {
       setIsLoading(false);
     }
@@ -56,36 +63,45 @@ export default function CategoriesPage() {
     fetchCategories();
   }, [fetchCategories]);
 
-  const filtered = categories.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = categories.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase()),
+  );
 
-  const openAdd = () => setModal({ open: true, mode: 'add', category: null });
-  const openEdit = (cat: Category) => setModal({ open: true, mode: 'edit', category: cat });
-  const closeModal = () => setModal({ open: false, mode: 'add', category: null });
-  const openDelete = (cat: Category) => setDeleteState({ open: true, category: cat });
+  const openAdd = () => setModal({ open: true, mode: "add", category: null });
+  const openEdit = (cat: Category) =>
+    setModal({ open: true, mode: "edit", category: cat });
+  const closeModal = () =>
+    setModal({ open: false, mode: "add", category: null });
+  const openDelete = (cat: Category) =>
+    setDeleteState({ open: true, category: cat });
   const closeDelete = () => setDeleteState({ open: false, category: null });
 
   const handleSave = async (form: FormData) => {
     setIsSaving(true);
     try {
-      if (modal.mode === 'add') {
+      if (modal.mode === "add") {
         await categoriesService.create({
           name: form.name.trim(),
           description: form.description.trim() || undefined,
           isActive: form.isActive,
         });
-        toast.success('Category added successfully');
+        toast.success("Category added successfully");
       } else if (modal.category) {
         await categoriesService.update(modal.category.id, {
           name: form.name.trim(),
           description: form.description.trim() || undefined,
           isActive: form.isActive,
         });
-        toast.success('Category updated successfully');
+        toast.success("Category updated successfully");
       }
       closeModal();
       await fetchCategories();
     } catch {
-      toast.error(modal.mode === 'add' ? 'Failed to add category' : 'Failed to update category');
+      toast.error(
+        modal.mode === "add"
+          ? "Failed to add category"
+          : "Failed to update category",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -96,11 +112,11 @@ export default function CategoriesPage() {
     setIsDeleting(true);
     try {
       await categoriesService.remove(deleteState.category.id);
-      toast.success('Category deleted');
+      toast.success("Category deleted");
       closeDelete();
       await fetchCategories();
     } catch {
-      toast.error('Failed to delete category');
+      toast.error("Failed to delete category");
     } finally {
       setIsDeleting(false);
     }
@@ -112,15 +128,15 @@ export default function CategoriesPage() {
       toast.success(`"${name}" added`);
       await fetchCategories();
     } catch {
-      toast.error('Failed to add category');
+      toast.error("Failed to add category");
     }
   };
 
   const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('en-NG', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+    new Date(iso).toLocaleDateString("en-NG", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
 
   return (
@@ -130,7 +146,9 @@ export default function CategoriesPage() {
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Manage your product categories</p>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Manage your product categories
+            </p>
           </div>
           <button
             onClick={openAdd}
@@ -165,11 +183,17 @@ export default function CategoriesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/60">
-                  {['Name', 'Description', 'Status', 'Date Created', 'Actions'].map((h, i) => (
+                  {[
+                    "Name",
+                    "Description",
+                    "Status",
+                    "Date Created",
+                    "Actions",
+                  ].map((h, i) => (
                     <th
                       key={h}
                       className={`px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wide ${
-                        i === 4 ? 'text-right' : 'text-left'
+                        i === 4 ? "text-right" : "text-left"
                       }`}
                     >
                       {h}
@@ -179,7 +203,9 @@ export default function CategoriesPage() {
               </thead>
               <tbody>
                 {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} widths={[200, 300, 80, 120, 80]} />)
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <SkeletonRow key={i} widths={[200, 300, 80, 120, 80]} />
+                  ))
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={5}>
@@ -190,14 +216,17 @@ export default function CategoriesPage() {
                             <span className="font-medium">{search}</span>&rdquo;
                           </p>
                           <button
-                            onClick={() => setSearch('')}
+                            onClick={() => setSearch("")}
                             className="text-sm text-[#1a7a4a] mt-1 hover:underline"
                           >
                             Clear search
                           </button>
                         </div>
                       ) : (
-                        <EmptyState onAdd={openAdd} onQuickAdd={handleQuickAdd} />
+                        <EmptyState
+                          onAdd={openAdd}
+                          onQuickAdd={handleQuickAdd}
+                        />
                       )}
                     </td>
                   </tr>
@@ -212,27 +241,33 @@ export default function CategoriesPage() {
                           <div className="w-7 h-7 rounded-lg bg-[#e8f5ee] flex items-center justify-center flex-shrink-0">
                             <Tag size={13} className="text-[#1a7a4a]" />
                           </div>
-                          <span className="text-sm font-medium text-gray-900">{cat.name}</span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {cat.name}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-gray-500">
-                          {cat.description || <span className="text-gray-300 italic">—</span>}
+                          {cat.description || (
+                            <span className="text-gray-300 italic">—</span>
+                          )}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                             cat.isActive
-                              ? 'bg-[#e8f5ee] text-[#1a7a4a]'
-                              : 'bg-gray-100 text-gray-500'
+                              ? "bg-[#e8f5ee] text-[#1a7a4a]"
+                              : "bg-gray-100 text-gray-500"
                           }`}
                         >
-                          {cat.isActive ? 'Active' : 'Inactive'}
+                          {cat.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-sm text-gray-500">{formatDate(cat.createdAt)}</span>
+                        <span className="text-sm text-gray-500">
+                          {formatDate(cat.createdAt)}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-1">
@@ -263,15 +298,27 @@ export default function CategoriesPage() {
           {!isLoading && filtered.length > 0 && (
             <div className="px-6 py-3.5 border-t border-gray-100 bg-gray-50/40">
               <p className="text-xs text-gray-400">
-                Showing <span className="font-medium text-gray-600">{filtered.length}</span> of{' '}
-                <span className="font-medium text-gray-600">{categories.length}</span> categories
+                Showing{" "}
+                <span className="font-medium text-gray-600">
+                  {filtered.length}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-gray-600">
+                  {categories.length}
+                </span>{" "}
+                categories
               </p>
             </div>
           )}
         </div>
       </div>
 
-      <CategoryModal modal={modal} onClose={closeModal} onSave={handleSave} isSaving={isSaving} />
+      <CategoryModal
+        modal={modal}
+        onClose={closeModal}
+        onSave={handleSave}
+        isSaving={isSaving}
+      />
       <ConfirmDialog
         open={deleteState.open}
         itemName={deleteState.category?.name ?? null}

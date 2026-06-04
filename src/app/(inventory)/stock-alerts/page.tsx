@@ -44,7 +44,7 @@ export default function StockAlertsPage() {
       const data = await inventoryService.getLowStockAlerts();
       setAlerts(data);
     } catch {
-      toast.error('Failed to load stock alerts');
+      // fail silently
     } finally {
       setIsLoading(false);
     }
