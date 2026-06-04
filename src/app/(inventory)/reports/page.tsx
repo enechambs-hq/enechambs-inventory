@@ -7,6 +7,7 @@ import { reportsService } from '@/lib/services/reports.service';
 import { expensesService } from '@/lib/services/expenses.service';
 import { SalesReport, StockReport, CategoryReport, ProfitReport, ExpenseSummary, ExpenseCategoryType } from '@/types';
 import { StatCard } from '@/components/shared/StatCard';
+import { formatUnit } from '@/lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -399,14 +400,13 @@ function StockTab({ report }: { report: StockReport }) {
       />
       <div
         className="grid px-5 py-2.5 bg-gray-50/60 border-b border-gray-100"
-        style={{ gridTemplateColumns: '1.8fr 1.2fr 110px 130px 90px 110px' }}
+        style={{ gridTemplateColumns: '1.8fr 1.2fr 130px 130px 110px' }}
       >
         {[
           { label: 'Product Name', align: 'left' },
           { label: 'Category', align: 'left' },
           { label: 'Current Qty', align: 'right' },
           { label: 'Min Threshold', align: 'right' },
-          { label: 'Unit', align: 'left' },
           { label: 'Status', align: 'left' },
         ].map((c) => (
           <div
@@ -431,17 +431,25 @@ function StockTab({ report }: { report: StockReport }) {
             <div className="w-8 h-8 rounded-lg bg-[#e8f5ee] flex items-center justify-center shrink-0">
               <Package size={15} className="text-[#1a7a4a]" strokeWidth={1.7} />
             </div>
-            <span className="text-[13.5px] font-semibold text-gray-900 truncate">{item.productName}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[13.5px] font-semibold text-gray-900 truncate">
+                {item.productName}
+              </span>
+              {item.variant && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-green-500/10 text-green-700 border border-green-500/20 whitespace-nowrap shrink-0">
+                  {item.variant}
+                </span>
+              )}
+            </div>
           </div>
           <div className="text-[13px] text-gray-500">{item.categoryName ?? <span className="italic text-gray-300">—</span>}</div>
           <div
             className="text-right text-[13.5px] font-semibold tabular-nums"
             style={{ color: item.isLowStock ? '#9b1d10' : '#111827' }}
           >
-            {item.quantity}
+            {formatUnit(Number(item.quantity), item.unit)}
           </div>
           <div className="text-right text-[13px] tabular-nums text-gray-400">{item.restockThreshold}</div>
-          <div className="text-[13px] text-gray-400 capitalize">{item.unit}</div>
           <div>
             {item.isLowStock ? (
               <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1 rounded-full" style={{ color: '#8a5a0a', background: '#fff5e0' }}>
