@@ -279,7 +279,7 @@ export interface CreateInventoryDto {
   quantity: number;
   unit: InventoryUnit;
   variant: string;
-  costPrice: number;
+  costPrice?: number;
   sellingPrice: number;
   categoryId: number;
   supplierRef?: string;
@@ -649,4 +649,45 @@ export interface PaginatedResponse<T> {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface Purchase {
+  id: string;
+  productName: string;
+  supplierName?: string;
+  quantityDescription?: string;
+  totalCost: number;
+  purchaseDate: string;
+  notes?: string;
+  recordedById?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePurchaseDto {
+  productName: string;
+  supplierName?: string;
+  quantityDescription?: string;
+  totalCost: number;
+  purchaseDate: string;
+  notes?: string;
+}
+
+export interface MonthlyReport {
+  month: number;
+  year: number;
+  openingStockValue: number;
+  totalPurchases: number;
+  totalCostAvailable: number;
+  closingStockValue: number;
+  costOfGoodsSold: number;
+  totalSales: number;
+  grossProfit: number;
+  totalExpenses: number;
+  netProfit: number;
+}
+
+export interface StockValueResponse {
+  totalValue: number;
+  totalCostValue: number;
 }

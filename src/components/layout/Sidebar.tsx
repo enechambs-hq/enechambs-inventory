@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   BarChart2,
   TrendingDown,
+  PackagePlus,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,6 +61,7 @@ const staffLinks = [
 const adminLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   ...staffLinks,
+  { href: "/purchases", label: "Purchases", icon: PackagePlus },
   { href: "/customers", label: "Customers", icon: Contact },
   { href: "/users", label: "Users", icon: Users },
 ];

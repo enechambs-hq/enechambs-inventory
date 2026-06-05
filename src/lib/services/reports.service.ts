@@ -21,4 +21,12 @@ export const reportsService = {
     const response = await api.get('/dashboard/profit-report', { params: { startDate, endDate } });
     return response.data;
   },
+
+  getMonthlyReport: async (
+    month: number,
+    year: number,
+  ): Promise<import('@/types').MonthlyReport> => {
+    const res = await api.get(`/reports/monthly?month=${month}&year=${year}`);
+    return res.data;
+  },
 };
