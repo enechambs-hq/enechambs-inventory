@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, TrendingUp, DollarSign } from "lucide-react";
+import { Plus, Package, ShoppingCart, Wallet, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
 import { useInventoryStore } from "@/store/inventory.store";
@@ -172,8 +172,8 @@ export default function InventoryPage() {
       {stockLevels && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-              <TrendingUp size={18} className="text-green-600" />
+            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+              <Package size={18} className="text-green-600" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Available Now</p>
@@ -182,8 +182,8 @@ export default function InventoryPage() {
           </div>
 
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-              <TrendingUp size={18} className="text-red-500" />
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center shrink-0">
+              <ShoppingCart size={18} className="text-red-500" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Sold Today</p>
@@ -192,26 +192,30 @@ export default function InventoryPage() {
           </div>
 
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <TrendingUp size={18} className="text-primary" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Wallet size={18} className="text-primary" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Stock Value</p>
               <p className="text-2xl font-bold text-foreground">
-                {stockValue ? '₦' + Math.round(stockValue.totalValue).toLocaleString('en-NG') : '—'}
+                {stockValue && !isNaN(stockValue.totalValue)
+                  ? '₦' + Math.round(stockValue.totalValue).toLocaleString('en-NG')
+                  : '—'}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">Based on selling price</p>
             </div>
           </div>
 
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-              <DollarSign size={18} className="text-amber-600" />
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+              <Coins size={18} className="text-amber-600" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Cost Value</p>
               <p className="text-2xl font-bold text-foreground">
-                {stockValue ? '₦' + Math.round(stockValue.totalCostValue).toLocaleString('en-NG') : '—'}
+                {stockValue && !isNaN(stockValue.totalCostValue)
+                  ? '₦' + Math.round(stockValue.totalCostValue).toLocaleString('en-NG')
+                  : '—'}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">Items with cost price only</p>
             </div>
