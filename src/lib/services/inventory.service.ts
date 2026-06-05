@@ -106,4 +106,9 @@ export const inventoryService = {
     const items = Array.isArray(payload) ? payload : (payload.data ?? []);
     return items.map(coerceItem);
   },
+
+  getStockValue: async (): Promise<import('@/types').StockValueResponse> => {
+    const res = await api.get('/inventory/stock-value');
+    return res.data;
+  },
 };
