@@ -279,7 +279,7 @@ export interface CreateInventoryDto {
   quantity: number;
   unit: InventoryUnit;
   variant: string;
-  costPrice: number;
+  costPrice?: number;
   sellingPrice: number;
   categoryId: number;
   supplierRef?: string;

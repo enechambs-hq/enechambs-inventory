@@ -17,7 +17,7 @@ const inventorySchema = z.object({
   quantity: z.coerce.number().min(0, 'Required'),
   unit: z.enum(['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'] as const),
   variant: z.string().min(1, 'Required'),
-  costPrice: z.coerce.number().min(0, 'Required'),
+  costPrice: z.coerce.number().min(0).optional(),
   sellingPrice: z.coerce.number().min(0, 'Required'),
   categoryId: z.coerce.number().min(1, 'Required'),
   supplierRef: z.string().optional(),
@@ -169,7 +169,7 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
 
         {/* Cost Price */}
         <div className="space-y-1">
-          <label className={labelClass}>Cost Price (₦)</label>
+          <label className={labelClass}>Cost Price (₦) <span className="text-muted-foreground font-normal">(optional)</span></label>
           <NumericInput
             value={costField.value}
             onChange={(v) => costField.onChange(v)}
