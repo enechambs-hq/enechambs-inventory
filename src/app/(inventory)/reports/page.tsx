@@ -5,13 +5,14 @@ import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users, 
 import { toast } from 'sonner';
 import { reportsService } from '@/lib/services/reports.service';
 import { expensesService } from '@/lib/services/expenses.service';
-import { SalesReport, StockReport, CategoryReport, ProfitReport, ExpenseSummary, ExpenseCategoryType } from '@/types';
+import { monthlyOpeningService } from '@/lib/services/monthlyOpening.service';
+import { SalesReport, StockReport, CategoryReport, ProfitReport, ExpenseSummary, ExpenseCategoryType, MonthlyReport } from '@/types';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatUnit } from '@/lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-type Tab = 'sales' | 'stock' | 'category' | 'profit' | 'expenses';
+type Tab = 'sales' | 'stock' | 'category' | 'profit' | 'expenses' | 'monthly';
 type Preset = 'month' | '7d' | '30d' | '90d';
 
 function fmtNGN(n: number) {
@@ -48,6 +49,7 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
     { id: 'category', label: 'Category Report' },
     { id: 'profit', label: 'Profit Report' },
     { id: 'expenses', label: 'Expenses Report' },
+    { id: 'monthly', label: 'Monthly P&L' },
   ];
   return (
     <div className="flex gap-1 border-b border-gray-200 mb-5">
@@ -845,6 +847,13 @@ export default function ReportsPage() {
   const [expensesReport, setExpensesReport] = useState<ExpenseSummary | null>(null);
   const [profitExpenseTotal, setProfitExpenseTotal] = useState(0);
 
+  const [monthlyReport, setMonthlyReport] = useState<MonthlyReport | null>(null);
+  const [monthlyLoading, setMonthlyLoading] = useState(false);
+  const [reportMonth, setReportMonth] = useState(new Date().getMonth() + 1);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [openingInput, setOpeningInput] = useState('');
+  const [savingOpening, setSavingOpening] = useState(false);
+
   const applyPreset = (p: Preset) => {
     setPreset(p);
     const { startDate: s, endDate: e } = getPresetDates(p);
@@ -902,7 +911,42 @@ export default function ReportsPage() {
     fetchReport(activeTab, getPresetDates('month').startDate, getPresetDates('month').endDate);
   };
 
-  const showDatePicker = activeTab !== 'stock';
+  const loadMonthlyReport = useCallback(async () => {
+    setMonthlyLoading(true);
+    try {
+      const data = await reportsService.getMonthlyReport(reportMonth, reportYear);
+      setMonthlyReport(data);
+      setOpeningInput(String(data.openingStockValue || ''));
+    } catch {
+      // fail silently
+    } finally {
+      setMonthlyLoading(false);
+    }
+  }, [reportMonth, reportYear]);
+
+  const saveOpening = async () => {
+    const val = parseFloat(openingInput);
+    if (isNaN(val) || val < 0) {
+      toast.error('Enter a valid opening stock value');
+      return;
+    }
+    setSavingOpening(true);
+    try {
+      await monthlyOpeningService.set(reportMonth, reportYear, val);
+      toast.success('Opening stock saved');
+      loadMonthlyReport();
+    } catch {
+      toast.error('Failed to save opening stock');
+    } finally {
+      setSavingOpening(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'monthly') loadMonthlyReport();
+  }, [activeTab, loadMonthlyReport]);
+
+  const showDatePicker = activeTab !== 'stock' && activeTab !== 'monthly';
   const hasEmptyState = activeTab === 'sales' || activeTab === 'category' || activeTab === 'profit' || activeTab === 'expenses';
 
   return (
@@ -959,7 +1003,156 @@ export default function ReportsPage() {
         ) : expensesReport ? (
           <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
         ) : null
+      ) : activeTab === 'monthly' ? (
+        <MonthlyTab
+          month={reportMonth}
+          year={reportYear}
+          onMonthChange={setReportMonth}
+          onYearChange={setReportYear}
+          report={monthlyReport}
+          loading={monthlyLoading}
+          openingInput={openingInput}
+          onOpeningChange={setOpeningInput}
+          onSaveOpening={saveOpening}
+          savingOpening={savingOpening}
+        />
       ) : null}
+    </div>
+  );
+}
+
+const MONTHS_LABELS = [
+  'January','February','March','April','May','June',
+  'July','August','September','October','November','December',
+];
+
+function MonthlyTab({
+  month, year, onMonthChange, onYearChange,
+  report, loading, openingInput, onOpeningChange,
+  onSaveOpening, savingOpening,
+}: {
+  month: number; year: number;
+  onMonthChange: (m: number) => void;
+  onYearChange: (y: number) => void;
+  report: MonthlyReport | null; loading: boolean;
+  openingInput: string;
+  onOpeningChange: (v: string) => void;
+  onSaveOpening: () => void;
+  savingOpening: boolean;
+}) {
+  const now = new Date();
+  const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
+
+  const rows: { label: string; value: number; highlight?: boolean;
+                indent?: boolean; positive?: boolean }[] =
+    report
+      ? [
+          { label: 'Opening Stock Value', value: report.openingStockValue },
+          { label: '+ Total Purchases', value: report.totalPurchases, indent: true },
+          { label: 'Total Cost Available', value: report.totalCostAvailable, highlight: true },
+          { label: '− Closing Stock Value', value: report.closingStockValue, indent: true },
+          { label: 'Cost of Goods Sold', value: report.costOfGoodsSold, highlight: true },
+          { label: 'Total Sales', value: report.totalSales },
+          { label: '− Cost of Goods Sold', value: report.costOfGoodsSold, indent: true },
+          { label: 'Gross Profit', value: report.grossProfit, highlight: true, positive: report.grossProfit >= 0 },
+          { label: '− Total Expenses', value: report.totalExpenses, indent: true },
+          { label: 'Net Profit', value: report.netProfit, highlight: true, positive: report.netProfit >= 0 },
+        ]
+      : [];
+
+  return (
+    <div className="space-y-5">
+      {/* Controls */}
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Month</label>
+          <select
+            value={month}
+            onChange={(e) => onMonthChange(Number(e.target.value))}
+            className="pl-3 pr-8 py-2 rounded-lg border border-border bg-background
+                       text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {MONTHS_LABELS.map((m, i) => (
+              <option key={i} value={i + 1}>{m}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Year</label>
+          <select
+            value={year}
+            onChange={(e) => onYearChange(Number(e.target.value))}
+            className="pl-3 pr-8 py-2 rounded-lg border border-border bg-background
+                       text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="ml-auto flex items-end gap-2">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">
+              Opening Stock Value (₦)
+            </label>
+            <input
+              type="number"
+              value={openingInput}
+              onChange={(e) => onOpeningChange(e.target.value)}
+              placeholder="e.g. 4000000"
+              className="w-44 px-3 py-2 rounded-lg border border-border bg-background
+                         text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <button
+            onClick={onSaveOpening}
+            disabled={savingOpening}
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground
+                       text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
+          >
+            {savingOpening ? 'Saving...' : 'Set'}
+          </button>
+        </div>
+      </div>
+
+      {/* P&L Table */}
+      {loading ? (
+        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
+          Loading...
+        </div>
+      ) : !report ? (
+        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
+          Select a month and year to view the report
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-border">
+            <h3 className="text-sm font-semibold">
+              {MONTHS_LABELS[month - 1]} {year} — Profit & Loss
+            </h3>
+          </div>
+          <div className="divide-y divide-border">
+            {rows.map((row, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-between px-5 py-3 ${row.highlight ? 'bg-muted/40' : ''}`}
+              >
+                <span className={`text-sm ${row.indent ? 'pl-4 text-muted-foreground' : row.highlight ? 'font-semibold' : 'font-medium'}`}>
+                  {row.label}
+                </span>
+                <span className={`text-sm font-semibold ${
+                  row.highlight && row.positive !== undefined
+                    ? row.positive ? 'text-emerald-600' : 'text-red-500'
+                    : 'text-foreground'
+                }`}>
+                  {row.value < 0 ? '-' : ''}{fmtNGN(Math.abs(row.value))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

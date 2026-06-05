@@ -1,16 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus } from "lucide-react";
+import { Plus, TrendingUp, DollarSign } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/auth.store";
 import { useInventoryStore } from "@/store/inventory.store";
 import { inventoryService } from "@/lib/services/inventory.service";
 import { categoriesService } from "@/lib/services/categories.service";
 import { dashboardService } from "@/lib/services/dashboard.service";
-import { InventoryItem, CreateInventoryDto, UserRole, Category, DailySummary } from "@/types";
+import { InventoryItem, CreateInventoryDto, UserRole, Category, DailySummary, StockValueResponse } from "@/types";
 import InventoryForm from "@/components/shared/InventoryForm";
-import StockLevelCards from "@/components/inventory/StockLevelCards";
 import LowStockAlert from "@/components/inventory/LowStockAlert";
 import InventoryFilters from "@/components/inventory/InventoryFilters";
 import InventoryTable from "@/components/inventory/InventoryTable";
@@ -44,6 +43,7 @@ export default function InventoryPage() {
   const [daily, setDaily] = useState<DailySummary | null>(null);
   const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [stockValue, setStockValue] = useState<StockValueResponse | null>(null);
   const [filterSnapshot, setFilterSnapshot] = useState<InventoryItem[] | null>(null);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
   const [filterPage, setFilterPage] = useState(1);
@@ -67,6 +67,7 @@ export default function InventoryPage() {
   useEffect(() => {
     inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
     inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
+    inventoryService.getStockValue().then(setStockValue).catch(() => {});
     categoriesService.getAll().then(setCategories).catch(() => {});
     dashboardService.getDaily().then(setDaily).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -169,10 +170,53 @@ export default function InventoryPage() {
       </div>
 
       {stockLevels && (
-        <StockLevelCards
-          available={stockLevels.available}
-          soldToday={daily?.sales.count ?? 0}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+              <TrendingUp size={18} className="text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Available Now</p>
+              <p className="text-2xl font-bold text-green-600">{stockLevels.available}</p>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+              <TrendingUp size={18} className="text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Sold Today</p>
+              <p className="text-2xl font-bold text-red-500">{daily?.sales.count ?? 0}</p>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <TrendingUp size={18} className="text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Stock Value</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stockValue ? '₦' + Math.round(stockValue.totalValue).toLocaleString('en-NG') : '—'}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Based on selling price</p>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+              <DollarSign size={18} className="text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Cost Value</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stockValue ? '₦' + Math.round(stockValue.totalCostValue).toLocaleString('en-NG') : '—'}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Items with cost price only</p>
+            </div>
+          </div>
+        </div>
       )}
       {user?.role === UserRole.ADMIN && <LowStockAlert items={lowStock} />}
 
