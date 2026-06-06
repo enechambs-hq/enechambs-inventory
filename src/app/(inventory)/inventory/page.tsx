@@ -65,11 +65,16 @@ export default function InventoryPage() {
   }, [fetchInventory]);
 
   useEffect(() => {
-    inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
-    inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
-    inventoryService.getStockValue().then(setStockValue).catch(() => {});
-    categoriesService.getAll().then(setCategories).catch(() => {});
-    dashboardService.getDaily().then(setDaily).catch(() => {});
+    const refresh = () => {
+      inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
+      inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
+      inventoryService.getStockValue().then(setStockValue).catch(() => {});
+      categoriesService.getAll().then(setCategories).catch(() => {});
+      dashboardService.getDaily().then(setDaily).catch(() => {});
+    };
+    refresh();
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
