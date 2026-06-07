@@ -293,50 +293,52 @@ function EmptyReport({ onReset, onGenerate }: { onReset: () => void; onGenerate:
 
 // ─── Sales Tab ────────────────────────────────────────────────────────────────
 
-function SalesTab({ report }: { report: SalesReport }) {
+function SalesTab({ report, isAdmin }: { report: SalesReport; isAdmin: boolean }) {
   const { summary, topProducts } = report;
   return (
     <div className="space-y-4">
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard
-          label="Monthly Revenue"
-          value={fmtNGN(summary.totalRevenue)}
-          icon={TrendingUp}
-          accentColor="#1a7a4a"
-          iconBg="bg-[#e8f5ee]"
-          iconColor="text-[#1a7a4a]"
-        />
-        <StatCard
-          label="Monthly Sales"
-          value={summary.totalSales.toLocaleString()}
-          icon={ShoppingBag}
-          accentColor="#0d9488"
-          iconBg="bg-teal-500/10"
-          iconColor="text-[#0d9488]"
-        />
-        <StatCard
-          label="Avg Sale Value"
-          value={fmtNGN(summary.averageSaleValue)}
-          icon={BarChart2}
-          accentColor="#16a34a"
-          iconBg="bg-green-500/10"
-          iconColor="text-green-600"
-        />
-        <StatCard
-          label="Top Product"
-          value={summary.topProduct?.name ?? '—'}
-          sub={
-            summary.topProduct
-              ? `${summary.topProduct.qtySold} sold · ${fmtNGN(summary.topProduct.revenue)}`
-              : undefined
-          }
-          icon={Award}
-          accentColor="#155f3a"
-          iconBg="bg-[#e8f5ee]"
-          iconColor="text-[#155f3a]"
-        />
-      </div>
+      {/* Summary cards — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard
+            label="Monthly Revenue"
+            value={fmtNGN(summary.totalRevenue)}
+            icon={TrendingUp}
+            accentColor="#1a7a4a"
+            iconBg="bg-[#e8f5ee]"
+            iconColor="text-[#1a7a4a]"
+          />
+          <StatCard
+            label="Monthly Sales"
+            value={summary.totalSales.toLocaleString()}
+            icon={ShoppingBag}
+            accentColor="#0d9488"
+            iconBg="bg-teal-500/10"
+            iconColor="text-[#0d9488]"
+          />
+          <StatCard
+            label="Avg Sale Value"
+            value={fmtNGN(summary.averageSaleValue)}
+            icon={BarChart2}
+            accentColor="#16a34a"
+            iconBg="bg-green-500/10"
+            iconColor="text-green-600"
+          />
+          <StatCard
+            label="Top Product"
+            value={summary.topProduct?.name ?? '—'}
+            sub={
+              summary.topProduct
+                ? `${summary.topProduct.qtySold} sold · ${fmtNGN(summary.topProduct.revenue)}`
+                : undefined
+            }
+            icon={Award}
+            accentColor="#155f3a"
+            iconBg="bg-[#e8f5ee]"
+            iconColor="text-[#155f3a]"
+          />
+        </div>
+      )}
 
       {/* Top products table */}
       <ReportCard>
@@ -1010,7 +1012,7 @@ export default function ReportsPage() {
         activeTab === 'stock' ? <StockSkeleton /> : <ReportsSkeleton />
       ) : activeTab === 'sales' ? (
         salesReport && salesReport.topProducts.length > 0 ? (
-          <SalesTab report={salesReport} />
+          <SalesTab report={salesReport} isAdmin={isAdmin} />
         ) : salesReport ? (
           <EmptyReport onReset={handleReset} onGenerate={handleGenerate} />
         ) : null
