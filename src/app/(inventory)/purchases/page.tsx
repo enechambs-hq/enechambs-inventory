@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { PackagePlus, Trash2, Plus, X, ChevronDown } from 'lucide-react';
-import { useForm } from 'react-hook-form';
+import { useForm, useController } from 'react-hook-form';
+import { NumericInput } from '@/components/shared/NumericInput';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -20,7 +21,7 @@ const schema = z.object({
   productName: z.string().min(1, 'Required'),
   supplierName: z.string().optional(),
   quantityDescription: z.string().optional(),
-  totalCost: z.coerce.number().min(1, 'Must be greater than 0'),
+  totalCost: z.number().min(1, 'Must be greater than 0'),
   purchaseDate: z.string().min(1, 'Required'),
   notes: z.string().optional(),
 });
@@ -50,9 +51,11 @@ export default function PurchasesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const {
-    register, handleSubmit, reset,
+    register, handleSubmit, reset, control,
     formState: { errors },
-  } = useForm({ resolver: zodResolver(schema) });
+  } = useForm<FormData>({ resolver: zodResolver(schema) });
+
+  const { field: totalCostField } = useController({ control, name: 'totalCost', defaultValue: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -308,9 +311,11 @@ export default function PurchasesPage() {
 
                 <div>
                   <label className={labelClass}>Total Cost (₦) *</label>
-                  <input
-                    {...register('totalCost')}
-                    type="number"
+                  <NumericInput
+                    value={totalCostField.value}
+                    onChange={(raw) => totalCostField.onChange(raw === '' ? 0 : parseFloat(raw))}
+                    onBlur={totalCostField.onBlur}
+                    decimals={false}
                     placeholder="0"
                     className={inputClass}
                   />
@@ -326,6 +331,7 @@ export default function PurchasesPage() {
                   <input
                     {...register('purchaseDate')}
                     type="date"
+                    max={new Date().toISOString().split('T')[0]}
                     className={inputClass}
                   />
                   {errors.purchaseDate && (
