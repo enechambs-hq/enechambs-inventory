@@ -300,7 +300,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           {/* Date */}
           <div className="space-y-1">
             <label className="text-sm font-medium">Date</label>
-            <input {...register('date')} type="date" className={inputCls} />
+            <input {...register('date')} type="date" max={new Date().toISOString().split('T')[0]} className={inputCls} />
             {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
           </div>
         </div>

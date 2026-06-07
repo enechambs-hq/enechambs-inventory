@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users, TrendingDown, Tag, Lock } from 'lucide-react';
+import { NumericInput } from '@/components/shared/NumericInput';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 import { UserRole } from '@/types';
@@ -1151,11 +1152,11 @@ function MonthlyTab({
                     </span>
                   )}
                 </div>
-                <input
-                  type="number"
+                <NumericInput
                   value={openingInput}
-                  onChange={(e) => onOpeningChange(e.target.value)}
-                  placeholder="e.g. 4000000"
+                  onChange={onOpeningChange}
+                  decimals={false}
+                  placeholder="e.g. 4,000,000"
                   className="w-44 px-3 py-2 rounded-lg border border-border
                              bg-background text-sm focus:outline-none
                              focus:ring-2 focus:ring-primary/30"
