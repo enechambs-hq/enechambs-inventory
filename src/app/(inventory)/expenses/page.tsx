@@ -675,14 +675,12 @@ export default function ExpensesPage() {
           <p className="text-sm text-muted-foreground mt-0.5">Track and manage business expenditures</p>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
-            <button
-              onClick={() => setCatModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
-            >
-              <Settings2 size={14} /> Categories
-            </button>
-          )}
+          <button
+            onClick={() => setCatModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <Settings2 size={14} /> Categories
+          </button>
           <button
             onClick={() => setFormModal({ open: true, mode: 'add', expense: null })}
             className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
