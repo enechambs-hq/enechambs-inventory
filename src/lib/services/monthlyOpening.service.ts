@@ -1,9 +1,17 @@
 import api from '@/lib/api';
 
 export const monthlyOpeningService = {
-  set: async (month: number, year: number, value: number) => {
+  set: async (
+    month: number,
+    year: number,
+    value: number,
+    allowOverride = false,
+  ) => {
     const res = await api.post('/monthly-opening', {
-      month, year, openingStockValue: value,
+      month,
+      year,
+      openingStockValue: value,
+      allowOverride,
     });
     return res.data;
   },

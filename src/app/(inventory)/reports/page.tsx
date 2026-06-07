@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users, TrendingDown, Tag } from 'lucide-react';
+import { BarChart2, Package, TrendingUp, ShoppingBag, Award, DollarSign, Users, TrendingDown, Tag, Lock } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/store/auth.store';
+import { UserRole } from '@/types';
 import { reportsService } from '@/lib/services/reports.service';
 import { expensesService } from '@/lib/services/expenses.service';
 import { monthlyOpeningService } from '@/lib/services/monthlyOpening.service';
@@ -42,15 +44,16 @@ function formatDisplayDate(iso: string) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
-  const tabs: { id: Tab; label: string }[] = [
+function TabBar({ active, onChange, isAdmin }: { active: Tab; onChange: (t: Tab) => void; isAdmin: boolean }) {
+  const allTabs: { id: Tab; label: string; adminOnly?: boolean }[] = [
     { id: 'sales', label: 'Sales Report' },
     { id: 'stock', label: 'Stock Report' },
-    { id: 'category', label: 'Category Report' },
-    { id: 'profit', label: 'Profit Report' },
-    { id: 'expenses', label: 'Expenses Report' },
-    { id: 'monthly', label: 'Monthly P&L' },
+    { id: 'category', label: 'Category Report', adminOnly: true },
+    { id: 'profit', label: 'Profit Report', adminOnly: true },
+    { id: 'expenses', label: 'Expenses Report', adminOnly: true },
+    { id: 'monthly', label: 'Monthly P&L', adminOnly: true },
   ];
+  const tabs = allTabs.filter((t) => !t.adminOnly || isAdmin);
   return (
     <div className="flex gap-1 border-b border-gray-200 mb-5">
       {tabs.map((t) => {
@@ -834,6 +837,9 @@ function ExpensesTab({ report }: { report: ExpenseSummary }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === UserRole.ADMIN;
+
   const [activeTab, setActiveTab] = useState<Tab>('sales');
   const [preset, setPreset] = useState<Preset>('month');
   const [startDate, setStartDate] = useState(getPresetDates('month').startDate);
@@ -853,6 +859,7 @@ export default function ReportsPage() {
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
   const [openingInput, setOpeningInput] = useState('');
   const [savingOpening, setSavingOpening] = useState(false);
+  const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
 
   const applyPreset = (p: Preset) => {
     setPreset(p);
@@ -900,6 +907,14 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Reset to sales if staff lands on an admin-only tab
+  useEffect(() => {
+    const financialTabs = ['category', 'profit', 'expenses', 'monthly'];
+    if (!isAdmin && financialTabs.includes(activeTab as string)) {
+      setActiveTab('sales');
+    }
+  }, [isAdmin, activeTab]);
+
   const handleGenerate = () => fetchReport(activeTab, startDate, endDate);
 
   const handleTabChange = (tab: Tab) => {
@@ -924,19 +939,35 @@ export default function ReportsPage() {
     }
   }, [reportMonth, reportYear]);
 
-  const saveOpening = async () => {
+  const saveOpening = async (override = false) => {
     const val = parseFloat(openingInput);
     if (isNaN(val) || val < 0) {
       toast.error('Enter a valid opening stock value');
       return;
     }
+
+    const dayOfMonth = new Date().getDate();
+    const isLocked = dayOfMonth > 7;
+
+    if (isLocked && !override) {
+      setShowOverrideConfirm(true);
+      return;
+    }
+
     setSavingOpening(true);
     try {
-      await monthlyOpeningService.set(reportMonth, reportYear, val);
-      toast.success('Opening stock saved');
+      await monthlyOpeningService.set(reportMonth, reportYear, val, override);
+      toast.success(
+        override
+          ? 'Opening stock overridden successfully'
+          : 'Opening stock saved',
+      );
+      setShowOverrideConfirm(false);
       loadMonthlyReport();
-    } catch {
-      toast.error('Failed to save opening stock');
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || 'Failed to save opening stock',
+      );
     } finally {
       setSavingOpening(false);
     }
@@ -958,7 +989,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Tabs */}
-      <TabBar active={activeTab} onChange={handleTabChange} />
+      <TabBar active={activeTab} onChange={handleTabChange} isAdmin={isAdmin} />
 
       {/* Date Range Picker */}
       {showDatePicker && (
@@ -1015,6 +1046,9 @@ export default function ReportsPage() {
           onOpeningChange={setOpeningInput}
           onSaveOpening={saveOpening}
           savingOpening={savingOpening}
+          showOverrideConfirm={showOverrideConfirm}
+          onOverrideConfirm={() => saveOpening(true)}
+          onOverrideCancel={() => setShowOverrideConfirm(false)}
         />
       ) : null}
     </div>
@@ -1030,6 +1064,7 @@ function MonthlyTab({
   month, year, onMonthChange, onYearChange,
   report, loading, openingInput, onOpeningChange,
   onSaveOpening, savingOpening,
+  showOverrideConfirm, onOverrideConfirm, onOverrideCancel,
 }: {
   month: number; year: number;
   onMonthChange: (m: number) => void;
@@ -1039,6 +1074,9 @@ function MonthlyTab({
   onOpeningChange: (v: string) => void;
   onSaveOpening: () => void;
   savingOpening: boolean;
+  showOverrideConfirm: boolean;
+  onOverrideConfirm: () => void;
+  onOverrideCancel: () => void;
 }) {
   const now = new Date();
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
@@ -1092,24 +1130,43 @@ function MonthlyTab({
         </div>
 
         <div className="ml-auto flex items-end gap-2">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Opening Stock Value (₦)
-            </label>
-            <input
-              type="number"
-              value={openingInput}
-              onChange={(e) => onOpeningChange(e.target.value)}
-              placeholder="e.g. 4000000"
-              className="w-44 px-3 py-2 rounded-lg border border-border bg-background
-                         text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
+          {(() => {
+            const dayOfMonth = new Date().getDate();
+            const isLocked = dayOfMonth > 7;
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Opening Stock Value (₦)
+                  </label>
+                  {isLocked && (
+                    <span className="flex items-center gap-1 px-2 py-0.5
+                                     rounded text-[10px] font-medium
+                                     bg-amber-500/10 text-amber-700
+                                     border border-amber-500/20">
+                      <Lock size={10} />
+                      Locked — editable days 1–7 only
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="number"
+                  value={openingInput}
+                  onChange={(e) => onOpeningChange(e.target.value)}
+                  placeholder="e.g. 4000000"
+                  className="w-44 px-3 py-2 rounded-lg border border-border
+                             bg-background text-sm focus:outline-none
+                             focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+            );
+          })()}
           <button
-            onClick={onSaveOpening}
+            onClick={() => onSaveOpening()}
             disabled={savingOpening}
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground
-                       text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
+                       text-sm font-medium hover:bg-primary/90
+                       disabled:opacity-60 transition-colors"
           >
             {savingOpening ? 'Saving...' : 'Set'}
           </button>
@@ -1150,6 +1207,46 @@ function MonthlyTab({
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {showOverrideConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={onOverrideCancel}
+          />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
+            <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+              <Lock size={20} className="text-amber-600" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1">
+              Override locked record?
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Opening stock is locked after day 7. This override will
+              be recorded in the activity log. Are you sure you want
+              to proceed?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={onOverrideCancel}
+                className="flex-1 px-4 py-2.5 text-sm font-medium
+                           text-gray-700 bg-gray-100 rounded-lg
+                           hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onOverrideConfirm}
+                className="flex-1 px-4 py-2.5 text-sm font-medium
+                           text-white bg-amber-500 rounded-lg
+                           hover:bg-amber-600 transition-colors"
+              >
+                Override
+              </button>
+            </div>
           </div>
         </div>
       )}
