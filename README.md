@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Enechambs Food — Inventory Management Dashboard
+
+Frontend admin dashboard for the Enechambs Food inventory and business management system — a Nigerian foodstuff business. Built with Next.js 14 App Router, TypeScript and Tailwind CSS.
+
+## Features
+
+- 🔐 **Role-based UI** — Admin sees all features; Staff sees a filtered view
+- 📦 **Inventory** — Add, edit, restock and delete food products; low-stock alerts; expiry tracking
+- 💰 **Sales** — Record single and bulk sales; customer lookup; receipt generation
+- 🛒 **Purchases** — Log supplier purchases with cost tracking; monthly totals
+- 💸 **Expenses** — Record business expenses by category; monthly spending chart (Admin)
+- 📊 **Dashboard** — Live KPIs: available stock, sold today, stock value, cost value
+- 📈 **Reports** — Sales, stock, category, profit and monthly P&L (Admin); sales and stock reports (Staff)
+- 🗓️ **Monthly P&L** — Set opening stock value (edit-locked after day 7 with admin override)
+- 🔔 **Focus refresh** — Dashboard and inventory stats refresh automatically when the tab regains focus
+- ⌨️ **Smart inputs** — All money inputs show comma formatting in real time (e.g. 1,000,000); date inputs block future dates
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS |
+| State | Zustand |
+| Forms | React Hook Form + Zod |
+| Charts | Recharts |
+| Toasts | Sonner |
+| Deployment | Vercel |
+
+## Architecture
+
+The frontend proxies all API calls through a Next.js API route (`src/app/api/v1/[...path]/route.ts`) to the backend, which runs on Render at `https://enechambs-api.onrender.com`. This keeps the backend URL out of the browser and avoids CORS issues.
+
+## App Structure
+
+```
+src/
+├── app/
+│   ├── (auth)/            # Login, setup-password pages
+│   ├── (inventory)/       # All dashboard pages (protected)
+│   │   ├── inventory/     # Inventory management
+│   │   ├── sales/         # Sales recording and history
+│   │   ├── purchases/     # Purchases tracking
+│   │   ├── expenses/      # Expense management
+│   │   └── reports/       # Business reports
+│   └── api/v1/[...path]/  # API proxy to Render backend
+├── components/
+│   ├── shared/            # InventoryForm, SaleForm, NumericInput, StatCard…
+│   ├── inventory/         # Low stock alerts, filters, table
+│   ├── dashboard/         # Revenue chart, summary cards
+│   └── stock-alerts/      # Restock dialog
+├── hooks/                 # useAuthGuard, useAuthStore
+├── lib/
+│   ├── api.ts             # Axios instance
+│   └── services/          # API service layer (one file per module)
+├── store/                 # Zustand stores
+└── types/                 # TypeScript interfaces
+```
+
+## Role Access Summary
+
+| Feature | Admin | Staff |
+|---|---|---|
+| Inventory — view | ✅ | ✅ |
+| Inventory — add / edit / delete | ✅ | ❌ |
+| Sales — record / view | ✅ | ✅ |
+| Purchases — all | ✅ | ❌ |
+| Expenses — view / record | ✅ | ✅ |
+| Expenses — edit / delete / summary | ✅ | ❌ |
+| Expense categories — view / create | ✅ | ✅ |
+| Expense categories — edit / delete | ✅ | ❌ |
+| Reports — sales / stock | ✅ | ✅ |
+| Reports — category / profit / expenses / P&L | ✅ | ❌ |
+| Dashboard KPI cards | ✅ | ✅ |
+| Dashboard revenue charts | ✅ | ❌ |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+
+- The `enechambs-api` backend running (locally or on Render)
+
+### Installation
+
+```bash
+npm install
+```
+
+### Environment variables
+
+```env
+NEXT_PUBLIC_API_URL=/api/v1
+BACKEND_URL=https://enechambs-api.onrender.com
+```
+
+### Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs on `http://localhost:3001` (or the next available port). API calls are proxied to `BACKEND_URL`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Branch Flow
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+feature/* → PR → dev → PR → main (deploy to Vercel)
+```
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+After merging dev → main, `dev` is synced back to `main` to prevent branch divergence.
