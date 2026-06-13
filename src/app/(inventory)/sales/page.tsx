@@ -107,7 +107,7 @@ function RevenueChart({ data, startDate, endDate, profitByDate }: {
 function TransactionModal({ txn, onClose, onReceipt }: {
   txn: SaleTransaction; onClose: () => void; onReceipt: (transactionId: string) => void;
 }) {
-  const totalProfit = txn.items.reduce((s, i) => s + (i.finalPrice - i.costPrice), 0);
+  const totalProfit = txn.items.reduce((s, i) => s + (i.finalPrice - i.costPrice * i.quantity), 0);
   const totalDiscount = txn.items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
   const margin = txn.total > 0 ? ((totalProfit / txn.total) * 100).toFixed(1) : '0.0';
 
@@ -264,7 +264,7 @@ export default function SalesPage() {
       data.data.forEach((txn) => {
         const key = txn.date?.slice(0, 10) ?? txn.createdAt?.slice(0, 10);
         if (!key) return;
-        const profit = txn.items.reduce((s, i) => s + (i.amount - i.costPrice), 0);
+        const profit = txn.items.reduce((s, i) => s + (i.finalPrice - i.costPrice * i.quantity), 0);
         map.set(key, (map.get(key) ?? 0) + profit);
       });
       setProfitByDate(map);
@@ -462,7 +462,7 @@ export default function SalesPage() {
                 displayedTxns.map((txn, idx) => {
                   const isMulti = txn.itemCount > 1;
                   const isExpanded = expandedTxns.has(txn.transactionId);
-                  const profit = txn.items.reduce((s, i) => s + (i.amount - i.costPrice), 0);
+                  const profit = txn.items.reduce((s, i) => s + (i.finalPrice - i.costPrice * i.quantity), 0);
 
                   const txnDiscount = txn.items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
                   const txnListTotal = txn.items.reduce((s, i) => s + (i.listPrice ?? i.amount), 0);
@@ -563,7 +563,7 @@ export default function SalesPage() {
                               </div>
                             </td>
                             <td className="px-3 py-2 text-[12px] text-muted-foreground">
-                              ₦{(item.amount - item.costPrice).toLocaleString()} profit
+                              ₦{(item.finalPrice - item.costPrice * item.quantity).toLocaleString()} profit
                             </td>
                             <td colSpan={2} />
                           </tr>
