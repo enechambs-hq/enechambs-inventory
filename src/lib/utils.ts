@@ -18,6 +18,15 @@ export function formatActivityDescription(desc: string): string {
     .replace(/Amount:\s*([\d,]+(?:\.\d+)?)/g, (_, n) => `Amount: ₦${formatAmount(Number(n.replace(/,/g, '')))}`);
 }
 
+/** Final price for a sale line: list price minus discount, floored at 0. */
+export function computeFinalPrice(listPrice: number, discountAmount: number): number {
+  return Math.max(0, listPrice - discountAmount);
+}
+
+export function hasDiscount(item: { discountAmount?: number }): boolean {
+  return (item.discountAmount ?? 0) > 0;
+}
+
 const IRREGULAR_UNITS: Record<string, string> = {
   dozen: 'dozen',
 };
