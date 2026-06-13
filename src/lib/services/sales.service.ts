@@ -32,6 +32,9 @@ function coerceItem(item: SaleTransaction['items'][number]) {
     amount: Number(item.amount),
     costPrice: Number(item.costPrice),
     unitPrice: Number(item.unitPrice),
+    listPrice: Number(item.listPrice ?? item.amount),
+    discountAmount: Number(item.discountAmount ?? 0),
+    finalPrice: Number(item.finalPrice ?? item.amount),
   };
 }
 

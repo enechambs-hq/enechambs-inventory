@@ -8,6 +8,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import InventorySearchSelect from './InventorySearchSelect';
 import { NumericInput } from './NumericInput';
 import { BulkSaleDto, CreateSaleDto, InventoryItem, SaleSubmitPayload, Vendor } from '@/types';
+import { computeFinalPrice } from '@/lib/utils';
 import { inventoryService } from '@/lib/services/inventory.service';
 import { dashboardService } from '@/lib/services/dashboard.service';
 import { format } from 'date-fns';
@@ -18,6 +19,7 @@ type CartRow = {
   quantity: number;
   unitPrice: number;
   amount: number;
+  discountAmount: number;
 };
 
 const newRow = (): CartRow => ({
@@ -26,6 +28,7 @@ const newRow = (): CartRow => ({
   quantity: 1,
   unitPrice: 0,
   amount: 0,
+  discountAmount: 0,
 });
 
 const customerSchema = z.object({
@@ -130,26 +133,45 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     const item = inventory.find((i) => i.id === inventoryId);
     if (!item) return;
     setCart((prev) =>
-      prev.map((r) =>
-        r.id === rowId
-          ? { ...r, inventoryId, unitPrice: item.sellingPrice, amount: item.sellingPrice * r.quantity }
-          : r
-      )
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const listPrice = item.sellingPrice * r.quantity;
+        return {
+          ...r,
+          inventoryId,
+          unitPrice: item.sellingPrice,
+          amount: computeFinalPrice(listPrice, r.discountAmount),
+        };
+      })
     );
   };
 
   const onChangeQty = (rowId: string, qty: number) => {
     const safeQty = Math.max(1, qty || 1);
     setCart((prev) =>
-      prev.map((r) =>
-        r.id === rowId ? { ...r, quantity: safeQty, amount: r.unitPrice * safeQty } : r
-      )
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const listPrice = r.unitPrice * safeQty;
+        return { ...r, quantity: safeQty, amount: computeFinalPrice(listPrice, r.discountAmount) };
+      })
     );
   };
 
   const onChangeAmount = (rowId: string, raw: string) => {
     const amount = Number(raw.replace(/,/g, '')) || 0;
     setCart((prev) => prev.map((r) => (r.id === rowId ? { ...r, amount } : r)));
+  };
+
+  const onChangeDiscount = (rowId: string, raw: string) => {
+    const discountAmount = Number(raw.replace(/,/g, '')) || 0;
+    setCart((prev) =>
+      prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const listPrice = r.unitPrice * r.quantity;
+        const safeDiscount = Math.min(discountAmount, listPrice);
+        return { ...r, discountAmount: safeDiscount, amount: computeFinalPrice(listPrice, safeDiscount) };
+      })
+    );
   };
 
   const grandTotal = cart.reduce((s, r) => s + r.amount, 0);
@@ -170,7 +192,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           inventoryId: r.inventoryId,
           date: customerData.date,
           quantity: r.quantity,
-          amount: r.amount,
+          discountAmount: r.discountAmount,
           customerName: customerData.customerName,
           customerPhone: customerData.customerPhone,
           customerEmail: customerData.customerEmail,
@@ -191,7 +213,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           items: filledRows.map((r) => ({
             inventoryId: r.inventoryId,
             quantity: r.quantity,
-            amount: r.amount,
+            discountAmount: r.discountAmount,
           })),
         } as BulkSaleDto,
       });
@@ -362,14 +384,36 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Amount (₦)</label>
+                    <label className="text-xs font-medium text-muted-foreground">List Price (₦)</label>
                     <input
                       type="text"
-                      inputMode="decimal"
-                      value={row.amount === 0 ? '' : row.amount.toLocaleString()}
-                      onChange={(e) => onChangeAmount(row.id, e.target.value)}
+                      readOnly
+                      value={row.unitPrice === 0 ? '—' : (row.unitPrice * row.quantity).toLocaleString()}
+                      className="w-full px-3 py-2 rounded-md border bg-muted/50 text-sm text-muted-foreground cursor-default"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">
+                      Discount (₦) <span className="text-muted-foreground/60 font-normal">optional</span>
+                    </label>
+                    <NumericInput
+                      value={row.discountAmount === 0 ? '' : row.discountAmount}
+                      onChange={(v) => onChangeDiscount(row.id, v)}
+                      decimals={false}
                       placeholder="0"
                       className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                    {row.discountAmount > 0 && row.unitPrice > 0 && row.discountAmount >= row.unitPrice * row.quantity && (
+                      <p className="text-xs text-destructive">Discount cannot exceed list price</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">Final Price (₦)</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={row.amount === 0 ? '—' : row.amount.toLocaleString()}
+                      className="w-full px-3 py-2 rounded-md border bg-background text-sm font-semibold text-[#1a7a4a] cursor-default"
                     />
                   </div>
                 </div>

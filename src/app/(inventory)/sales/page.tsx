@@ -107,7 +107,8 @@ function RevenueChart({ data, startDate, endDate, profitByDate }: {
 function TransactionModal({ txn, onClose, onReceipt }: {
   txn: SaleTransaction; onClose: () => void; onReceipt: (transactionId: string) => void;
 }) {
-  const totalProfit = txn.items.reduce((s, i) => s + (i.amount - i.costPrice), 0);
+  const totalProfit = txn.items.reduce((s, i) => s + (i.finalPrice - i.costPrice), 0);
+  const totalDiscount = txn.items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
   const margin = txn.total > 0 ? ((totalProfit / txn.total) * 100).toFixed(1) : '0.0';
 
   return (
@@ -156,22 +157,38 @@ function TransactionModal({ txn, onClose, onReceipt }: {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {txn.items.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-4 py-2.5 text-[13px] font-medium">{item.productName}</td>
-                  <td className="px-4 py-2.5 text-[13px] text-muted-foreground">{item.quantity}</td>
-                  <td className="px-4 py-2.5 text-[13px] text-muted-foreground">₦{item.unitPrice.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-[13px] font-semibold text-[#1a7a4a]">₦{item.amount.toLocaleString()}</td>
-                </tr>
-              ))}
+              {txn.items.map((item) => {
+                const itemDiscount = item.discountAmount ?? 0;
+                return (
+                  <tr key={item.id}>
+                    <td className="px-4 py-2.5 text-[13px] font-medium">{item.productName}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-muted-foreground">{item.quantity}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-muted-foreground">₦{item.unitPrice.toLocaleString()}</td>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[13px] font-semibold text-[#1a7a4a]">₦{item.finalPrice.toLocaleString()}</span>
+                        {itemDiscount > 0 && (
+                          <>
+                            <span className="text-[11px] text-muted-foreground line-through">₦{item.listPrice.toLocaleString()}</span>
+                            <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold bg-[#e8f5ee] text-[#1a7a4a] border border-[#1a7a4a]/20">
+                              −₦{itemDiscount.toLocaleString()}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
         {/* Financials */}
-        <div className="grid grid-cols-3 gap-2.5 mb-3">
+        <div className={`grid gap-2.5 mb-3 ${totalDiscount > 0 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {[
             { label: 'Total Revenue', value: `₦${txn.total.toLocaleString()}`, cls: 'text-[#1a7a4a]' },
+            ...(totalDiscount > 0 ? [{ label: 'Total Discounts', value: `−₦${totalDiscount.toLocaleString()}`, cls: 'text-[#1a7a4a]' }] : []),
             { label: 'Total Profit', value: `₦${totalProfit.toLocaleString()}`, cls: totalProfit >= 0 ? 'text-green-600' : 'text-red-500' },
             { label: 'Margin', value: `${margin}%`, cls: totalProfit >= 0 ? 'text-green-600' : 'text-red-500' },
           ].map(({ label, value, cls }) => (
@@ -302,9 +319,12 @@ export default function SalesPage() {
       fetchSales();
       dashboardService.getMonthly().then(setMonthly).catch(() => {});
     } catch (error) {
-      const message =
-        (error as { response?: { data?: { message?: string | string[] } } })
-          .response?.data?.message || 'Something went wrong';
+      const err = error as { response?: { status?: number; data?: { message?: string | string[] } } };
+      if (err.response?.status === 403) {
+        toast.error('Discounts above 5% require an admin.');
+        return;
+      }
+      const message = err.response?.data?.message || 'Something went wrong';
       toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setSubmitting(false);
@@ -408,7 +428,7 @@ export default function SalesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted border-b border-border">
-                {['', '#', 'Items', 'Customer', 'Total', 'Profit', 'Date', ''].map((h, i) => (
+                {['', '#', 'Items', 'Customer', 'Amount', 'Profit', 'Date', ''].map((h, i) => (
                   <th
                     key={i}
                     className={`px-3 py-2.5 text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide ${
@@ -443,6 +463,9 @@ export default function SalesPage() {
                   const isMulti = txn.itemCount > 1;
                   const isExpanded = expandedTxns.has(txn.transactionId);
                   const profit = txn.items.reduce((s, i) => s + (i.amount - i.costPrice), 0);
+
+                  const txnDiscount = txn.items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
+                  const txnListTotal = txn.items.reduce((s, i) => s + (i.listPrice ?? i.amount), 0);
 
                   return (
                     <React.Fragment key={txn.transactionId}>
@@ -480,7 +503,21 @@ export default function SalesPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-[13px] text-muted-foreground">{txn.customerName}</td>
-                        <td className="px-3 py-3 font-bold text-[14px]">₦{txn.total.toLocaleString()}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-bold text-[14px]">₦{txn.total.toLocaleString()}</span>
+                            {txnDiscount > 0 && (
+                              <>
+                                <span className="text-[12px] text-muted-foreground line-through">
+                                  ₦{txnListTotal.toLocaleString()}
+                                </span>
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#e8f5ee] text-[#1a7a4a] border border-[#1a7a4a]/20">
+                                  −₦{txnDiscount.toLocaleString()}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </td>
                         <td className={`px-3 py-3 font-semibold text-[13.5px] ${profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                           ₦{profit.toLocaleString()}
                         </td>
@@ -498,25 +535,40 @@ export default function SalesPage() {
                       </tr>
 
                       {/* Expanded item rows */}
-                      {isExpanded && txn.items.map((item) => (
-                        <tr key={item.id} className="bg-muted/20 border-t border-dashed border-border/50">
-                          <td className="px-3 py-2" />
-                          <td className="px-3 py-2" />
-                          <td className="px-3 py-2 pl-6 text-[12.5px] font-medium text-foreground">
-                            {item.productName}
-                          </td>
-                          <td className="px-3 py-2 text-[12px] text-muted-foreground">
-                            ×{item.quantity} @ ₦{item.unitPrice.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 text-[13px] font-semibold">
-                            ₦{item.amount.toLocaleString()}
-                          </td>
-                          <td className="px-3 py-2 text-[12px] text-muted-foreground">
-                            ₦{(item.amount - item.costPrice).toLocaleString()} profit
-                          </td>
-                          <td colSpan={2} />
-                        </tr>
-                      ))}
+                      {isExpanded && txn.items.map((item) => {
+                        const itemDiscount = item.discountAmount ?? 0;
+                        return (
+                          <tr key={item.id} className="bg-muted/20 border-t border-dashed border-border/50">
+                            <td className="px-3 py-2" />
+                            <td className="px-3 py-2" />
+                            <td className="px-3 py-2 pl-6 text-[12.5px] font-medium text-foreground">
+                              {item.productName}
+                            </td>
+                            <td className="px-3 py-2 text-[12px] text-muted-foreground">
+                              ×{item.quantity} @ ₦{item.unitPrice.toLocaleString()}
+                            </td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[13px] font-semibold">₦{item.finalPrice.toLocaleString()}</span>
+                                {itemDiscount > 0 && (
+                                  <>
+                                    <span className="text-[11px] text-muted-foreground line-through">
+                                      ₦{item.listPrice.toLocaleString()}
+                                    </span>
+                                    <span className="inline-flex items-center px-1 py-0.5 rounded text-[9px] font-semibold bg-[#e8f5ee] text-[#1a7a4a] border border-[#1a7a4a]/20">
+                                      −₦{itemDiscount.toLocaleString()}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-[12px] text-muted-foreground">
+                              ₦{(item.amount - item.costPrice).toLocaleString()} profit
+                            </td>
+                            <td colSpan={2} />
+                          </tr>
+                        );
+                      })}
                     </React.Fragment>
                   );
                 })

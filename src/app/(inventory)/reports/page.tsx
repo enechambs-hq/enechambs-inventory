@@ -1094,6 +1094,9 @@ function MonthlyTab({
           { label: '− Closing Stock Value', value: report.closingStockValue, indent: true },
           { label: 'Cost of Goods Sold', value: report.costOfGoodsSold, highlight: true },
           { label: 'Total Sales', value: report.totalSales },
+          ...(report.totalDiscounts != null && report.totalDiscounts > 0
+            ? [{ label: '− Total Discounts', value: report.totalDiscounts, indent: true }]
+            : []),
           { label: '− Cost of Goods Sold', value: report.costOfGoodsSold, indent: true },
           { label: 'Gross Profit', value: report.grossProfit, highlight: true, positive: report.grossProfit >= 0 },
           { label: '− Total Expenses', value: report.totalExpenses, indent: true },

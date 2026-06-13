@@ -328,6 +328,9 @@ export interface CreateSaleDto {
   date?: string;
   quantity?: number;
   amount: number;
+  listPrice?: number;
+  discountAmount?: number;
+  finalPrice?: number;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
@@ -339,6 +342,9 @@ export interface BulkSaleItemDto {
   inventoryId: string;
   quantity: number;
   amount: number;
+  listPrice?: number;
+  discountAmount?: number;
+  finalPrice?: number;
 }
 
 export interface BulkSaleDto {
@@ -363,6 +369,9 @@ export interface SaleItem {
   unitPrice: number;
   amount: number;
   costPrice: number;
+  listPrice: number;
+  discountAmount: number;
+  finalPrice: number;
 }
 
 export interface SaleTransaction {
@@ -682,6 +691,7 @@ export interface MonthlyReport {
   closingStockValue: number;
   costOfGoodsSold: number;
   totalSales: number;
+  totalDiscounts?: number;
   grossProfit: number;
   totalExpenses: number;
   netProfit: number;
