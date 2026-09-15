@@ -12,12 +12,42 @@ import CustomSelect from '@/components/shared/CustomSelect';
 
 const UNITS: InventoryUnit[] = ['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'];
 
+/**
+ * Normalises a money field before validation.
+ *
+ * NumericInput emits a raw, comma-formatted string, and `z.coerce.number()`
+ * turns '' into 0 — which would let a blank cost price through as a real zero.
+ * The business rule is that cost price is always known, so blank is mapped to
+ * undefined and rejected rather than defaulted. A deliberately entered 0 is
+ * still accepted, matching the backend's @Min(0).
+ */
+const toMoney = (v: unknown): unknown => {
+  if (v === null) return undefined;
+  if (typeof v === 'string') {
+    const trimmed = v.replace(/,/g, '').trim();
+    if (trimmed === '') return undefined;
+    const n = Number(trimmed);
+    return Number.isNaN(n) ? trimmed : n;
+  }
+  return v;
+};
+
 const inventorySchema = z.object({
   productName: z.string().min(1, 'Required'),
   quantity: z.coerce.number().min(0, 'Required'),
   unit: z.enum(['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'] as const),
   variant: z.string().min(1, 'Required'),
-  costPrice: z.coerce.number().min(0).optional(),
+  costPrice: z.preprocess(
+    toMoney,
+    z
+      .number({
+        error: (iss) =>
+          iss.input === undefined
+            ? 'Cost price is required'
+            : 'Enter a valid cost price',
+      })
+      .min(0, 'Cost price cannot be negative'),
+  ),
   sellingPrice: z.coerce.number().min(0, 'Required'),
   categoryId: z.coerce.number().min(1, 'Required'),
   supplierRef: z.string().optional(),
@@ -169,13 +199,18 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
 
         {/* Cost Price */}
         <div className="space-y-1">
-          <label className={labelClass}>Cost Price (₦) <span className="text-muted-foreground font-normal">(optional)</span></label>
+          <label className={labelClass} htmlFor="costPrice">
+            Cost Price (₦) <span className="text-destructive">*</span>
+          </label>
           <NumericInput
+            id="costPrice"
             value={costField.value}
             onChange={(v) => costField.onChange(v)}
             onBlur={costField.onBlur}
             name={costField.name}
             decimals={true}
+            aria-required="true"
+            aria-invalid={errors.costPrice ? true : undefined}
             className={inputClass}
           />
           {errors.costPrice && <p className={errorClass}>{errors.costPrice.message}</p>}
