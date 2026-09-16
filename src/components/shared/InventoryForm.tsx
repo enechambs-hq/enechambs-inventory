@@ -48,7 +48,22 @@ const inventorySchema = z.object({
       })
       .min(0, 'Cost price cannot be negative'),
   ),
-  sellingPrice: z.coerce.number().min(0, 'Required'),
+  // Same treatment as costPrice, and for the same reason: z.coerce.number()
+  // turns '' into 0, so a blank selling price passed validation as a real price
+  // of nothing. Every sale of such a product then booked ₦0 of revenue against
+  // a real cost. The API rejects it now too; this keeps the message on the
+  // field instead of surfacing as a server error.
+  sellingPrice: z.preprocess(
+    toMoney,
+    z
+      .number({
+        error: (iss) =>
+          iss.input === undefined
+            ? 'Selling price is required'
+            : 'Enter a valid selling price',
+      })
+      .min(0, 'Selling price cannot be negative'),
+  ),
   categoryId: z.coerce.number().min(1, 'Required'),
   supplierRef: z.string().optional(),
   restockThreshold: z.coerce.number().min(1, 'Must be at least 1'),
@@ -218,14 +233,19 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
 
         {/* Selling Price */}
         <div className="space-y-1">
-          <label className={labelClass}>Selling Price (₦)</label>
+          <label className={labelClass} htmlFor="sellingPrice">
+            Selling Price (₦) *
+          </label>
           <NumericInput
+            id="sellingPrice"
             value={sellField.value}
             onChange={(v) => sellField.onChange(v)}
             onBlur={sellField.onBlur}
             name={sellField.name}
             decimals={true}
             className={inputClass}
+            aria-required
+            aria-invalid={errors.sellingPrice ? true : undefined}
           />
           {errors.sellingPrice && <p className={errorClass}>{errors.sellingPrice.message}</p>}
         </div>
