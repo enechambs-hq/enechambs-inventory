@@ -55,12 +55,14 @@ const staffLinks = [
   { href: "/categories", label: "Categories", icon: Tag },
   { href: "/suppliers", label: "Suppliers", icon: Truck },
   { href: "/stock-alerts", label: "Stock Alerts", icon: AlertTriangle },
-  { href: "/reports", label: "Reports", icon: BarChart2 },
 ];
 
+// Reports moved here: every tab on that page is backed by an admin-only
+// endpoint now, so linking staff to it would land them on an empty screen.
 const adminLinks = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   ...staffLinks,
+  { href: "/reports", label: "Reports", icon: BarChart2 },
   { href: "/purchases", label: "Purchases", icon: PackagePlus },
   { href: "/customers", label: "Customers", icon: Contact },
   { href: "/users", label: "Users", icon: Users },

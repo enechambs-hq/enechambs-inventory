@@ -47,8 +47,12 @@ function formatDisplayDate(iso: string) {
 
 function TabBar({ active, onChange, isAdmin }: { active: Tab; onChange: (t: Tab) => void; isAdmin: boolean }) {
   const allTabs: { id: Tab; label: string; adminOnly?: boolean }[] = [
-    { id: 'sales', label: 'Sales Report' },
-    { id: 'stock', label: 'Stock Report' },
+    // Every report is admin-only now: /reports/sales and /reports/stock joined
+    // the rest when business-wide revenue and stock figures were restricted, so
+    // showing a staff member these tabs would only produce a 403 and an empty
+    // panel.
+    { id: 'sales', label: 'Sales Report', adminOnly: true },
+    { id: 'stock', label: 'Stock Report', adminOnly: true },
     { id: 'category', label: 'Category Report', adminOnly: true },
     { id: 'profit', label: 'Profit Report', adminOnly: true },
     { id: 'expenses', label: 'Expenses Report', adminOnly: true },
@@ -912,7 +916,7 @@ export default function ReportsPage() {
 
   // Reset to sales if staff lands on an admin-only tab
   useEffect(() => {
-    const financialTabs = ['category', 'profit', 'expenses', 'monthly'];
+    const financialTabs = ['sales', 'stock', 'category', 'profit', 'expenses', 'monthly'];
     if (!isAdmin && financialTabs.includes(activeTab as string)) {
       setActiveTab('sales');
     }

@@ -18,6 +18,7 @@ type ActiveFilter = "all" | "available" | "sold";
 
 export default function InventoryPage() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === UserRole.ADMIN;
   const {
     items,
     total,
@@ -68,7 +69,10 @@ export default function InventoryPage() {
     const refresh = () => {
       inventoryService.getStockLevels().then(setStockLevels).catch(() => {});
       inventoryService.getLowStockAlerts().then(setLowStock).catch(() => {});
-      inventoryService.getStockValue().then(setStockValue).catch(() => {});
+      // Admin only: /inventory/stock-value is a business-wide financial figure
+      // and now returns 403 for staff. Calling it anyway would just swallow an
+      // error and leave the card showing a dash.
+      if (isAdmin) inventoryService.getStockValue().then(setStockValue).catch(() => {});
       categoriesService.getAll().then(setCategories).catch(() => {});
       dashboardService.getDaily().then(setDaily).catch(() => {});
     };
@@ -175,7 +179,7 @@ export default function InventoryPage() {
       </div>
 
       {stockLevels && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${isAdmin ? 'xl:grid-cols-4' : ''}`}>
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
               <Package size={18} className="text-green-600" />
@@ -196,6 +200,9 @@ export default function InventoryPage() {
             </div>
           </div>
 
+          {/* Stock Value and Cost Value are whole-business financials, admin
+              only, matching GET /inventory/stock-value. */}
+          {isAdmin && (
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <Wallet size={18} className="text-primary" />
@@ -210,7 +217,9 @@ export default function InventoryPage() {
               <p className="text-[11px] text-muted-foreground mt-0.5">Based on selling price</p>
             </div>
           </div>
+          )}
 
+          {isAdmin && (
           <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
               <Coins size={18} className="text-amber-600" />
@@ -225,6 +234,7 @@ export default function InventoryPage() {
               <p className="text-[11px] text-muted-foreground mt-0.5">Items with cost price only</p>
             </div>
           </div>
+          )}
         </div>
       )}
       {user?.role === UserRole.ADMIN && <LowStockAlert items={lowStock} />}
