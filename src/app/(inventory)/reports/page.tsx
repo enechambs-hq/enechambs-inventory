@@ -1084,15 +1084,16 @@ function MonthlyTab({
   const now = new Date();
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
 
+  // The statement used to open with opening stock + purchases − closing stock
+  // and present the result as cost of goods sold. The API no longer derives
+  // COGS that way: it sums the cost price each sale captured at the time it was
+  // made, so the figure agrees with the dashboard and the sales reports. Those
+  // four stock lines would now show a derivation that does not equal the COGS
+  // beneath it, so they move to their own section as the context they are.
   const rows: { label: string; value: number; highlight?: boolean;
                 indent?: boolean; positive?: boolean }[] =
     report
       ? [
-          { label: 'Opening Stock Value', value: report.openingStockValue },
-          { label: '+ Total Purchases', value: report.totalPurchases, indent: true },
-          { label: 'Total Cost Available', value: report.totalCostAvailable, highlight: true },
-          { label: '− Closing Stock Value', value: report.closingStockValue, indent: true },
-          { label: 'Cost of Goods Sold', value: report.costOfGoodsSold, highlight: true },
           { label: 'Total Sales', value: report.totalSales },
           ...(report.totalDiscounts != null && report.totalDiscounts > 0
             ? [{ label: '− Total Discounts', value: report.totalDiscounts, indent: true }]
@@ -1101,6 +1102,16 @@ function MonthlyTab({
           { label: 'Gross Profit', value: report.grossProfit, highlight: true, positive: report.grossProfit >= 0 },
           { label: '− Total Expenses', value: report.totalExpenses, indent: true },
           { label: 'Net Profit', value: report.netProfit, highlight: true, positive: report.netProfit >= 0 },
+        ]
+      : [];
+
+  const stockRows: { label: string; value: number; indent?: boolean; highlight?: boolean }[] =
+    report
+      ? [
+          { label: 'Opening Stock Value', value: report.openingStockValue },
+          { label: '+ Total Purchases', value: report.totalPurchases, indent: true },
+          { label: 'Total Cost Available', value: report.totalCostAvailable, highlight: true },
+          { label: 'Closing Stock Value (today)', value: report.closingStockValue },
         ]
       : [];
 
@@ -1209,6 +1220,30 @@ function MonthlyTab({
                     ? row.positive ? 'text-emerald-600' : 'text-red-500'
                     : 'text-foreground'
                 }`}>
+                  {row.value < 0 ? '-' : ''}{fmtNGN(Math.abs(row.value))}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="px-5 py-3 border-t border-border">
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Stock position
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              For context. Closing stock is the value of inventory on hand right
+              now, not as at month end, so it does not feed the profit above.
+            </p>
+          </div>
+          <div className="divide-y divide-border">
+            {stockRows.map((row, i) => (
+              <div
+                key={i}
+                className={`flex items-center justify-between px-5 py-3 ${row.highlight ? 'bg-muted/40' : ''}`}
+              >
+                <span className={`text-sm ${row.indent ? 'pl-4 text-muted-foreground' : row.highlight ? 'font-semibold' : 'font-medium'}`}>
+                  {row.label}
+                </span>
+                <span className="text-sm font-semibold text-foreground">
                   {row.value < 0 ? '-' : ''}{fmtNGN(Math.abs(row.value))}
                 </span>
               </div>
