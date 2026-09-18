@@ -12,6 +12,7 @@ import { monthlyOpeningService } from '@/lib/services/monthlyOpening.service';
 import { SalesReport, StockReport, CategoryReport, ProfitReport, ExpenseSummary, ExpenseCategoryType, MonthlyReport } from '@/types';
 import { StatCard } from '@/components/shared/StatCard';
 import { formatUnit } from '@/lib/utils';
+import { businessDate } from '@/lib/businessDate';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,8 +23,10 @@ function fmtNGN(n: number) {
   return '₦' + Math.round(n).toLocaleString('en-NG');
 }
 
+// Report periods are business periods: formatting in UTC put every preset a day
+// early during the first hour of each Lagos day.
 function isoDate(d: Date) {
-  return d.toISOString().split('T')[0];
+  return businessDate(d);
 }
 
 function getPresetDates(preset: Preset): { startDate: string; endDate: string } {

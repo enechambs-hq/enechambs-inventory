@@ -123,6 +123,8 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = control as any;
   const { field: qtyField } = useController({ control: c, name: 'quantity' });
+  // defaultValues is only passed when an existing product is being edited.
+  const isEditing = Boolean(defaultValues);
   const { field: costField } = useController({ control: c, name: 'costPrice' });
   const { field: sellField } = useController({ control: c, name: 'sellingPrice' });
   const { field: threshField } = useController({ control: c, name: 'restockThreshold' });
@@ -179,19 +181,38 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
           </div>
         )}
 
-        {/* Quantity */}
-        <div className="space-y-1">
-          <label className={labelClass}>Quantity</label>
-          <NumericInput
-            value={qtyField.value}
-            onChange={(v) => qtyField.onChange(v)}
-            onBlur={qtyField.onBlur}
-            name={qtyField.name}
-            decimals={false}
-            className={inputClass}
-          />
-          {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
-        </div>
+        {/* Quantity — opening stock, and only when the product is first added.
+            Editing a product must not touch its stock: the figure loaded into
+            this form goes stale the moment anything is sold, and saving it back
+            would undo that sale. Stock moves through selling and restocking. */}
+        {isEditing ? (
+          <div className="space-y-1">
+            <label className={labelClass}>Quantity in stock</label>
+            <div className={`${inputClass} bg-muted/40 flex items-center justify-between`}>
+              <span>
+                {defaultValues?.quantity} {defaultValues?.unit}
+                {Number(defaultValues?.quantity) === 1 ? '' : 's'}
+              </span>
+              <span className="text-[11px] text-muted-foreground">not editable here</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Stock changes when you record a sale or restock the product.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <label className={labelClass}>Quantity</label>
+            <NumericInput
+              value={qtyField.value}
+              onChange={(v) => qtyField.onChange(v)}
+              onBlur={qtyField.onBlur}
+              name={qtyField.name}
+              decimals={false}
+              className={inputClass}
+            />
+            {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
+          </div>
+        )}
 
         {/* Unit */}
         <div className="space-y-1">

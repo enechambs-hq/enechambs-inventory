@@ -11,6 +11,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { UserRole } from '@/types';
 import { purchasesService } from '@/lib/services/purchases.service';
 import type { Purchase } from '@/types';
+import { businessDate } from '@/lib/businessDate';
 
 const MONTHS = [
   'January','February','March','April','May','June',
@@ -331,7 +332,7 @@ export default function PurchasesPage() {
                   <input
                     {...register('purchaseDate')}
                     type="date"
-                    max={new Date().toISOString().split('T')[0]}
+                    max={businessDate()}
                     className={inputClass}
                   />
                   {errors.purchaseDate && (

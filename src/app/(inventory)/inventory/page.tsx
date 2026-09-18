@@ -101,8 +101,14 @@ export default function InventoryPage() {
     try {
       setSubmitting(true);
       if (editItem) {
-        const { dateAdded: _d, ...updateData } = data;
+        // Never post the stock back when editing product details. The form is
+        // populated when the modal opens, so by the time it is saved the
+        // quantity it holds may be stale — a sale made in between would be
+        // undone by sending it. Stock changes belong to the sale and restock
+        // flows; the API ignores this field on update as well.
+        const { dateAdded: _d, quantity: _q, ...updateData } = data;
         void _d;
+        void _q;
         await inventoryService.update(editItem.id, updateData);
         toast.success("Product updated successfully");
       } else {
