@@ -12,6 +12,7 @@ import { computeFinalPrice } from '@/lib/utils';
 import { inventoryService } from '@/lib/services/inventory.service';
 import { dashboardService } from '@/lib/services/dashboard.service';
 import { format } from 'date-fns';
+import { businessDate } from '@/lib/businessDate';
 
 type CartRow = {
   id: string;
@@ -89,7 +90,7 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
     formState: { errors },
   } = useForm<CustomerFormInput, unknown, CustomerFormOutput>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { date: format(new Date(), 'yyyy-MM-dd') },
+    defaultValues: { date: businessDate() },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -322,7 +323,11 @@ export default function SaleForm({ onSubmit, isLoading, onCancel }: Props) {
           {/* Date */}
           <div className="space-y-1">
             <label className="text-sm font-medium">Date</label>
-            <input {...register('date')} type="date" max={new Date().toISOString().split('T')[0]} className={inputCls} />
+            {/* Default and max must come from the same clock. They used to be
+                browser-local and UTC respectively, which differ between 00:00
+                and 01:00 WAT — the default then exceeded the max and the
+                browser blocked the submit for that hour every night. */}
+            <input {...register('date')} type="date" max={businessDate()} className={inputCls} />
             {errors.date && <p className="text-xs text-destructive">{errors.date.message}</p>}
           </div>
         </div>

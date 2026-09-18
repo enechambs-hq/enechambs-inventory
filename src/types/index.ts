@@ -279,7 +279,12 @@ export interface CreateInventoryDto {
   quantity: number;
   unit: InventoryUnit;
   variant: string;
-  costPrice?: number;
+  /**
+   * Required. The business always knows a product's acquisition price, and
+   * `inventory.costPrice` is NOT NULL in the database — sending this as
+   * undefined produces a 500, not a validation error.
+   */
+  costPrice: number;
   sellingPrice: number;
   categoryId: number;
   supplierRef?: string;

@@ -12,13 +12,58 @@ import CustomSelect from '@/components/shared/CustomSelect';
 
 const UNITS: InventoryUnit[] = ['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'];
 
+/**
+ * Normalises a money field before validation.
+ *
+ * NumericInput emits a raw, comma-formatted string, and `z.coerce.number()`
+ * turns '' into 0 — which would let a blank cost price through as a real zero.
+ * The business rule is that cost price is always known, so blank is mapped to
+ * undefined and rejected rather than defaulted. A deliberately entered 0 is
+ * still accepted, matching the backend's @Min(0).
+ */
+const toMoney = (v: unknown): unknown => {
+  if (v === null) return undefined;
+  if (typeof v === 'string') {
+    const trimmed = v.replace(/,/g, '').trim();
+    if (trimmed === '') return undefined;
+    const n = Number(trimmed);
+    return Number.isNaN(n) ? trimmed : n;
+  }
+  return v;
+};
+
 const inventorySchema = z.object({
   productName: z.string().min(1, 'Required'),
   quantity: z.coerce.number().min(0, 'Required'),
   unit: z.enum(['carton', 'bag', 'bottle', 'pack', 'piece', 'dozen', 'gallon', 'crate', 'bucket', 'box'] as const),
   variant: z.string().min(1, 'Required'),
-  costPrice: z.coerce.number().min(0).optional(),
-  sellingPrice: z.coerce.number().min(0, 'Required'),
+  costPrice: z.preprocess(
+    toMoney,
+    z
+      .number({
+        error: (iss) =>
+          iss.input === undefined
+            ? 'Cost price is required'
+            : 'Enter a valid cost price',
+      })
+      .min(0, 'Cost price cannot be negative'),
+  ),
+  // Same treatment as costPrice, and for the same reason: z.coerce.number()
+  // turns '' into 0, so a blank selling price passed validation as a real price
+  // of nothing. Every sale of such a product then booked ₦0 of revenue against
+  // a real cost. The API rejects it now too; this keeps the message on the
+  // field instead of surfacing as a server error.
+  sellingPrice: z.preprocess(
+    toMoney,
+    z
+      .number({
+        error: (iss) =>
+          iss.input === undefined
+            ? 'Selling price is required'
+            : 'Enter a valid selling price',
+      })
+      .min(0, 'Selling price cannot be negative'),
+  ),
   categoryId: z.coerce.number().min(1, 'Required'),
   supplierRef: z.string().optional(),
   restockThreshold: z.coerce.number().min(1, 'Must be at least 1'),
@@ -78,6 +123,8 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const c = control as any;
   const { field: qtyField } = useController({ control: c, name: 'quantity' });
+  // defaultValues is only passed when an existing product is being edited.
+  const isEditing = Boolean(defaultValues);
   const { field: costField } = useController({ control: c, name: 'costPrice' });
   const { field: sellField } = useController({ control: c, name: 'sellingPrice' });
   const { field: threshField } = useController({ control: c, name: 'restockThreshold' });
@@ -134,19 +181,38 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
           </div>
         )}
 
-        {/* Quantity */}
-        <div className="space-y-1">
-          <label className={labelClass}>Quantity</label>
-          <NumericInput
-            value={qtyField.value}
-            onChange={(v) => qtyField.onChange(v)}
-            onBlur={qtyField.onBlur}
-            name={qtyField.name}
-            decimals={false}
-            className={inputClass}
-          />
-          {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
-        </div>
+        {/* Quantity — opening stock, and only when the product is first added.
+            Editing a product must not touch its stock: the figure loaded into
+            this form goes stale the moment anything is sold, and saving it back
+            would undo that sale. Stock moves through selling and restocking. */}
+        {isEditing ? (
+          <div className="space-y-1">
+            <label className={labelClass}>Quantity in stock</label>
+            <div className={`${inputClass} bg-muted/40 flex items-center justify-between`}>
+              <span>
+                {defaultValues?.quantity} {defaultValues?.unit}
+                {Number(defaultValues?.quantity) === 1 ? '' : 's'}
+              </span>
+              <span className="text-[11px] text-muted-foreground">not editable here</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Stock changes when you record a sale or restock the product.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <label className={labelClass}>Quantity</label>
+            <NumericInput
+              value={qtyField.value}
+              onChange={(v) => qtyField.onChange(v)}
+              onBlur={qtyField.onBlur}
+              name={qtyField.name}
+              decimals={false}
+              className={inputClass}
+            />
+            {errors.quantity && <p className={errorClass}>{errors.quantity.message}</p>}
+          </div>
+        )}
 
         {/* Unit */}
         <div className="space-y-1">
@@ -169,13 +235,18 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
 
         {/* Cost Price */}
         <div className="space-y-1">
-          <label className={labelClass}>Cost Price (₦) <span className="text-muted-foreground font-normal">(optional)</span></label>
+          <label className={labelClass} htmlFor="costPrice">
+            Cost Price (₦) <span className="text-destructive">*</span>
+          </label>
           <NumericInput
+            id="costPrice"
             value={costField.value}
             onChange={(v) => costField.onChange(v)}
             onBlur={costField.onBlur}
             name={costField.name}
             decimals={true}
+            aria-required="true"
+            aria-invalid={errors.costPrice ? true : undefined}
             className={inputClass}
           />
           {errors.costPrice && <p className={errorClass}>{errors.costPrice.message}</p>}
@@ -183,14 +254,19 @@ export default function InventoryForm({ defaultValues, onSubmit, isLoading, onCa
 
         {/* Selling Price */}
         <div className="space-y-1">
-          <label className={labelClass}>Selling Price (₦)</label>
+          <label className={labelClass} htmlFor="sellingPrice">
+            Selling Price (₦) *
+          </label>
           <NumericInput
+            id="sellingPrice"
             value={sellField.value}
             onChange={(v) => sellField.onChange(v)}
             onBlur={sellField.onBlur}
             name={sellField.name}
             decimals={true}
             className={inputClass}
+            aria-required
+            aria-invalid={errors.sellingPrice ? true : undefined}
           />
           {errors.sellingPrice && <p className={errorClass}>{errors.sellingPrice.message}</p>}
         </div>
