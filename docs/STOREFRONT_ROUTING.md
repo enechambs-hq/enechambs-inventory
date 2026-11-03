@@ -1,8 +1,7 @@
 # Storefront routing, sessions and feature flag
 
-Status: M0 foundations. No storefront pages exist yet; this document fixes the
-rules that M2 (pages) and M3 (customer sessions) build on, and records what M0
-already put in place. Backend counterpart: `enechambs-api/docs/STOREFRONT_FOUNDATIONS.md`.
+Status: M0 foundations, plus M2b (public pages, section 7). This document fixes
+the rules the storefront milestones build on. Backend counterpart: `enechambs-api/docs/STOREFRONT_FOUNDATIONS.md`.
 
 ## 1. Two audiences, two boundaries
 
@@ -135,3 +134,54 @@ dependency): golden signature vectors shared with the API, client-IP source
 rules, path allowlist (traversal, encoding, staff and webhook paths), origin
 rules, header sanitising and the flag. `tsconfig.json` sets
 `allowImportingTsExtensions` solely so those tests can import `.ts` files.
+
+## 7. M2b: public storefront pages (as built)
+
+| Route | Access | Notes |
+|---|---|---|
+| `/` | public while `STOREFRONT_ENABLED=true` | hero + featured combos; flag off: redirects to `/login` exactly as before |
+| `/combos` | public while the flag is on | catalogue, URL-driven search (`?q=`) and paging (`?page=`, 12 per page) |
+| `/combos/[slug]` | public while the flag is on | detail; invalid or unknown slug is a real 404 |
+| `/login`, `/setup-password` | public | staff entry points, unchanged |
+| everything else | staff token | including `/promotions/*` (admin) |
+
+**Route files.** The storefront lives in the `(storefront)` group (server
+components only). The old `src/app/page.tsx` redirect moved into it. Pages read
+the flag themselves; `combos/layout.tsx` also 404s the whole segment when the
+flag is off (above the list page's streaming boundary, so the status is a real
+404; a `notFound()` thrown after streaming has started would be a 200).
+
+**Proxy** (`src/proxy.ts` + `src/lib/route-access.ts`). Public paths are matched
+by whole segment: `/login` and `/login/x` match, `/login-extra` does not (the
+previous `startsWith` check made such lookalikes public by accident). `/` is
+matched exactly. Storefront paths are public only while the flag is on. The
+matcher is unchanged (it still skips `api/`: route handlers do their own checks).
+
+**Providers.** The root layout keeps global styles and the Toaster only. The
+staff `AuthProvider` is mounted by the `(auth)` layout and by the `(inventory)`
+layout (a server boundary that renders the client `InventoryShell`, which calls
+`useAuthGuard()` inside the provider). Storefront code imports no staff auth,
+store, axios client or service (enforced by `tests/storefront-separation.test.mts`).
+
+**Data access.** Pages call the BFF request handler in-process
+(`src/lib/storefront/catalogue.server.ts` -> `handleStoreRequest`), so there is
+no HTTP hop back into the same server and the same flag, allowlist, signed
+visitor IP and `no-store` apply. Only the two visitor-address headers are
+carried over; cookies and Authorization are never forwarded. Endpoints used:
+`GET storefront/combos?page&limit&q` and `GET storefront/combos/:slug`. The
+browser makes no data requests of its own (search and paging are plain links
+and a GET form).
+
+**Display rules.** Only the public fields are rendered (`name`, `slug`,
+`description`, `price`, `referencePrice`, `images`, `availability`). Responses
+are parsed field by field: an exact count is shown only for `low_stock`, image
+URLs must be https, unknown fields are dropped. Images are plain `<img>` with a
+placeholder fallback (the media host is not known at build time).
+
+**Hero.** CSS depth only (perspective scene, preserve-3d stage, layers at
+different `translateZ`, a platter, tilted cards, a floating badge). Cards show
+real published combos when the API has them, else a branded placeholder. Motion
+(slow float, hover tilt) stops under `prefers-reduced-motion`.
+
+**Out of scope here:** customer accounts, cart, checkout, payments, orders and
+order customisation.
