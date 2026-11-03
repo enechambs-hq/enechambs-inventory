@@ -44,18 +44,17 @@ details can still be saved. Eight images at most; JPEG, PNG, WebP only.
 **The storage bucket must allow browser PUTs from the admin origin (CORS).** See
 the backend `docs/R2_SETUP.md`; this has not been verified against a real bucket.
 
-## Known limitation: the admin proxy and `204 No Content`
-`DELETE /:id/images/:imageId` answers 204. The existing proxy
-(`src/app/api/v1/[...path]/route.ts`) builds its response from the upstream body,
-and the Fetch API refuses a body on a 204, so the proxy answers **500** even though the
-backend deleted the image (reproduced against a stub). This milestone does not
-change the proxy, so after a 5xx or a missing response the UI re-reads the combo
-and treats the image as removed only if it is really gone; a definite 4xx
-(e.g. 409, a published combo must keep one image) is shown as is. The proper fix
-is a small proxy change (return a null body for 204/205/304), which needs approval.
+## Admin proxy and `204 No Content`
+`DELETE /:id/images/:imageId` answers 204. The admin proxy
+(`src/app/api/v1/[...path]/route.ts`) returns 204, 205 and 304 with a null body
+(the Fetch API refuses a body on those statuses), forwarding only
+Content-Type and cache validators; every other status is forwarded as before.
+A successful delete is therefore a successful client call, and the image leaves
+the screen only after it.
 
 ## Tests
 `npm test` covers the API service, validation, upload flow, error mapping, image
-ordering/removal logic and nav visibility (`tests/combos-*.test.mts`). The
+ordering/removal and nav visibility (`tests/combos-*.test.mts`), and the real
+admin proxy route (`tests/admin-proxy.test.mts`). The
 repository has no DOM test tooling, so component behaviour was verified in a
 browser against a fake backend and fake storage (see the PR description).

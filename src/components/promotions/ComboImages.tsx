@@ -12,7 +12,7 @@ import {
 } from '@/lib/combos/constants';
 import { describeApiError, explainProblem, IMAGE_STORAGE_UNAVAILABLE } from '@/lib/combos/errors';
 import { formatBytes } from '@/lib/combos/format';
-import { imageIsGone, isAmbiguousFailure, moveImage, sortImages } from '@/lib/combos/images';
+import { moveImage, sortImages } from '@/lib/combos/images';
 import {
   checkImageFile,
   confirmUpload,
@@ -170,22 +170,9 @@ export default function ComboImages({ combo, onImagesChange }: ComboImagesProps)
       toast.success('Image removed');
       setRemoveTarget(null);
     } catch (error) {
-      const problem = describeApiError(error);
-      if (isAmbiguousFailure(problem.status)) {
-        // See images.ts: the proxy can fail a successful 204. Verify against the server.
-        try {
-          const fresh = await combosService.get(combo.id);
-          if (imageIsGone(fresh, target.id)) {
-            onImagesChange(fresh.images);
-            toast.success('Image removed');
-            setRemoveTarget(null);
-            return;
-          }
-        } catch {
-          /* fall through to the error below */
-        }
-      }
-      toast.error(explainProblem(problem, 'remove'));
+      // 4xx (e.g. 409: a published combo must keep one image) and 5xx alike: the
+      // image is still on screen because the server did not confirm the removal.
+      toast.error(explainProblem(describeApiError(error), 'remove'));
       setRemoveTarget(null);
     } finally {
       setRemoving(false);

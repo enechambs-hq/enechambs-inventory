@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createCombosApi } from '../src/lib/combos/combos-api.ts';
-import { imageIsGone, isAmbiguousFailure, moveImage, sortImages } from '../src/lib/combos/images.ts';
+import { moveImage, sortImages } from '../src/lib/combos/images.ts';
 import {
   checkImageFile,
   confirmUpload,
@@ -10,7 +10,7 @@ import {
   uploadComboImage,
   type UploadDeps,
 } from '../src/lib/combos/upload.ts';
-import { combo, fakeHttp, httpError, image } from './combos-support.mts';
+import { fakeHttp, httpError, image } from './combos-support.mts';
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const UPLOAD_ID = '22222222-2222-4222-8222-222222222222';
@@ -249,7 +249,7 @@ test('a failed reorder propagates so the list is not reordered locally', async (
   await assert.rejects(createCombosApi(http).reorderImages(ID, ['x']));
 });
 
-test('removal: 204 resolves; a definite 409 (last image of a published combo) rejects with the backend reason', async () => {
+test('removal: 204 resolves; 409 (last image of a published combo) and 500 reject with the backend status', async () => {
   const ok = fakeHttp([undefined]);
   await createCombosApi(ok.http).removeImage(ID, 'img');
   assert.equal(ok.calls[0].method, 'DELETE');
@@ -259,17 +259,8 @@ test('removal: 204 resolves; a definite 409 (last image of a published combo) re
     assert.equal((e as { response: { status: number } }).response.status, 409);
     return true;
   });
-});
 
-test('ambiguous failures (5xx, no response) are re-verified; definite answers (4xx) are not', () => {
-  assert.equal(isAmbiguousFailure(500), true);
-  assert.equal(isAmbiguousFailure(502), true);
-  assert.equal(isAmbiguousFailure(null), true);
-  for (const s of [400, 403, 404, 409]) assert.equal(isAmbiguousFailure(s), false, String(s));
-});
-
-test('imageIsGone is true only when the server no longer lists the image', () => {
-  const [a, b] = [image(1), image(2)];
-  assert.equal(imageIsGone(combo({ images: [b] }), a.id), true);
-  assert.equal(imageIsGone(combo({ images: [a, b] }), a.id), false);
+  const failed = fakeHttp([httpError(500, 'boom')]);
+  await assert.rejects(createCombosApi(failed.http).removeImage(ID, 'img'));
+  assert.equal(failed.calls.length, 1); // no follow-up GET to second-guess it
 });
