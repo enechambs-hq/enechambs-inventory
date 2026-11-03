@@ -57,10 +57,12 @@ restockThreshold, expiryTracking, expiryDate, dateAdded
 - All new pages go inside `src/app/(inventory)/`
 - All amounts are in Nigerian Naira (₦)
 
-## Storefront (in progress)
+## Storefront (in progress; public pages added in M2b)
 A public promotional storefront is being added alongside this admin app, behind
 the server-side flag `STOREFRONT_ENABLED` (off by default; nothing here changes
 until it is on). Customer and admin sessions, routes and API access are
 separate. See `docs/STOREFRONT_ROUTING.md` before touching `src/proxy.ts`,
-`src/app/layout.tsx`, `src/app/page.tsx` or anything under `src/app/api/`.
+`src/app/layout.tsx`, `src/app/(storefront)/` or anything under `src/app/api/`.
+Public storefront pages go in the `(storefront)` route group; staff pages stay in
+`(inventory)` and `(auth)`.
 
