@@ -1,12 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  addItemRow,
   emptyComboForm,
   formFromCombo,
   hasChanges,
   isSlugFrozen,
+  newItemRow,
   parseMoney,
+  removeItemRow,
   suggestSlug,
+  updateItemRow,
   validateCreate,
   validateUpdate,
   type ComboFormValues,
@@ -16,6 +20,7 @@ import { combo } from './combos-support.mts';
 const valid = (over: Partial<ComboFormValues> = {}): ComboFormValues => ({
   ...emptyComboForm(),
   name: 'Festive Rice Combo',
+  items: [newItemRow('Rice', '1 kg')],
   price: '25,000',
   referencePrice: '32000',
   totalQuantity: '50',
@@ -30,6 +35,7 @@ test('create builds exactly the fields the backend accepts', () => {
     name: 'Festive Rice Combo',
     slug: 'festive-rice',
     description: 'A bundle',
+    items: [{ name: 'Rice', quantityLabel: '1 kg' }],
     price: 25000,
     referencePrice: 32000,
     totalQuantity: 50,
@@ -47,7 +53,12 @@ test('create never sends server-managed fields', () => {
 test('create omits blank optional fields (server generates the slug)', () => {
   const r = validateCreate(valid({ slug: '', description: '', referencePrice: '' }));
   assert.ok(r.ok);
-  assert.deepEqual(r.payload, { name: 'Festive Rice Combo', price: 25000, totalQuantity: 50 });
+  assert.deepEqual(r.payload, {
+    name: 'Festive Rice Combo',
+    items: [{ name: 'Rice', quantityLabel: '1 kg' }],
+    price: 25000,
+    totalQuantity: 50,
+  });
 });
 
 test('create validation matches the backend DTO', () => {
@@ -163,4 +174,223 @@ test('edit does not blame the user for a stale reference price', () => {
 test('suggestSlug follows the backend slug pattern', () => {
   assert.equal(suggestSlug('Festive Rice & Beans Combo!'), 'festive-rice-beans-combo');
   assert.equal(suggestSlug('  Crème Brûlée  '), 'creme-brulee');
+});
+
+// ── "What's included in this combo?" ─────────────────────────────────────────
+const rows = (...pairs: Array<[string, string]>) => pairs.map(([n, q]) => newItemRow(n, q));
+
+test('a new form starts with exactly one empty item row', () => {
+  const form = emptyComboForm();
+  assert.equal(form.items.length, 1);
+  assert.equal(form.items[0].name, '');
+  assert.equal(form.items[0].quantityLabel, '');
+});
+
+test('two new forms never share row keys, and keys are unique within a form', () => {
+  const a = emptyComboForm();
+  const b = emptyComboForm();
+  assert.notEqual(a.items[0].key, b.items[0].key);
+  const many = addItemRow(addItemRow(a.items));
+  assert.equal(new Set(many.map((r) => r.key)).size, 3);
+});
+
+test('adding a row appends a blank one and leaves existing rows and their text untouched', () => {
+  const before = rows(['Rice', '1 kg'], ['Beans', '2 kg']);
+  const after = addItemRow(before);
+  assert.equal(after.length, 3);
+  assert.deepEqual(after.slice(0, 2), before);
+  assert.deepEqual([after[2].name, after[2].quantityLabel], ['', '']);
+});
+
+test('adding stops at the 50-item limit', () => {
+  let list = emptyComboForm().items;
+  for (let i = 0; i < 80; i++) list = addItemRow(list);
+  assert.equal(list.length, 50);
+});
+
+test('removing a row keeps every other row, its text and the order', () => {
+  const [rice, beans, oil, garri] = rows(['Rice', '1 kg'], ['Beans', '2 kg'], ['Palm oil', '1 litre'], ['Garri', '']);
+  const after = removeItemRow([rice, beans, oil, garri], beans.key);
+  assert.deepEqual(after, [rice, oil, garri]);
+  assert.deepEqual(after.map((r) => r.key), [rice.key, oil.key, garri.key]);
+});
+
+test('removing the only row leaves one fresh blank row (the form never shows zero rows)', () => {
+  const [only] = rows(['Rice', '1 kg']);
+  const after = removeItemRow([only], only.key);
+  assert.equal(after.length, 1);
+  assert.notEqual(after[0].key, only.key);
+  assert.deepEqual([after[0].name, after[0].quantityLabel], ['', '']);
+});
+
+test('editing one row changes only that row; add and remove afterwards keep the edit', () => {
+  const start = rows(['Rice', ''], ['Beans', '']);
+  const edited = updateItemRow(start, start[1].key, { quantityLabel: '2 kg' });
+  assert.deepEqual(edited[0], start[0]);
+  assert.equal(edited[1].quantityLabel, '2 kg');
+  const grown = addItemRow(edited);
+  const shrunk = removeItemRow(grown, grown[2].key);
+  assert.deepEqual(shrunk, edited);
+});
+
+test('create sends items trimmed, in the order entered, as exactly { name, quantityLabel }', () => {
+  const r = validateCreate(
+    valid({
+      items: rows(['  Rice ', ' 1 kg '], ['Beans', '2 kg'], ['Palm oil', '1 litre'], ['Garri', '']),
+    }),
+  );
+  assert.ok(r.ok);
+  assert.deepEqual(r.payload.items, [
+    { name: 'Rice', quantityLabel: '1 kg' },
+    { name: 'Beans', quantityLabel: '2 kg' },
+    { name: 'Palm oil', quantityLabel: '1 litre' },
+    { name: 'Garri', quantityLabel: null },
+  ]);
+  for (const item of r.payload.items) assert.deepEqual(Object.keys(item).sort(), ['name', 'quantityLabel']);
+});
+
+test('the quantity is optional: blank and whitespace-only become null', () => {
+  const r = validateCreate(valid({ items: rows(['Garri', ''], ['Salt', '   ']) }));
+  assert.ok(r.ok);
+  assert.deepEqual(r.payload.items, [
+    { name: 'Garri', quantityLabel: null },
+    { name: 'Salt', quantityLabel: null },
+  ]);
+});
+
+test('a blank item name is an error on that row, with a helpful message', () => {
+  const items = rows(['Rice', '1 kg'], ['', '2 kg']);
+  const r = validateCreate(valid({ items }));
+  assert.ok(!r.ok);
+  assert.equal(r.errors.itemRows?.[items[1].key]?.name, 'Enter the item name, or remove this row');
+  assert.equal(r.errors.itemRows?.[items[0].key], undefined);
+});
+
+test('whitespace-only names are blank, and a completely empty row is not silently dropped', () => {
+  for (const items of [rows(['   ', '']), rows(['Rice', '1 kg'], ['', ''])]) {
+    const r = validateCreate(valid({ items }));
+    assert.ok(!r.ok);
+    assert.ok(Object.values(r.errors.itemRows ?? {}).some((e) => e.name));
+  }
+});
+
+test('the untouched initial row blocks saving until it is filled in (at least one item required)', () => {
+  const r = validateCreate({ ...valid(), items: emptyComboForm().items });
+  assert.ok(!r.ok);
+  assert.ok(r.errors.itemRows && Object.keys(r.errors.itemRows).length === 1);
+});
+
+test('a list with no rows at all is rejected as a whole', () => {
+  const r = validateCreate(valid({ items: [] }));
+  assert.ok(!r.ok);
+  assert.equal(r.errors.items, 'Add at least one item to the combo');
+});
+
+test('item length limits match the backend: name 100, quantity 60, 50 items', () => {
+  const edge = validateCreate(valid({ items: rows(['n'.repeat(100), 'q'.repeat(60)]) }));
+  assert.ok(edge.ok);
+
+  const longName = validateCreate(valid({ items: rows(['n'.repeat(101), '']) }));
+  assert.ok(!longName.ok);
+  assert.match(Object.values(longName.errors.itemRows ?? {})[0].name ?? '', /100 characters/);
+
+  const longQty = validateCreate(valid({ items: rows(['Rice', 'q'.repeat(61)]) }));
+  assert.ok(!longQty.ok);
+  assert.match(Object.values(longQty.errors.itemRows ?? {})[0].quantityLabel ?? '', /60 characters/);
+
+  const fifty = validateCreate(valid({ items: Array.from({ length: 50 }, (_, i) => newItemRow(`Item ${i}`, '')) }));
+  assert.ok(fifty.ok);
+  const fiftyOne = validateCreate(valid({ items: Array.from({ length: 51 }, (_, i) => newItemRow(`Item ${i}`, '')) }));
+  assert.ok(!fiftyOne.ok);
+  assert.match(fiftyOne.errors.items ?? '', /at most 50/);
+});
+
+test('item errors are reported together with other field errors', () => {
+  const r = validateCreate(valid({ name: 'A', items: rows(['', '']) }));
+  assert.ok(!r.ok);
+  assert.ok(r.errors.name);
+  assert.ok(r.errors.itemRows);
+});
+
+test('the payload never carries row keys or anything beyond name and quantityLabel', () => {
+  const r = validateCreate(valid());
+  assert.ok(r.ok);
+  assert.ok(!JSON.stringify(r.payload).includes('item-'));
+  assert.ok(!JSON.stringify(r.payload).includes('"key"'));
+});
+
+// ── editing contents ─────────────────────────────────────────────────────────
+test('editing loads the saved items in order, with a missing quantity shown as blank', () => {
+  const form = formFromCombo(combo());
+  assert.deepEqual(
+    form.items.map((r) => [r.name, r.quantityLabel]),
+    [['Rice', '1 kg'], ['Beans', '2 kg'], ['Garri', '']],
+  );
+});
+
+test('edit with unchanged items does not send items', () => {
+  const c = combo();
+  const r = validateUpdate({ ...formFromCombo(c), name: 'Renamed Combo' }, c);
+  assert.ok(r.ok);
+  assert.deepEqual(r.payload, { name: 'Renamed Combo' });
+});
+
+test('edit sends the whole new list when any item changes', () => {
+  const c = combo();
+  const form = formFromCombo(c);
+  const changed = updateItemRow(form.items, form.items[1].key, { quantityLabel: '3 kg' });
+  const r = validateUpdate({ ...form, items: changed }, c);
+  assert.ok(r.ok);
+  assert.deepEqual(r.payload, {
+    items: [
+      { name: 'Rice', quantityLabel: '1 kg' },
+      { name: 'Beans', quantityLabel: '3 kg' },
+      { name: 'Garri', quantityLabel: null },
+    ],
+  });
+});
+
+test('edit treats a pure reordering as a change and keeps the new order', () => {
+  const c = combo();
+  const form = formFromCombo(c);
+  const reordered = [form.items[2], form.items[0], form.items[1]];
+  const r = validateUpdate({ ...form, items: reordered }, c);
+  assert.ok(r.ok);
+  assert.deepEqual(r.payload.items?.map((i) => i.name), ['Garri', 'Rice', 'Beans']);
+});
+
+test('edit can add and remove items, and clear a quantity (sent as null)', () => {
+  const c = combo();
+  const form = formFromCombo(c);
+  const withNew = addItemRow(form.items);
+  const filled = updateItemRow(withNew, withNew[3].key, { name: 'Palm oil', quantityLabel: '1 litre' });
+  const cleared = updateItemRow(filled, filled[0].key, { quantityLabel: '' });
+  const noBeans = removeItemRow(cleared, cleared[1].key);
+  const r = validateUpdate({ ...form, items: noBeans }, c);
+  assert.ok(r.ok);
+  assert.deepEqual(r.payload.items, [
+    { name: 'Rice', quantityLabel: null },
+    { name: 'Garri', quantityLabel: null },
+    { name: 'Palm oil', quantityLabel: '1 litre' },
+  ]);
+});
+
+test('edit rejects a blank item name and sends nothing', () => {
+  const c = combo();
+  const form = formFromCombo(c);
+  const r = validateUpdate({ ...form, items: updateItemRow(form.items, form.items[0].key, { name: '  ' }) }, c);
+  assert.ok(!r.ok);
+  assert.ok(r.errors.itemRows?.[form.items[0].key]?.name);
+});
+
+test('a combo created before contents existed opens with one blank row and needs it filled to save', () => {
+  const legacy = combo({ items: [] });
+  const form = formFromCombo(legacy);
+  assert.equal(form.items.length, 1);
+  assert.equal(form.items[0].name, '');
+  const blocked = validateUpdate({ ...form, name: 'Renamed Combo' }, legacy);
+  assert.ok(!blocked.ok);
+  const filled = validateUpdate({ ...form, items: [newItemRow('Rice', '')] }, legacy);
+  assert.ok(filled.ok);
+  assert.deepEqual(filled.payload, { items: [{ name: 'Rice', quantityLabel: null }] });
 });

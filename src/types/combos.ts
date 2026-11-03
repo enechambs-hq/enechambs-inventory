@@ -24,11 +24,23 @@ export interface ComboAvailability {
   remaining?: number;
 }
 
+/**
+ * One line of "What's included in this combo?". Free text (no unit list), so
+ * local packaging such as "1 derica" works. quantityLabel is null when no
+ * quantity was specified. Mirrors the API's { name, quantityLabel }.
+ */
+export interface ComboItem {
+  name: string;
+  quantityLabel: string | null;
+}
+
 export interface Combo {
   id: string;
   name: string;
   slug: string;
   description: string;
+  /** What the package contains, in the order entered. Empty only for combos created before contents existed. */
+  items: ComboItem[];
   /** Naira. */
   price: number;
   referencePrice: number | null;
@@ -70,6 +82,8 @@ export interface CreateComboPayload {
   name: string;
   slug?: string;
   description?: string;
+  /** At least one, at most 50, in display order. */
+  items: ComboItem[];
   price: number;
   referencePrice?: number;
   totalQuantity: number;
@@ -80,6 +94,8 @@ export interface UpdateComboPayload {
   name?: string;
   slug?: string;
   description?: string;
+  /** Replaces the whole list; omitted when unchanged. */
+  items?: ComboItem[];
   price?: number;
   referencePrice?: number | null;
   totalQuantity?: number;

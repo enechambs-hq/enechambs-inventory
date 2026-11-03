@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import AvailabilityBadge from '@/components/storefront/AvailabilityBadge';
+import ComboContents from '@/components/storefront/ComboContents';
 import Price from '@/components/storefront/Price';
 import SafeImage from '@/components/storefront/SafeImage';
 import { LoadError } from '@/components/storefront/StatePanels';
@@ -95,6 +96,7 @@ export default async function ComboPage({ params }: { params: Params }) {
               <p className="mt-3 text-sm text-[#5d5645]">This combo is sold out at the moment. Have a look at the other combos.</p>
             )}
           </div>
+          <ComboContents items={combo.items} />
           {combo.description && (
             <div className="mt-7 border-t border-[#eadfc8] pt-6">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-[#8b7f6b]">About this combo</h2>

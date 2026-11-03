@@ -51,6 +51,11 @@ export const combo = (over: Partial<Combo> = {}): Combo => ({
   name: 'Festive Rice Combo',
   slug: 'festive-rice-combo',
   description: 'Rice and more',
+  items: [
+    { name: 'Rice', quantityLabel: '1 kg' },
+    { name: 'Beans', quantityLabel: '2 kg' },
+    { name: 'Garri', quantityLabel: null },
+  ],
   price: 25000,
   referencePrice: 32000,
   totalQuantity: 100,
