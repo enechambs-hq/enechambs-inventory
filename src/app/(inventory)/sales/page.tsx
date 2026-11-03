@@ -232,7 +232,13 @@ export default function SalesPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === UserRole.ADMIN;
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('all');
+  // Staff are pinned to their own sales. `tabSelection` is what the admin
+  // picked; `activeTab` is what actually drives the fetch, so a staff session
+  // cannot land on — or be switched to — the full ledger even for the moment
+  // before `user` hydrates. The backend enforces the same rule regardless
+  // (GET /sales is scoped to the caller); this keeps the UI honest about it.
+  const [tabSelection, setTabSelection] = useState<ActiveTab>('all');
+  const activeTab: ActiveTab = isAdmin ? tabSelection : 'mine';
   const [searchQuery, setSearchQuery] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -292,14 +298,23 @@ export default function SalesPage() {
   const fetchMySales = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await salesService.getMySales({ page, limit });
+      // Same filters as the ledger view — /sales/my-sales supports them, and
+      // without this staff would lose search entirely once they are pinned to
+      // this tab.
+      const isPhone = /^\d+$/.test(searchQuery.trim());
+      const data = await salesService.getMySales({
+        page, limit,
+        ...(isPhone
+          ? { customerPhone: searchQuery }
+          : { productName: searchQuery, customerName: searchQuery }),
+      });
       setMySales(data.data, data.meta);
     } catch {
       // fail silently
     } finally {
       setLoading(false);
     }
-  }, [page, limit, setLoading, setMySales]);
+  }, [page, limit, searchQuery, setLoading, setMySales]);
 
   useEffect(() => {
     if (activeTab === 'all') fetchSales();
@@ -316,7 +331,10 @@ export default function SalesPage() {
       }
       toast.success('Sale recorded successfully');
       setModalOpen(false);
-      fetchSales();
+      // Refresh whichever list is on screen — for staff that is always their
+      // own sales, and refetching the ledger would leave their view stale.
+      if (activeTab === 'all') fetchSales();
+      else fetchMySales();
       dashboardService.getMonthly().then(setMonthly).catch(() => {});
     } catch (error) {
       const err = error as { response?: { status?: number; data?: { message?: string | string[] } } };
@@ -387,39 +405,48 @@ export default function SalesPage() {
       {/* Tabs + Search */}
       <div className="flex items-center justify-between border-b border-border">
         <div className="flex gap-1">
-          {([['all', 'All Sales'], ['mine', 'My Sales']] as [ActiveTab, string][]).map(([tab, label]) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setPage(1); }}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === tab
-                  ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+          {isAdmin ? (
+            ([['all', 'All Sales'], ['mine', 'My Sales']] as [ActiveTab, string][]).map(([tab, label]) => (
+              <button
+                key={tab}
+                onClick={() => { setTabSelection(tab); setPage(1); }}
+                className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                  activeTab === tab
+                    ? 'border-primary text-primary font-semibold'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))
+          ) : (
+            // No tab switcher for staff: there is only one view they can see,
+            // and offering an "All Sales" tab that quietly returns the same
+            // rows would misdescribe what the API does.
+            <span className="px-4 py-2.5 text-sm font-semibold text-primary border-b-2 border-primary -mb-px">
+              My Sales
+            </span>
+          )}
         </div>
-        {activeTab === 'all' && (
-          <div className="relative w-full max-w-xs mb-1.5">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            {!searchQuery && (
-              <span className="absolute left-8 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none flex items-center gap-1">
-                Search by{' '}
-                <span className={`transition-opacity duration-300 ${phVisible ? 'opacity-100' : 'opacity-0'}`}>
-                  {PLACEHOLDERS[phIndex]}
-                </span>
+        {/* Search applies to whichever list is on screen; my-sales accepts the
+            same filters, so staff keep it. */}
+        <div className="relative w-full max-w-xs mb-1.5">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          {!searchQuery && (
+            <span className="absolute left-8 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none select-none flex items-center gap-1">
+              Search by{' '}
+              <span className={`transition-opacity duration-300 ${phVisible ? 'opacity-100' : 'opacity-0'}`}>
+                {PLACEHOLDERS[phIndex]}
               </span>
-            )}
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-transparent"
-            />
-          </div>
-        )}
+            </span>
+          )}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-transparent"
+          />
+        </div>
       </div>
 
       {/* Table */}

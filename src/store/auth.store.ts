@@ -1,12 +1,32 @@
 import { create } from 'zustand';
 import { AuthUser } from '@/types';
 
+// The middleware (src/proxy.ts) only sees cookies, so the token is mirrored
+// into one. It cannot be HttpOnly — the same value has to be readable by the
+// axios request interceptor — but it must never travel in clear text.
+
+// Kept in step with JWT_EXPIRES_IN (12h) so the cookie cannot outlive the token
+// it mirrors and wave an already-dead session past the middleware.
+const SESSION_MAX_AGE_SECONDS = 12 * 60 * 60;
+
+// `Secure` on https only: Safari still refuses Secure cookies on
+// http://localhost, so hard-coding it would break local development — and over
+// plain http the flag would be the only thing standing between the token and
+// the wire anyway.
+const cookieAttributes = () => {
+  const secure =
+    typeof window !== 'undefined' && window.location.protocol === 'https:'
+      ? '; Secure'
+      : '';
+  return `path=/; SameSite=Lax${secure}`;
+};
+
 const setCookie = (name: string, value: string) => {
-  document.cookie = `${name}=${value}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+  document.cookie = `${name}=${value}; ${cookieAttributes()}; max-age=${SESSION_MAX_AGE_SECONDS}`;
 };
 
 const deleteCookie = (name: string) => {
-  document.cookie = `${name}=; path=/; max-age=0`;
+  document.cookie = `${name}=; ${cookieAttributes()}; max-age=0`;
 };
 
 // Synchronously read from localStorage on store creation so that a hard

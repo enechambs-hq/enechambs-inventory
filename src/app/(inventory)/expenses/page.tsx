@@ -21,11 +21,12 @@ import {
 import { useAuthStore } from '@/store/auth.store';
 import { useExpensesStore } from '@/store/expenses.store';
 import { StatCard } from '@/components/shared/StatCard';
+import { businessDate, startOfBusinessMonth } from '@/lib/businessDate';
 
 // ── helpers ──────────────────────────────────────────────
 
-const TODAY = format(new Date(), 'yyyy-MM-dd');
-const MONTH_START = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+const TODAY = businessDate();
+const MONTH_START = startOfBusinessMonth();
 const YEAR_START = format(startOfYear(new Date()), 'yyyy-MM-dd');
 
 const TYPE_LABEL: Record<ExpenseCategoryType, string> = {
