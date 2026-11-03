@@ -1,6 +1,6 @@
 # Enechambs Food — Inventory Management Dashboard
 
-Frontend admin dashboard for the Enechambs Food inventory and business management system — a Nigerian foodstuff business. Built with Next.js 14 App Router, TypeScript and Tailwind CSS.
+Frontend admin dashboard for the Enechambs Food inventory and business management system — a Nigerian foodstuff business. Built with Next.js 16 App Router, React 19, TypeScript and Tailwind CSS 4.
 
 ## Features
 
@@ -19,7 +19,7 @@ Frontend admin dashboard for the Enechambs Food inventory and business managemen
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
 | State | Zustand |
