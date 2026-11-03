@@ -5,8 +5,11 @@
  * What is deliberately NOT here: remaining quantity, allocated quantity,
  * status. They are server-managed and never appear in a payload.
  */
-import type { Combo, CreateComboPayload, UpdateComboPayload } from '../../types/combos.ts';
+import type { Combo, ComboItem, CreateComboPayload, UpdateComboPayload } from '../../types/combos.ts';
 import {
+  ITEM_NAME_MAX,
+  ITEM_QUANTITY_MAX,
+  MAX_COMBO_ITEMS,
   MAX_COMBO_PRICE,
   MAX_COMBO_QUANTITY,
   MAX_DESCRIPTION_LENGTH,
@@ -16,21 +19,77 @@ import {
   SLUG_PATTERN,
 } from './constants.ts';
 
+/**
+ * One editable row of "What's included in this combo?". `key` identifies the
+ * row for React and for its error messages; it never leaves the browser and is
+ * never sent to the API. Because it does not depend on position or content,
+ * adding or removing another row cannot make an input take over a neighbour's
+ * text.
+ */
+export interface ItemRow {
+  key: string;
+  name: string;
+  quantityLabel: string;
+}
+
+export interface ItemRowErrors {
+  name?: string;
+  quantityLabel?: string;
+}
+
 export interface ComboFormValues {
   name: string;
   slug: string;
   description: string;
+  items: ItemRow[];
   price: string;
   referencePrice: string;
   totalQuantity: string;
 }
 
-export type ComboFieldErrors = Partial<Record<keyof ComboFormValues, string>>;
+type SimpleFieldKey = Exclude<keyof ComboFormValues, 'items'>;
+
+export interface ComboFieldErrors extends Partial<Record<SimpleFieldKey, string>> {
+  /** A problem with the list as a whole (none entered, too many). */
+  items?: string;
+  /** Problems with individual rows, by ItemRow.key. */
+  itemRows?: Record<string, ItemRowErrors>;
+}
+
+let rowCounter = 0;
+/** A new blank row with a unique, stable key. */
+export const newItemRow = (name = '', quantityLabel = ''): ItemRow => ({
+  key: `item-${++rowCounter}`,
+  name,
+  quantityLabel,
+});
+
+/** Appends a blank row (no-op at the 50-item limit). Existing rows are untouched. */
+export const addItemRow = (rows: ItemRow[]): ItemRow[] =>
+  rows.length >= MAX_COMBO_ITEMS ? rows : [...rows, newItemRow()];
+
+/**
+ * Removes the row with this key, keeping every other row, its text and its
+ * position. The form always shows at least one row: removing the only row
+ * leaves a fresh blank one.
+ */
+export const removeItemRow = (rows: ItemRow[], key: string): ItemRow[] => {
+  const kept = rows.filter((row) => row.key !== key);
+  return kept.length > 0 ? kept : [newItemRow()];
+};
+
+/** Edits one field of one row; order and all other rows are unchanged. */
+export const updateItemRow = (
+  rows: ItemRow[],
+  key: string,
+  patch: Partial<Pick<ItemRow, 'name' | 'quantityLabel'>>,
+): ItemRow[] => rows.map((row) => (row.key === key ? { ...row, ...patch } : row));
 
 export const emptyComboForm = (): ComboFormValues => ({
   name: '',
   slug: '',
   description: '',
+  items: [newItemRow()], // starts with one empty row
   price: '',
   referencePrice: '',
   totalQuantity: '',
@@ -40,6 +99,10 @@ export const formFromCombo = (combo: Combo): ComboFormValues => ({
   name: combo.name,
   slug: combo.slug,
   description: combo.description ?? '',
+  // A combo created before contents existed has none: show one blank row to fill in.
+  items: combo.items?.length
+    ? combo.items.map((item) => newItemRow(item.name, item.quantityLabel ?? ''))
+    : [newItemRow()],
   price: String(combo.price),
   referencePrice: combo.referencePrice === null ? '' : String(combo.referencePrice),
   totalQuantity: String(combo.totalQuantity),
@@ -104,6 +167,50 @@ function checkCommon(values: ComboFormValues, errors: ComboFieldErrors) {
   return { name, price: price.value, reference: reference.value };
 }
 
+/**
+ * Every row needs a name; the quantity is optional. A row that is completely
+ * blank is an error too (the message says to fill it in or remove it) rather
+ * than being silently dropped, so what the admin sees is exactly what is saved.
+ * Returns the items to send, or null when anything is wrong.
+ */
+function checkItems(rows: ItemRow[], errors: ComboFieldErrors): ComboItem[] | null {
+  if (rows.length === 0) {
+    errors.items = 'Add at least one item to the combo';
+    return null;
+  }
+  if (rows.length > MAX_COMBO_ITEMS) {
+    errors.items = `A combo can list at most ${MAX_COMBO_ITEMS} items`;
+    return null;
+  }
+  const rowErrors: Record<string, ItemRowErrors> = {};
+  const items: ComboItem[] = [];
+  for (const row of rows) {
+    const name = row.name.trim();
+    const quantity = row.quantityLabel.trim();
+    const problem: ItemRowErrors = {};
+    if (name === '') {
+      problem.name = 'Enter the item name, or remove this row';
+    } else if (name.length > ITEM_NAME_MAX) {
+      problem.name = `Item name cannot exceed ${ITEM_NAME_MAX} characters`;
+    }
+    if (quantity.length > ITEM_QUANTITY_MAX) {
+      problem.quantityLabel = `Quantity cannot exceed ${ITEM_QUANTITY_MAX} characters`;
+    }
+    if (problem.name || problem.quantityLabel) rowErrors[row.key] = problem;
+    items.push({ name, quantityLabel: quantity === '' ? null : quantity });
+  }
+  if (Object.keys(rowErrors).length > 0) {
+    errors.itemRows = rowErrors;
+    return null;
+  }
+  return items;
+}
+
+/** Same items in the same order? (Name and label compared exactly; order matters.) */
+const sameItems = (a: ComboItem[], b: ComboItem[]): boolean =>
+  a.length === b.length &&
+  a.every((item, i) => item.name === b[i].name && (item.quantityLabel ?? null) === (b[i].quantityLabel ?? null));
+
 function checkSlug(slug: string, errors: ComboFieldErrors): string {
   const value = slug.trim();
   if (value === '') return '';
@@ -123,13 +230,14 @@ export function validateCreate(values: ComboFormValues): ValidationResult<Create
   const errors: ComboFieldErrors = {};
   const { name, price, reference } = checkCommon(values, errors);
   const slug = checkSlug(values.slug, errors);
+  const items = checkItems(values.items, errors);
   const quantity = checkQuantity(values.totalQuantity, 1);
   if (quantity.error) errors.totalQuantity = quantity.error;
-  if (Object.keys(errors).length || price === null || quantity.value === null) {
+  if (Object.keys(errors).length || items === null || price === null || quantity.value === null) {
     return { ok: false, errors };
   }
 
-  const payload: CreateComboPayload = { name, price, totalQuantity: quantity.value };
+  const payload: CreateComboPayload = { name, items, price, totalQuantity: quantity.value };
   if (slug) payload.slug = slug; // blank: the server generates one from the name
   const description = values.description.trim();
   if (description) payload.description = description;
@@ -151,9 +259,10 @@ export function validateUpdate(
   const frozen = isSlugFrozen(original);
   const slug = frozen ? original.slug : checkSlug(values.slug, errors);
   if (!frozen && slug === '') errors.slug = 'Slug is required';
+  const items = checkItems(values.items, errors);
   const quantity = checkQuantity(values.totalQuantity, 0);
   if (quantity.error) errors.totalQuantity = quantity.error;
-  if (Object.keys(errors).length || price === null || quantity.value === null) {
+  if (Object.keys(errors).length || items === null || price === null || quantity.value === null) {
     return { ok: false, errors };
   }
 
@@ -161,6 +270,7 @@ export function validateUpdate(
   if (name !== original.name) payload.name = name;
   if (!frozen && slug !== original.slug) payload.slug = slug;
   if (values.description.trim() !== (original.description ?? '')) payload.description = values.description.trim();
+  if (!sameItems(items, original.items ?? [])) payload.items = items; // the whole list replaces the old one
   if (price !== original.price) payload.price = price;
   if (reference !== original.referencePrice) payload.referencePrice = reference; // null clears it
   if (quantity.value !== original.totalQuantity) payload.totalQuantity = quantity.value;

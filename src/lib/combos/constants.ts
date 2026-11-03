@@ -1,6 +1,10 @@
 /** Limits that mirror the backend (enechambs-api `promotions.constants.ts` and the DTOs). */
 
 export const MAX_IMAGES_PER_COMBO = 8;
+/** "What's included": mirrors the backend DTO and CHK_promo_combos_items_array. */
+export const MAX_COMBO_ITEMS = 50;
+export const ITEM_NAME_MAX = 100;
+export const ITEM_QUANTITY_MAX = 60;
 export const MAX_COMBO_QUANTITY = 100_000;
 export const MAX_COMBO_PRICE = 100_000_000;
 export const MIN_COMBO_PRICE = 0.01;

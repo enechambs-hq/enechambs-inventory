@@ -20,8 +20,48 @@ redirect and also withholds the page, so a staff user never triggers its API
 calls. The backend independently answers 403 to non-admins and 404 while
 `STOREFRONT_ENABLED` is off.
 
+## "What's included in this combo?" (contents)
+A combo is a package, so the form has a separate section for its contents,
+between **Description** and **Promotional price**. Each row is an item name
+(required, 1-100 characters) and a quantity / size (optional, up to 60
+characters, free text such as "1 kg" or "1 derica"). Rows can be added (up to
+50) and removed; the form opens with one blank row and needs at least one named
+item to save. Values and order are preserved when other rows are added or
+removed (each row has a client-side key that is never sent to the API).
+
+* Create sends `items: [{ name, quantityLabel }]`, trimmed, in the order shown;
+  a blank quantity is sent as `null`.
+* Edit sends `items` (the whole list) only when it changed, including a pure
+  reordering. Unchanged contents are not sent.
+* A combo created before contents existed opens with one blank row; it must be
+  filled in before any edit of that combo can be saved, and before it can be
+  published (the API answers 409 without items).
+* The list is descriptive text only. It is not linked to inventory products.
+
+Validation lives in `src/lib/combos/form.ts` (`checkItems`, `addItemRow`,
+`removeItemRow`, `updateItemRow`), alongside the other combo rules. This module
+uses plain validation functions and component state rather than Zod and React
+Hook Form, matching the rest of the combo screens.
+
+### Customer display: still to build
+The customer-facing combo pages do not exist in this repository yet (the
+storefront catalogue and detail routes are a later milestone), so customers
+cannot see the contents list yet. The API contract is ready: both
+`GET /api/v1/storefront/combos` and `GET /api/v1/storefront/combos/:slug`
+return `items: [{ name, quantityLabel }]` in display order. When those pages
+are built they must render a titled section (for example **What's included**)
+on the combo card and the detail page, one line per item:
+
+* `quantityLabel` present: `Rice - 1 kg`
+* `quantityLabel` `null` or empty: only the name, `Garri`
+
+and must not make customers open the description to find it. `items` can be an
+empty array only for a combo published before contents existed; render no
+empty heading in that case.
+
 ## What the client never sends
-`remainingQuantity`, `allocatedQuantity`, `status` and ids. Edits send only the
+`remainingQuantity`, `allocatedQuantity`, `status`, ids and the row keys used
+to track item rows. Edits send only the
 fields that changed (so a frozen slug is never resent). A published combo's slug
 is read-only; reducing the total below allocated units shows the backend's 409.
 There is no delete-combo action because the backend has none.

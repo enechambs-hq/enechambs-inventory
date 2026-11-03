@@ -44,7 +44,7 @@ test('every operation uses the documented admin route and verb', async () => {
   const { http, calls } = fakeHttp([combo(), combo(), combo(), combo(), combo(), {}, image(1), [image(1)], image(1), undefined]);
   const api = createCombosApi(http);
   await api.get(ID);
-  await api.create({ name: 'N', price: 1, totalQuantity: 1 });
+  await api.create({ name: 'N', items: [{ name: 'Rice', quantityLabel: null }], price: 1, totalQuantity: 1 });
   await api.update(ID, { name: 'M' });
   await api.publish(ID);
   await api.unpublish(ID);
@@ -143,4 +143,32 @@ test('an HTML 5xx from a proxy does not leak markup', () => {
   const text = explainProblem(describeApiError(err), 'load');
   assert.ok(!text.includes('<html>'));
   assert.match(text, /500/);
+});
+
+// ── contents ("What's included") ─────────────────────────────────────────────
+test('create and update send items to the API unchanged and in order', async () => {
+  const items = [
+    { name: 'Rice', quantityLabel: '1 kg' },
+    { name: 'Garri', quantityLabel: null },
+  ];
+  const { http, calls } = fakeHttp([combo(), combo()]);
+  const api = createCombosApi(http);
+  await api.create({ name: 'Festive Rice Combo', items, price: 1, totalQuantity: 1 });
+  await api.update(ID, { items: [...items].reverse() });
+  assert.deepEqual((calls[0].body as { items: unknown }).items, items);
+  assert.deepEqual((calls[1].body as { items: unknown }).items, [...items].reverse());
+});
+
+test('a publish 409 about missing items points at the contents section, not at images', () => {
+  const text = explainProblem(
+    describeApiError(httpError(409, 'Add at least one item to "What\'s included" before publishing this combo')),
+    'publish',
+  );
+  assert.match(text, /Fill in/);
+  assert.doesNotMatch(text, /Images section/);
+});
+
+test('a bad-items 400 shows the backend messages', () => {
+  const p = describeApiError(httpError(400, ['items.0.name should not be empty', 'items must contain no more than 50 elements']));
+  assert.equal(p.messages.length, 2);
 });
