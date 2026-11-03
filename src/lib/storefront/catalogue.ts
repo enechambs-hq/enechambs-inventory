@@ -6,6 +6,7 @@ import type {
   AvailabilityStatus,
   PublicAvailability,
   PublicCombo,
+  PublicComboItem,
   PublicComboList,
 } from '../../types/storefront.ts';
 
@@ -91,6 +92,26 @@ const isHttpsUrl = (value: unknown): value is string => {
   }
 };
 
+/** Mirrors the API limits (name 100, quantity 60, 50 items); anything beyond is cut, not shown. */
+const MAX_ITEMS = 50;
+
+/**
+ * "What's included". Takes exactly { name, quantityLabel } from each entry and
+ * nothing else; entries without a usable name are skipped, and a blank or
+ * non-text quantity becomes null. A missing or malformed list is an empty list,
+ * so one odd response cannot break the page.
+ */
+export function parseItems(raw: unknown): PublicComboItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, MAX_ITEMS).flatMap((entry) => {
+    if (!isObject(entry) || typeof entry.name !== 'string') return [];
+    const name = entry.name.trim().slice(0, 100);
+    if (!name) return [];
+    const quantity = typeof entry.quantityLabel === 'string' ? entry.quantityLabel.trim().slice(0, 60) : '';
+    return [{ name, quantityLabel: quantity || null }];
+  });
+}
+
 export function parsePublicCombo(raw: unknown): PublicCombo | null {
   if (!isObject(raw)) return null;
   const { name, slug, description, price, referencePrice } = raw;
@@ -111,6 +132,7 @@ export function parsePublicCombo(raw: unknown): PublicCombo | null {
     name: name.trim(),
     slug,
     description: typeof description === 'string' ? description : '',
+    items: parseItems(raw.items),
     price,
     referencePrice:
       typeof referencePrice === 'number' && Number.isFinite(referencePrice) && referencePrice > 0 ? referencePrice : null,
@@ -141,3 +163,9 @@ export const savingOf = (combo: Pick<PublicCombo, 'price' | 'referencePrice'>): 
     : null;
 
 export const isSoldOut = (combo: Pick<PublicCombo, 'availability'>): boolean => combo.availability.status === 'sold_out';
+
+/** The quantity to show next to an item, or null when there is none to show. */
+export const itemQuantity = (item: Pick<PublicComboItem, 'quantityLabel'>): string | null => {
+  const text = typeof item.quantityLabel === 'string' ? item.quantityLabel.trim() : '';
+  return text === '' ? null : text;
+};

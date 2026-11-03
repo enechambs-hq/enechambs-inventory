@@ -11,7 +11,7 @@ and the existing admin proxy (`/api/v1/...`). They never touch the customer BFF
 | `/promotions/combos/new` | create a draft |
 | `/promotions/combos/[id]` | edit details, manage images, publish / unpublish |
 
-The customer-facing `/combos` route is a later milestone and does not exist yet.
+The customer-facing pages (`/combos`, `/combos/[slug]`) are documented in `docs/STOREFRONT_ROUTING.md`.
 
 ## Access
 "Promotions" appears in the sidebar for `admin` only (`src/lib/nav-config.ts`).
@@ -43,21 +43,15 @@ Validation lives in `src/lib/combos/form.ts` (`checkItems`, `addItemRow`,
 uses plain validation functions and component state rather than Zod and React
 Hook Form, matching the rest of the combo screens.
 
-### Customer display: still to build
-The customer-facing combo pages do not exist in this repository yet (the
-storefront catalogue and detail routes are a later milestone), so customers
-cannot see the contents list yet. The API contract is ready: both
-`GET /api/v1/storefront/combos` and `GET /api/v1/storefront/combos/:slug`
-return `items: [{ name, quantityLabel }]` in display order. When those pages
-are built they must render a titled section (for example **What's included**)
-on the combo card and the detail page, one line per item:
-
-* `quantityLabel` present: `Rice - 1 kg`
-* `quantityLabel` `null` or empty: only the name, `Garri`
-
-and must not make customers open the description to find it. `items` can be an
-empty array only for a combo published before contents existed; render no
-empty heading in that case.
+### Customer display
+The contents are shown to customers on the combo detail page
+(`/combos/[slug]`) in a **What's included** section (`ComboContents`), directly
+above the description, one item per row: the name, with the quantity beside it
+when there is one (`Rice - 1 kg`) and only the name when there is not
+(`Garri`). A combo with no items renders no empty heading. The public API
+returns `items: [{ name, quantityLabel }]` on both `GET /storefront/combos` and
+`/:slug`; the parser (`parseItems`) keeps only those two fields. The catalogue
+cards do not list the contents.
 
 ## What the client never sends
 `remainingQuantity`, `allocatedQuantity`, `status`, ids and the row keys used
