@@ -4,7 +4,7 @@
 Admin dashboard and inventory management system for Enechambs Food — a Nigerian foodstuff business. Cloned and adapted from Lmart (a gadget store frontend). All gadget-specific pages and logic have been removed or are being replaced.
 
 ## Stack
-- Next.js 14 App Router
+- Next.js 16 App Router (React 19, Tailwind 4)
 - TypeScript
 - Tailwind CSS
 - Zustand (state management via `src/store/`)
@@ -56,3 +56,11 @@ restockThreshold, expiryTracking, expiryDate, dateAdded
 - Follow existing Tailwind class patterns — do not introduce new CSS frameworks
 - All new pages go inside `src/app/(inventory)/`
 - All amounts are in Nigerian Naira (₦)
+
+## Storefront (in progress)
+A public promotional storefront is being added alongside this admin app, behind
+the server-side flag `STOREFRONT_ENABLED` (off by default; nothing here changes
+until it is on). Customer and admin sessions, routes and API access are
+separate. See `docs/STOREFRONT_ROUTING.md` before touching `src/proxy.ts`,
+`src/app/layout.tsx`, `src/app/page.tsx` or anything under `src/app/api/`.
+

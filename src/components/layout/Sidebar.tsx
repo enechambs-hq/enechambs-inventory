@@ -20,15 +20,17 @@ import {
   BarChart2,
   TrendingDown,
   PackagePlus,
+  Megaphone,
+  type LucideIcon,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuthStore } from "@/store/auth.store";
 import { authService } from "@/lib/services/auth.service";
-import { UserRole } from "@/types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { isLinkActive, linksForRole } from "@/lib/nav-config";
 
 const changePasswordSchema = z
   .object({
@@ -48,23 +50,22 @@ const changePasswordSchema = z
 
 type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
 
-const staffLinks = [
-  { href: "/inventory", label: "Inventory", icon: Package },
-  { href: "/sales", label: "Sales", icon: ShoppingCart },
-  { href: "/expenses", label: "Expenses", icon: TrendingDown },
-  { href: "/categories", label: "Categories", icon: Tag },
-  { href: "/suppliers", label: "Suppliers", icon: Truck },
-  { href: "/stock-alerts", label: "Stock Alerts", icon: AlertTriangle },
-  { href: "/reports", label: "Reports", icon: BarChart2 },
-];
-
-const adminLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  ...staffLinks,
-  { href: "/purchases", label: "Purchases", icon: PackagePlus },
-  { href: "/customers", label: "Customers", icon: Contact },
-  { href: "/users", label: "Users", icon: Users },
-];
+// Link membership and role visibility live in src/lib/nav-config.ts (tested).
+// Only the icons are chosen here, by href.
+const LINK_ICONS: Record<string, LucideIcon> = {
+  "/dashboard": LayoutDashboard,
+  "/inventory": Package,
+  "/sales": ShoppingCart,
+  "/expenses": TrendingDown,
+  "/categories": Tag,
+  "/suppliers": Truck,
+  "/stock-alerts": AlertTriangle,
+  "/reports": BarChart2,
+  "/purchases": PackagePlus,
+  "/customers": Contact,
+  "/promotions/combos": Megaphone,
+  "/users": Users,
+};
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const pathname = usePathname();
@@ -78,7 +79,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const links = user?.role === UserRole.ADMIN ? adminLinks : staffLinks;
+  const links = linksForRole(user?.role).map((l) => ({ ...l, icon: LINK_ICONS[l.href] }));
 
   const {
     register,
@@ -192,7 +193,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               href={href}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:scale-[1.1] active:scale-[0.98]",
-                pathname === href
+                isLinkActive(pathname, href)
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
               )}
