@@ -237,7 +237,7 @@ function EditCombo({ id }: { id: string }) {
         description={
           <>
             <span className="font-medium text-gray-700">&ldquo;{combo.name}&rdquo;</span> will become available to
-            customers wherever the storefront shows combos, and its slug will be locked. It needs at least one image.
+            customers wherever the storefront shows combos, and its slug will be locked. It needs at least one item in &ldquo;What&rsquo;s included&rdquo; and at least one image.
             {dirty && (
               <span className="block mt-2 text-amber-700">
                 You have unsaved changes. Publishing does not save them; save first if they should go live.

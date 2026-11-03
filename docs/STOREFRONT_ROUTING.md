@@ -173,7 +173,10 @@ browser makes no data requests of its own (search and paging are plain links
 and a GET form).
 
 **Display rules.** Only the public fields are rendered (`name`, `slug`,
-`description`, `price`, `referencePrice`, `images`, `availability`). Responses
+`description`, `items`, `price`, `referencePrice`, `images`, `availability`).
+The detail page shows `items` as a **What's included** section above the
+description (name, plus the quantity when there is one; nothing when the list
+is empty). Responses
 are parsed field by field: an exact count is shown only for `low_stock`, image
 URLs must be https, unknown fields are dropped. Images are plain `<img>` with a
 placeholder fallback (the media host is not known at build time).

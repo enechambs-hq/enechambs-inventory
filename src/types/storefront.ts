@@ -20,10 +20,18 @@ export interface PublicComboImage {
   altText: string;
 }
 
+/** One line of what the package contains. quantityLabel is null when none was specified. */
+export interface PublicComboItem {
+  name: string;
+  quantityLabel: string | null;
+}
+
 export interface PublicCombo {
   name: string;
   slug: string;
   description: string;
+  /** What the package contains, in the order the administrator entered it. */
+  items: PublicComboItem[];
   /** Naira. */
   price: number;
   referencePrice: number | null;

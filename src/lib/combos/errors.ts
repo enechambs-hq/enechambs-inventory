@@ -53,6 +53,10 @@ export function explainProblem(problem: ApiProblem, context: ProblemContext): st
     return 'This combo could not be found, or promotions are not enabled on the server.';
   }
   if (status === 409 && context === 'publish') {
+    // The server names what is missing; point at the right part of the page.
+    if (/\bitem/i.test(message)) {
+      return `${message} Fill in “What’s included in this combo?”, save, then publish again.`;
+    }
     return `${message} Add at least one image in the Images section, then publish again.`;
   }
   if (status === 409 && context === 'save') {

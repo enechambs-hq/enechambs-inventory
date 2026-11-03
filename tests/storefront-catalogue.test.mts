@@ -6,7 +6,9 @@ import {
   formatNaira,
   isSoldOut,
   isValidSlug,
+  itemQuantity,
   parseComboList,
+  parseItems,
   parsePageParam,
   parsePublicCombo,
   parseSearchParam,
@@ -17,6 +19,10 @@ const wire = (over: Record<string, unknown> = {}) => ({
   name: 'Festive Rice Combo',
   slug: 'festive-rice-combo',
   description: 'Rice and more',
+  items: [
+    { name: 'Rice', quantityLabel: '1 kg' },
+    { name: 'Garri', quantityLabel: null },
+  ],
   price: 25000,
   referencePrice: 32000,
   images: [{ url: 'https://media.example.test/combos/a.jpg', altText: 'Rice' }],
@@ -79,6 +85,10 @@ test('a public combo keeps exactly the public fields', () => {
     name: 'Festive Rice Combo',
     slug: 'festive-rice-combo',
     description: 'Rice and more',
+    items: [
+      { name: 'Rice', quantityLabel: '1 kg' },
+      { name: 'Garri', quantityLabel: null },
+    ],
     price: 25000,
     referencePrice: 32000,
     images: [{ url: 'https://media.example.test/combos/a.jpg', altText: 'Rice' }],
@@ -95,7 +105,7 @@ test('extra or internal fields on the wire are never carried through', () => {
     }),
   );
   assert.ok(combo);
-  assert.deepEqual(Object.keys(combo).sort(), ['availability', 'description', 'images', 'name', 'price', 'referencePrice', 'slug']);
+  assert.deepEqual(Object.keys(combo).sort(), ['availability', 'description', 'images', 'items', 'name', 'price', 'referencePrice', 'slug']);
   assert.deepEqual(Object.keys(combo.images[0]).sort(), ['altText', 'url']);
 });
 
@@ -160,4 +170,64 @@ test('a list keeps valid combos, skips invalid ones, and requires numeric meta',
   assert.equal(parseComboList({ data: 'no', meta: {} }), null);
   assert.equal(parseComboList(null), null);
   assert.deepEqual(parseComboList({ data: [], meta: { total: 0, page: 1, limit: 12, totalPages: 0 } })?.data, []);
+});
+
+// ── "What's included" ────────────────────────────────────────────────────────
+const CONTENTS = [
+  { name: 'Rice', quantityLabel: '1 kg' },
+  { name: 'Beans', quantityLabel: '2 kg' },
+  { name: 'Palm oil', quantityLabel: '1 litre' },
+  { name: 'Garri', quantityLabel: null },
+];
+
+test('the contents list is carried through in the order the API sent it', () => {
+  const combo = parsePublicCombo(wire({ items: CONTENTS }));
+  assert.deepEqual(combo?.items, CONTENTS);
+});
+
+test('each item keeps exactly name and quantityLabel; anything else on the wire is dropped', () => {
+  const combo = parsePublicCombo(
+    wire({ items: [{ name: 'Rice', quantityLabel: '1 kg', id: 'x', inventoryId: 'y', costPrice: 9, stock: 3 }] }),
+  );
+  assert.ok(combo);
+  assert.deepEqual(Object.keys(combo.items[0]).sort(), ['name', 'quantityLabel']);
+  assert.ok(!JSON.stringify(combo).includes('inventoryId'));
+});
+
+test('a missing, blank or non-text quantity becomes null', () => {
+  const items = parseItems([
+    { name: 'A' },
+    { name: 'B', quantityLabel: null },
+    { name: 'C', quantityLabel: '' },
+    { name: 'D', quantityLabel: '   ' },
+    { name: 'E', quantityLabel: 5 },
+    { name: 'F', quantityLabel: ' 1 kg ' },
+  ]);
+  assert.deepEqual(items.map((i) => i.quantityLabel), [null, null, null, null, null, '1 kg']);
+});
+
+test('entries without a usable name are skipped, and a bad list is an empty list', () => {
+  assert.deepEqual(parseItems([null, 5, 'Rice', {}, { name: '' }, { name: '  ' }, { name: 7 }, { name: 'Yam' }]), [
+    { name: 'Yam', quantityLabel: null },
+  ]);
+  for (const bad of [undefined, null, 'rice', 7, {}, { name: 'Rice' }]) assert.deepEqual(parseItems(bad), []);
+});
+
+test('a combo with no items field (older API response) still parses, with an empty list', () => {
+  const raw: Record<string, unknown> = wire();
+  delete raw.items;
+  assert.deepEqual(parsePublicCombo(raw)?.items, []);
+});
+
+test('at most 50 items are kept', () => {
+  const many = Array.from({ length: 60 }, (_, i) => ({ name: `Item ${i}`, quantityLabel: null }));
+  assert.equal(parseItems(many).length, 50);
+});
+
+test('the quantity is shown only when there is one to show', () => {
+  assert.equal(itemQuantity({ quantityLabel: '1 kg' }), '1 kg');
+  assert.equal(itemQuantity({ quantityLabel: ' 2 litres ' }), '2 litres');
+  assert.equal(itemQuantity({ quantityLabel: null }), null);
+  assert.equal(itemQuantity({ quantityLabel: '' }), null);
+  assert.equal(itemQuantity({ quantityLabel: '   ' }), null);
 });
