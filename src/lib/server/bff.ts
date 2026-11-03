@@ -173,6 +173,72 @@ export function sanitizeIdempotencyKey(value: string | null): string | null {
   return /^[A-Za-z0-9_-]{16,128}$/.test(value) ? value : null;
 }
 
+/**
+ * Reads one cookie from a Cookie header. No decoding: the only value read this
+ * way is a JWT, which is validated afterwards by sanitizeBearerToken.
+ */
+export function readCookie(
+  cookieHeader: string | null,
+  name: string,
+): string | undefined {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq === -1) continue;
+    if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+  }
+  return undefined;
+}
+
+export type BoundedRead =
+  | { ok: true; bytes: Uint8Array }
+  | { ok: false; reason: 'too_large' | 'unreadable' };
+
+/**
+ * Reads a request body as a stream and enforces a limit on the bytes actually
+ * received. Content-Length is not consulted: it may be absent (chunked
+ * transfer) or wrong, so it cannot be the enforcement.
+ *
+ * - Counts bytes (chunk.byteLength), never string characters.
+ * - Stops at the first chunk that takes the total over `maxBytes`: that chunk
+ *   is discarded, the stream is cancelled so the sender is not drained, and
+ *   the caller gets `too_large`. At most `maxBytes` are ever retained.
+ * - Returns the raw bytes, so what is forwarded is exactly what was received.
+ */
+export async function readBodyWithLimit(
+  body: ReadableStream<Uint8Array> | null,
+  maxBytes: number,
+): Promise<BoundedRead> {
+  if (!body) return { ok: true, bytes: new Uint8Array(0) };
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        // Not awaited: the answer must not depend on the sender cooperating.
+        void reader.cancel().catch(() => {});
+        return { ok: false, reason: 'too_large' };
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return { ok: false, reason: 'unreadable' };
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { ok: true, bytes };
+}
+
 /** A JWT is three base64url segments; refuse anything else before forwarding. */
 export function sanitizeBearerToken(value: string | undefined): string | null {
   if (!value || value.length > 4096) return null;

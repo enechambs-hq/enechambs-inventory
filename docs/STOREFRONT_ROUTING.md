@@ -45,6 +45,11 @@ fail-closed default.
 
 ## 3. The customer BFF (`src/app/api/store/[...path]/route.ts`)
 
+`route.ts` is a thin wrapper. The behaviour lives in
+`src/lib/server/store-bff.ts` (`handleStoreRequest`, web-standard `Request` and
+`Response` only, `fetch` and environment injected) so it is unit-tested without
+Next.js: `tests/store-bff.test.mts`.
+
 `browser → /api/store/storefront/<...> → <BACKEND_URL>/api/v1/storefront/<...>`
 
 Rules enforced in the handler (Route Handlers are public endpoints; Next.js
@@ -63,8 +68,18 @@ docs warn a Proxy matcher cannot be relied on to cover them):
    headers. Everything else the browser sent is dropped, so `x-bff-*` cannot be
    injected.
 6. CSRF: state-changing requests need an `Origin` equal to the request's own
-   origin (rebuilt from `Host`) or `STOREFRONT_PUBLIC_URL`. Body must be JSON,
-   at most 64 KB.
+   origin (rebuilt from `Host`) or `STOREFRONT_PUBLIC_URL`. Body must be JSON.
+   These checks run before any body is read.
+   **Body size** (`MAX_BODY_BYTES`, 64 KB) is enforced while *streaming* the
+   body (`readBodyWithLimit` in `src/lib/server/bff.ts`): bytes are counted per
+   chunk (not string characters), and the first chunk that crosses the limit
+   stops the read, cancels the stream and returns 413 without contacting the
+   API. `Content-Length` is used only as an early refusal when it declares an
+   oversized body; a missing, false or non-numeric value changes nothing,
+   because the stream count is the enforcement. Nothing is retained beyond the
+   limit. What is forwarded are the exact bytes received. (Whether the
+   underlying socket keeps draining after the cancel is up to the runtime; the
+   application neither buffers nor forwards the excess.)
 7. `Set-Cookie` from the API is never forwarded. Session cookies are set by
    dedicated handlers (M3), e.g. `src/app/api/store/auth/login/route.ts`, which
    take precedence over this catch-all because specific segments beat `[...path]`.
