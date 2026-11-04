@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
+import AddToCartButton from '@/components/storefront/AddToCartButton';
 import AvailabilityBadge from '@/components/storefront/AvailabilityBadge';
 import ComboContents from '@/components/storefront/ComboContents';
 import Price from '@/components/storefront/Price';
@@ -95,6 +96,9 @@ export default async function ComboPage({ params }: { params: Params }) {
             {soldOut && (
               <p className="mt-3 text-sm text-[#5d5645]">This combo is sold out at the moment. Have a look at the other combos.</p>
             )}
+          </div>
+          <div className="mt-6">
+            <AddToCartButton slug={combo.slug} name={combo.name} soldOut={soldOut} />
           </div>
           <ComboContents items={combo.items} />
           {combo.description && (
