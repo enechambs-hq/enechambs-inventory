@@ -82,12 +82,38 @@ test('no storefront file imports staff auth, the staff store, the staff axios cl
   }
 });
 
-test('no storefront file touches localStorage, the staff "token" cookie or an Authorization header', () => {
+/**
+ * M3.5/M4: browser storage holds exactly two things, both non-secret and both
+ * unrelated to the customer session: the guest cart (localStorage) and the
+ * checkout idempotency key (sessionStorage). Only these files may touch it.
+ */
+const STORAGE_FILES = new Map<string, RegExp>([
+  ['src/lib/storefront/cart-store.ts', /localStorage/],
+  ['src/components/storefront/CheckoutView.tsx', /sessionStorage/],
+]);
+
+test('storage, cookies and Authorization: only the cart and the checkout key use browser storage, and nothing reads cookies or sets Authorization', () => {
   for (const file of STOREFRONT_FILES) {
     const source = code(file);
-    assert.doesNotMatch(source, /localStorage|sessionStorage/, file);
+    // Never allowed anywhere in the storefront:
     assert.doesNotMatch(source, /cookies\(\)|document\.cookie/, file);
     assert.doesNotMatch(source, /[Aa]uthorization/, file);
+    if (STORAGE_FILES.has(file)) {
+      assert.match(source, STORAGE_FILES.get(file) as RegExp, file);
+      // ...and a file that may use storage must have nothing to do with credentials.
+      assert.doesNotMatch(source, /ene_cust|token|password|bearer|jwt/i, `${file} must not mention credentials`);
+    } else {
+      assert.doesNotMatch(source, /localStorage|sessionStorage/, file);
+    }
+  }
+  for (const file of STORAGE_FILES.keys()) assert.ok(existsSync(join(ROOT, file)), `${file} exists`);
+});
+
+test('the customer token never reaches page script: no storefront code reads or writes the session cookie or a token field', () => {
+  for (const file of STOREFRONT_FILES) {
+    const source = code(file);
+    assert.doesNotMatch(source, /ene_cust/, file);
+    assert.doesNotMatch(source, /accessToken/, file);
   }
 });
 
@@ -113,9 +139,9 @@ test('every storefront page checks the feature flag itself', () => {
   assert.match(read('src/app/(storefront)/combos/layout.tsx'), /if \(!isStorefrontEnabled\(\)\) notFound\(\)/);
 });
 
-test('the storefront has no cart, checkout, payment, order, customise or account controls (out of scope)', () => {
+test('still out of scope: order customisation, and the server payments flag is never read by the browser (availability comes from the API)', () => {
   const text = STOREFRONT_FILES.map(code).join('\n');
-  for (const word of [/add to cart/i, /checkout/i, /place order/i, /customi[sz]e/i, /flutterwave/i, /PAYMENTS_ENABLED/, /<button[^>]*>\s*Buy/i]) {
+  for (const word of [/customi[sz]e/i, /PAYMENTS_ENABLED/, /FLUTTERWAVE_(SECRET|WEBHOOK)/, /<button[^>]*>\s*Buy/i]) {
     assert.doesNotMatch(text, word, String(word));
   }
 });
