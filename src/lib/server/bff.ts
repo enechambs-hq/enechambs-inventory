@@ -9,7 +9,7 @@
  * Only erasable TypeScript syntax is used here (no enums, no parameter
  * properties) so Node can execute this file directly in tests.
  */
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { isIP } from 'node:net';
 
 /** Name of the HttpOnly cookie holding the customer's session token (set in M3). */
@@ -73,6 +73,77 @@ export function signedClientIpHeaders(input: {
       timestampMs,
       secret: input.secret,
     }),
+  };
+}
+
+// ── request authentication (BFF -> API) ─────────────────────────────────────
+//
+// The API refuses every storefront/auth/* request that does not carry this
+// signature, so a browser cannot call those routes directly and read the access
+// token that login and verify-email return (CORS is not authentication). Only
+// this server holds BFF_SHARED_SECRET.
+//
+// Protocol v1, identical to the API's src/common/bff-auth/bff-request-signature.ts
+// (golden vectors are asserted in both repositories):
+//
+//   key       = HMAC-SHA256(BFF_SHARED_SECRET, "enechambs:bff-request-auth:v1")
+//   canonical = "enechambs-bff-request-v1" LF timestampMs LF METHOD LF path
+//               LF hex(SHA-256(body))
+//   signature = hex(HMAC-SHA256(key, canonical))
+//
+// It binds the method, the exact backend path (no query string), the timestamp
+// and a digest of the EXACT BYTES forwarded. It is separate from the signed
+// client-IP headers above, which only assert a visitor address for rate
+// limiting and are unchanged. The key is derived, so the raw secret that signs
+// client IPs is never this MAC's key.
+
+export const BFF_AUTH_VERSION = 'v1';
+export const BFF_AUTH_VERSION_HEADER = 'x-bff-auth-version';
+export const BFF_AUTH_TIMESTAMP_HEADER = 'x-bff-auth-timestamp';
+export const BFF_AUTH_SIGNATURE_HEADER = 'x-bff-auth-signature';
+
+export const deriveBffAuthKey = (secret: string): Buffer =>
+  createHmac('sha256', secret).update('enechambs:bff-request-auth:v1').digest();
+
+export const bodyDigestHex = (body: Uint8Array | undefined): string =>
+  createHash('sha256').update(body ?? new Uint8Array(0)).digest('hex');
+
+export function signBffRequest(input: {
+  secret: string;
+  method: string;
+  path: string;
+  timestampMs: number;
+  body?: Uint8Array;
+}): string {
+  const canonical = [
+    'enechambs-bff-request-v1',
+    String(input.timestampMs),
+    input.method.toUpperCase(),
+    input.path,
+    bodyDigestHex(input.body),
+  ].join('\n');
+  return createHmac('sha256', deriveBffAuthKey(input.secret))
+    .update(canonical)
+    .digest('hex');
+}
+
+/**
+ * Headers proving a request came from this BFF. `body` MUST be the very bytes
+ * passed to fetch (not a re-serialisation), `path` the backend path without the
+ * query string.
+ */
+export function bffAuthHeaders(input: {
+  secret: string;
+  method: string;
+  path: string;
+  body?: Uint8Array;
+  nowMs?: number;
+}): Record<string, string> {
+  const timestampMs = input.nowMs ?? Date.now();
+  return {
+    [BFF_AUTH_VERSION_HEADER]: BFF_AUTH_VERSION,
+    [BFF_AUTH_TIMESTAMP_HEADER]: String(timestampMs),
+    [BFF_AUTH_SIGNATURE_HEADER]: signBffRequest({ ...input, timestampMs }),
   };
 }
 

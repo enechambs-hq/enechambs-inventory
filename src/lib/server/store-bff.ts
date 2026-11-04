@@ -11,6 +11,7 @@ import {
   MAX_BODY_BYTES,
   MAX_QUERY_LENGTH,
   backendPathFromSegments,
+  bffAuthHeaders,
   isAllowedOrigin,
   readBodyWithLimit,
   readCookie,
@@ -162,6 +163,16 @@ export async function handleStoreRequest(
     readCookie(req.headers.get('cookie'), CUSTOMER_COOKIE),
   );
   if (token) headers.set('authorization', `Bearer ${token}`);
+
+  // Customer authentication routes accept only requests from this BFF. The
+  // signature covers the exact `body` bytes passed to fetch below (never a
+  // re-serialisation), the method and the backend path. The secret stays on the
+  // server: only the derived signature goes upstream, and nothing of it is ever
+  // returned to the browser.
+  if (path.startsWith('storefront/auth/')) {
+    const auth = bffAuthHeaders({ secret, method, path: url.pathname, body });
+    for (const [name, value] of Object.entries(auth)) headers.set(name, value);
+  }
 
   const ip = resolveClientIp(req.headers, env);
   if (ip) {

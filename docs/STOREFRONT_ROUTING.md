@@ -247,3 +247,44 @@ SameSite=Lax; Max-Age=<n>`, plus `Secure` when `NODE_ENV=production`. No
 
 Not in this milestone: the cart, checkout, and the `/account/*` pages. Until
 the account pages exist the handlers are exercised by tests only.
+
+## 9. BFF request signature (the API only accepts the BFF)
+
+The API's token-issuing routes (login, verify-email) are reachable from a
+browser, and CORS allows this site's origin. Without more, page script could
+call the API directly and read the access token, bypassing section 8. **CORS is
+not authentication**, so every request to `storefront/auth/*` carries a
+signature that only this server can make (it holds `BFF_SHARED_SECRET`; the
+browser never does). Unsigned requests get `403` from the API.
+
+Added in `store-bff.ts` for every path under `storefront/auth/` (so login,
+verify-email, logout, register, resend-code, forgot-password, reset-password
+and `me`), from helpers in `src/lib/server/bff.ts`:
+
+```
+key       = HMAC-SHA256(BFF_SHARED_SECRET, "enechambs:bff-request-auth:v1")
+canonical = "enechambs-bff-request-v1" LF timestampMs LF METHOD LF path LF hex(SHA-256(body))
+signature = hex(HMAC-SHA256(key, canonical))
+headers   = x-bff-auth-version: v1, x-bff-auth-timestamp: <ms>, x-bff-auth-signature: <hex>
+```
+
+- **Signed over the exact bytes forwarded.** The `Uint8Array` passed to `fetch`
+  is the same one hashed; the body is never re-serialised in between
+  (`tests/bff-auth.test.mts` sends non-canonical JSON with unicode and checks
+  the digest against the bytes the API receives).
+- `path` is the backend pathname (`/api/v1/storefront/auth/login`), without the
+  query string. Valid for 60 s either side on the API.
+- Browser-supplied `x-bff-auth-*` headers are dropped by the header allowlist
+  and replaced by the BFF's own.
+- Separate from, and not a replacement for, the signed client-IP headers
+  (section 3), which are unchanged and keep their own golden vectors. The key is
+  derived, so the raw secret is never the key of this MAC.
+- The secret and signatures are never returned to the browser; the secret is
+  referenced only by server-side files (a test enforces it).
+- Missing `BFF_SHARED_SECRET` is a 503 before anything is sent.
+- The golden vectors in `tests/bff-auth.test.mts` are the same table as the
+  API's `src/common/bff-auth/bff-request-signature.spec.ts`. Change the
+  algorithm in one repository and the other's suite fails.
+
+The staff session, the `/api/v1` admin proxy and `proxy.ts` do not use or know
+about any of this.
