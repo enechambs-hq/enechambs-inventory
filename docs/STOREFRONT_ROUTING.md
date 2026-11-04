@@ -8,7 +8,7 @@ the rules the storefront milestones build on. Backend counterpart: `enechambs-ap
 | | Customers (public) | Staff and admins (internal) |
 |---|---|---|
 | Pages | `(storefront)` route group (M2) | `(inventory)` and `(auth)` groups, unchanged |
-| Login | `/account/login`, `/account/register` (M3) | `/login`, `/setup-password`, unchanged |
+| Login | `/account/login`, `/account/register` (pages come with the cart milestone; handlers: M3) | `/login`, `/setup-password`, unchanged |
 | Session token | **HttpOnly cookie `ene_cust`**, set only by Route Handlers | `localStorage` + the existing JS cookie `token`, unchanged |
 | Reaches the API through | `/api/store/*` (customer BFF, this milestone) | `/api/v1/*` (existing proxy, untouched) |
 | Backend namespace | `storefront/*` only | everything else |
@@ -80,8 +80,12 @@ docs warn a Proxy matcher cannot be relied on to cover them):
    underlying socket keeps draining after the cancel is up to the runtime; the
    application neither buffers nor forwards the excess.)
 7. `Set-Cookie` from the API is never forwarded. Session cookies are set by
-   dedicated handlers (M3), e.g. `src/app/api/store/auth/login/route.ts`, which
-   take precedence over this catch-all because specific segments beat `[...path]`.
+   dedicated handlers (M3, section 8), which take precedence over this
+   catch-all because specific segments beat `[...path]`. The catch-all also
+   **refuses** the three session routes (`storefront/auth/login`,
+   `storefront/auth/verify-email`, `storefront/auth/logout`) with 404, and
+   removes any `accessToken` key from every JSON response it relays, so it
+   cannot be used to get a token past the dedicated handlers.
 8. Responses are `Cache-Control: no-store`; 15 s upstream timeout.
 
 ### Signed client IP
@@ -188,3 +192,58 @@ real published combos when the API has them, else a branded placeholder. Motion
 
 **Out of scope here:** customer accounts, cart, checkout, payments, orders and
 order customisation.
+
+## 8. M3: customer session handlers (as built)
+
+The API returns an `accessToken` from `storefront/auth/login` and
+`storefront/auth/verify-email`. It is a bearer credential and **never reaches
+browser JavaScript**. Dedicated Route Handlers (thin wrappers over
+`src/lib/server/store-auth.ts`, unit-tested in `tests/store-auth.test.mts`):
+
+| Browser calls (POST, JSON, same-origin) | Backend | Effect |
+|---|---|---|
+| `/api/store/auth/login` | `storefront/auth/login` | on success sets `ene_cust`, returns the body **without** `accessToken` |
+| `/api/store/auth/verify-email` | `storefront/auth/verify-email` | same: this completes registration and signs in |
+| `/api/store/auth/logout` | `storefront/auth/logout` | revokes the session on the API, clears `ene_cust` |
+
+Everything else customer-facing (`register`, `resend-code`, `forgot-password`,
+`reset-password`, `me`, the catalogue) goes through the generic
+`/api/store/storefront/...` route. Those routes issue no session. Password
+reset deliberately does **not** sign the customer in: after it, the customer
+signs in normally.
+
+**Registration is two calls.** `register` takes only an email and sends a code;
+nothing about the customer is stored. `verify-email` takes the email, the code
+**and** the name, phone and password, and creates the account. The page must
+therefore collect the details on the verification step (a refresh just means
+re-entering them with the same, still valid code). Do not send name, phone or
+password to `register`: the API answers 400.
+
+**Cookie** (`buildSessionCookie`): `ene_cust=<jwt>; Path=/; HttpOnly;
+SameSite=Lax; Max-Age=<n>`, plus `Secure` when `NODE_ENV=production`. No
+`Domain` attribute, so it is host-only. `Max-Age` is the token's own `exp`
+(falling back to the `expiresIn` the API reports, i.e. the configured
+`CUSTOMER_JWT_EXPIRES_IN`, then 7 days; capped at 30). Clearing
+(`buildClearCookie`) uses the same name, Path and absent Domain with
+`Max-Age=0` and a past `Expires`.
+
+**Rules the handlers enforce**
+1. The cookie is set only when the API answered 2xx **and** returned a
+   well-formed JWT. Wrong code, bad credentials, validation errors, throttling
+   and 5xx set no cookie; the API's status and message are relayed.
+2. The response to the browser is built from scratch: only the cookie this
+   module made is ever sent, an upstream `Set-Cookie` is dropped, and
+   `accessToken`/`tokenType` are removed from the body.
+3. All checks of the generic BFF run first (flag, path, Origin/CSRF, JSON-only,
+   bounded body, signed client IP, header allowlist). A request refused by them
+   never contacts the API and never changes the cookie, so a forged cross-site
+   request cannot sign anyone out.
+4. `Authorization` is derived from `ene_cust` only; a browser-supplied
+   `Authorization` header is ignored. The staff `token` cookie is never read or
+   forwarded, and the staff login and `/api/v1` proxy are untouched.
+5. Logout clears the cookie whenever the API was contacted, whatever it
+   answered (401 means the token was already dead; 5xx is relayed so the page
+   can warn that revocation may not have happened).
+
+Not in this milestone: the cart, checkout, and the `/account/*` pages. Until
+the account pages exist the handlers are exercised by tests only.

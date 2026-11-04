@@ -28,6 +28,48 @@ export interface StoreBffDeps {
   timeoutMs?: number;
 }
 
+/**
+ * Backend routes that ISSUE or END a customer session. The access token they
+ * return must never reach browser JavaScript, so they are served only by the
+ * dedicated Route Handlers (src/app/api/store/auth/*, lib/server/store-auth.ts),
+ * which move the token into the HttpOnly cookie. The generic catch-all refuses
+ * them: otherwise `/api/store/storefront/auth/login` would be a way around the
+ * dedicated handler that hands the token straight to the page.
+ */
+export const SESSION_ROUTES: ReadonlySet<string> = new Set([
+  'storefront/auth/login',
+  'storefront/auth/verify-email',
+  'storefront/auth/logout',
+]);
+
+export interface StoreRequestOptions {
+  /** Only the dedicated session handlers pass this. */
+  allowSessionRoutes?: boolean;
+}
+
+/**
+ * Removes any `accessToken` property from a JSON body. Defence in depth for
+ * the generic route: no backend response may carry a session token to the
+ * browser, whatever route produced it.
+ */
+export function redactAccessToken(body: ArrayBuffer, contentType: string): ArrayBuffer {
+  if (!/json/i.test(contentType)) return body;
+  const text = new TextDecoder().decode(body);
+  if (!text.includes('accessToken')) return body;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      delete (parsed as Record<string, unknown>).accessToken;
+      return new TextEncoder().encode(JSON.stringify(parsed)).buffer as ArrayBuffer;
+    }
+  } catch {
+    // Not parseable: fall through to the conservative answer below.
+  }
+  return new TextEncoder().encode(
+    JSON.stringify({ message: 'Unexpected response' }),
+  ).buffer as ArrayBuffer;
+}
+
 const json = (body: unknown, status: number, extra: HeadersInit = {}) =>
   Response.json(body, {
     status,
@@ -38,6 +80,7 @@ export async function handleStoreRequest(
   req: Request,
   segments: string[],
   deps: StoreBffDeps,
+  options: StoreRequestOptions = {},
 ): Promise<Response> {
   const { env } = deps;
 
@@ -47,6 +90,9 @@ export async function handleStoreRequest(
 
   const path = backendPathFromSegments(segments);
   if (!path) return json({ message: 'Not found' }, 404);
+  if (SESSION_ROUTES.has(path) && !options.allowSessionRoutes) {
+    return json({ message: 'Not found' }, 404);
+  }
 
   const secret = env.BFF_SHARED_SECRET;
   const backend = env.BACKEND_URL ?? 'https://enechambs-api.onrender.com';
@@ -158,8 +204,11 @@ export async function handleStoreRequest(
   const retryAfter = upstream.headers.get('retry-after');
   if (retryAfter) responseHeaders['retry-after'] = retryAfter;
 
-  return new Response(await upstream.arrayBuffer(), {
-    status: upstream.status,
-    headers: responseHeaders,
-  });
+  const upstreamBody = await upstream.arrayBuffer();
+  return new Response(
+    options.allowSessionRoutes
+      ? upstreamBody // the session handler redacts and sets the cookie itself
+      : redactAccessToken(upstreamBody, responseHeaders['content-type']),
+    { status: upstream.status, headers: responseHeaders },
+  );
 }
