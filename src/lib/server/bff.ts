@@ -9,7 +9,7 @@
  * Only erasable TypeScript syntax is used here (no enums, no parameter
  * properties) so Node can execute this file directly in tests.
  */
-import { createHash, createHmac } from 'node:crypto';
+import { createHash, createHmac, randomBytes } from 'node:crypto';
 import { isIP } from 'node:net';
 
 /** Name of the HttpOnly cookie holding the customer's session token (set in M3). */
@@ -83,41 +83,53 @@ export function signedClientIpHeaders(input: {
 // token that login and verify-email return (CORS is not authentication). Only
 // this server holds BFF_SHARED_SECRET.
 //
-// Protocol v1, identical to the API's src/common/bff-auth/bff-request-signature.ts
+// Protocol v2, identical to the API's src/common/bff-auth/bff-request-signature.ts
 // (golden vectors are asserted in both repositories):
 //
-//   key       = HMAC-SHA256(BFF_SHARED_SECRET, "enechambs:bff-request-auth:v1")
-//   canonical = "enechambs-bff-request-v1" LF timestampMs LF METHOD LF path
-//               LF hex(SHA-256(body))
+//   key       = HMAC-SHA256(BFF_SHARED_SECRET, "enechambs:bff-request-auth:v2")
+//   canonical = "enechambs-bff-request-v2" LF timestampMs LF nonce LF METHOD
+//               LF path LF hex(SHA-256(body))
 //   signature = hex(HMAC-SHA256(key, canonical))
 //
-// It binds the method, the exact backend path (no query string), the timestamp
-// and a digest of the EXACT BYTES forwarded. It is separate from the signed
-// client-IP headers above, which only assert a visitor address for rate
-// limiting and are unchanged. The key is derived, so the raw secret that signs
-// client IPs is never this MAC's key.
+// It binds the method, the exact backend path (no query string), the timestamp,
+// a per-request random NONCE and a digest of the EXACT BYTES forwarded. The
+// nonce is what lets the API refuse a replay: it records every nonce it accepts
+// in PostgreSQL and refuses a second use, so a captured request cannot be sent
+// again within its validity window. Every request therefore gets a fresh 128-bit
+// nonce; nothing is cached or reused, and a retry is a new request with a new
+// nonce. v1 (no nonce) is no longer accepted by the API.
+//
+// Separate from the signed client-IP headers above, which only assert a visitor
+// address for rate limiting and are unchanged. The key is derived, so the raw
+// secret that signs client IPs is never this MAC's key.
 
-export const BFF_AUTH_VERSION = 'v1';
+export const BFF_AUTH_VERSION = 'v2';
 export const BFF_AUTH_VERSION_HEADER = 'x-bff-auth-version';
 export const BFF_AUTH_TIMESTAMP_HEADER = 'x-bff-auth-timestamp';
+export const BFF_AUTH_NONCE_HEADER = 'x-bff-auth-nonce';
 export const BFF_AUTH_SIGNATURE_HEADER = 'x-bff-auth-signature';
 
 export const deriveBffAuthKey = (secret: string): Buffer =>
-  createHmac('sha256', secret).update('enechambs:bff-request-auth:v1').digest();
+  createHmac('sha256', secret).update('enechambs:bff-request-auth:v2').digest();
 
 export const bodyDigestHex = (body: Uint8Array | undefined): string =>
   createHash('sha256').update(body ?? new Uint8Array(0)).digest('hex');
+
+/** 128 random bits as 22 base64url characters. One per request, never reused. */
+export const generateBffNonce = (): string => randomBytes(16).toString('base64url');
 
 export function signBffRequest(input: {
   secret: string;
   method: string;
   path: string;
   timestampMs: number;
+  nonce: string;
   body?: Uint8Array;
 }): string {
   const canonical = [
-    'enechambs-bff-request-v1',
+    'enechambs-bff-request-v2',
     String(input.timestampMs),
+    input.nonce,
     input.method.toUpperCase(),
     input.path,
     bodyDigestHex(input.body),
@@ -130,7 +142,7 @@ export function signBffRequest(input: {
 /**
  * Headers proving a request came from this BFF. `body` MUST be the very bytes
  * passed to fetch (not a re-serialisation), `path` the backend path without the
- * query string.
+ * query string. A fresh random nonce is generated unless a test supplies one.
  */
 export function bffAuthHeaders(input: {
   secret: string;
@@ -138,12 +150,22 @@ export function bffAuthHeaders(input: {
   path: string;
   body?: Uint8Array;
   nowMs?: number;
+  nonce?: string;
 }): Record<string, string> {
   const timestampMs = input.nowMs ?? Date.now();
+  const nonce = input.nonce ?? generateBffNonce();
   return {
     [BFF_AUTH_VERSION_HEADER]: BFF_AUTH_VERSION,
     [BFF_AUTH_TIMESTAMP_HEADER]: String(timestampMs),
-    [BFF_AUTH_SIGNATURE_HEADER]: signBffRequest({ ...input, timestampMs }),
+    [BFF_AUTH_NONCE_HEADER]: nonce,
+    [BFF_AUTH_SIGNATURE_HEADER]: signBffRequest({
+      secret: input.secret,
+      method: input.method,
+      path: input.path,
+      body: input.body,
+      timestampMs,
+      nonce,
+    }),
   };
 }
 

@@ -262,28 +262,37 @@ verify-email, logout, register, resend-code, forgot-password, reset-password
 and `me`), from helpers in `src/lib/server/bff.ts`:
 
 ```
-key       = HMAC-SHA256(BFF_SHARED_SECRET, "enechambs:bff-request-auth:v1")
-canonical = "enechambs-bff-request-v1" LF timestampMs LF METHOD LF path LF hex(SHA-256(body))
+key       = HMAC-SHA256(BFF_SHARED_SECRET, "enechambs:bff-request-auth:v2")
+canonical = "enechambs-bff-request-v2" LF timestampMs LF nonce LF METHOD LF path LF hex(SHA-256(body))
 signature = hex(HMAC-SHA256(key, canonical))
-headers   = x-bff-auth-version: v1, x-bff-auth-timestamp: <ms>, x-bff-auth-signature: <hex>
+headers   = x-bff-auth-version: v2, x-bff-auth-timestamp: <ms>,
+            x-bff-auth-nonce: <22 base64url>, x-bff-auth-signature: <hex>
 ```
 
+- **Protocol v2 adds a nonce (replay protection).** Every request gets a fresh
+  128-bit random nonce (`generateBffNonce`, `crypto.randomBytes(16)`); it is part
+  of the signed message and sent in `x-bff-auth-nonce`. The API records each
+  nonce it accepts in PostgreSQL and refuses a second use, so a captured request
+  cannot be replayed within its 60 s window, not even against a different API
+  instance. Nothing is cached or reused here, and nothing retries a request with
+  its old nonce: a retry is a new request with a new nonce. **v1 is no longer
+  accepted by the API**, so this change and the API's must be deployed together.
 - **Signed over the exact bytes forwarded.** The `Uint8Array` passed to `fetch`
   is the same one hashed; the body is never re-serialised in between
   (`tests/bff-auth.test.mts` sends non-canonical JSON with unicode and checks
   the digest against the bytes the API receives).
 - `path` is the backend pathname (`/api/v1/storefront/auth/login`), without the
   query string. Valid for 60 s either side on the API.
-- Browser-supplied `x-bff-auth-*` headers are dropped by the header allowlist
-  and replaced by the BFF's own.
+- Browser-supplied `x-bff-auth-*` headers (including a nonce) are dropped by the
+  header allowlist and replaced by the BFF's own.
 - Separate from, and not a replacement for, the signed client-IP headers
   (section 3), which are unchanged and keep their own golden vectors. The key is
   derived, so the raw secret is never the key of this MAC.
-- The secret and signatures are never returned to the browser; the secret is
+- The secret, signatures and nonces are never returned to the browser; the secret is
   referenced only by server-side files (a test enforces it).
 - Missing `BFF_SHARED_SECRET` is a 503 before anything is sent.
-- The golden vectors in `tests/bff-auth.test.mts` are the same table as the
-  API's `src/common/bff-auth/bff-request-signature.spec.ts`. Change the
+- The v2 golden vectors in `tests/bff-auth.test.mts` (with their fixed nonces) are
+  the same table as the API's `src/common/bff-auth/bff-request-signature.spec.ts`. Change the
   algorithm in one repository and the other's suite fails.
 
 The staff session, the `/api/v1` admin proxy and `proxy.ts` do not use or know

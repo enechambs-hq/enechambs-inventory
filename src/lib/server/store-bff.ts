@@ -166,9 +166,11 @@ export async function handleStoreRequest(
 
   // Customer authentication routes accept only requests from this BFF. The
   // signature covers the exact `body` bytes passed to fetch below (never a
-  // re-serialisation), the method and the backend path. The secret stays on the
-  // server: only the derived signature goes upstream, and nothing of it is ever
-  // returned to the browser.
+  // re-serialisation), the method, the backend path, the timestamp and a FRESH
+  // random nonce generated for this request alone (the API records each nonce it
+  // accepts and refuses a second use, which is what stops a replay). The secret
+  // stays on the server: only the derived signature and the nonce go upstream,
+  // and neither is ever returned to the browser.
   if (path.startsWith('storefront/auth/')) {
     const auth = bffAuthHeaders({ secret, method, path: url.pathname, body });
     for (const [name, value] of Object.entries(auth)) headers.set(name, value);
