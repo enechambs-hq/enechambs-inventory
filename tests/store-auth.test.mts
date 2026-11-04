@@ -127,11 +127,19 @@ test('lifetime parsing accepts the API format and nothing else', () => {
   }
 });
 
-test('cookie lifetime follows the token: its exp, else the reported lifetime, else 7 days, capped', () => {
+test('cookie lifetime follows the token: its exp (expired is rejected), else the reported lifetime, else 7 days, capped', () => {
   const now = Math.floor(Date.now() / 1000) * 1000; // whole seconds, so the arithmetic is exact
   assert.equal(cookieMaxAgeSeconds(jwt(Math.floor(now / 1000) + 1000), '7d', now), 1000);
   assert.equal(cookieMaxAgeSeconds('a.b.c', '12h', now), 43200); // no readable exp
-  assert.equal(cookieMaxAgeSeconds(jwt(Math.floor(now / 1000) - 5), '30m', now), 1800); // already expired exp
+  // A numeric exp is authoritative: expired or zero remaining lifetime is rejected, and
+  // expiresIn must NOT bring it back to life.
+  assert.equal(cookieMaxAgeSeconds(jwt(Math.floor(now / 1000) - 5), '30m', now), null);
+  assert.equal(cookieMaxAgeSeconds(jwt(Math.floor(now / 1000)), '7d', now), null); // exactly now
+  assert.equal(cookieMaxAgeSeconds(jwt(0), '7d', now), null);
+  assert.equal(cookieMaxAgeSeconds(jwt(Math.floor(now / 1000) + 1), '7d', now), 1);
+  // A non-numeric exp is not a valid claim: the reported lifetime is used.
+  const oddExp = `${b64({ alg: 'HS256' })}.${b64({ exp: 'soon' })}.c2ln`;
+  assert.equal(cookieMaxAgeSeconds(oddExp, '30m', now), 1800);
   assert.equal(cookieMaxAgeSeconds('a.b.c', undefined, now), 7 * 86400);
   assert.equal(cookieMaxAgeSeconds(jwt(Math.floor(now / 1000) + 10 * 86400 * 10), '7d', now), 30 * 86400);
 });
@@ -243,6 +251,23 @@ for (const [action, path, payload] of [
     assert.equal(calls[0].headers.get('authorization'), null);
     assert.equal(calls[0].headers.get('cookie'), null);
     assert.ok(![...calls[0].headers.values()].some((v) => v.includes(staff)));
+  });
+}
+
+for (const action of ['login', 'verify-email'] as const) {
+  test(`${action}: a token that is already expired is refused: no cookie, safe error, token not relayed`, async () => {
+    for (const exp of [nowSec() - 60, nowSec(), 0]) {
+      const dead = jwt(exp);
+      const { res } = await run(action, post(`auth/${action}`, {}), {
+        body: { ...LOGIN_OK, accessToken: dead, expiresIn: '7d' }, // expiresIn must not rescue it
+      });
+      assert.equal(res.status, 502, String(exp));
+      assert.deepEqual(setCookies(res), [], String(exp));
+      const text = await res.text();
+      assert.ok(!text.includes(dead));
+      assert.ok(!text.includes('accessToken'));
+      assert.match(JSON.parse(text).message, /session/i);
+    }
   });
 }
 

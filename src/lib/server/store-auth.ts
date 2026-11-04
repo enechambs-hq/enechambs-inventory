@@ -55,20 +55,29 @@ function tokenExpiry(token: string): number | null {
 
 /**
  * Cookie lifetime in seconds, so the cookie never outlives (or is cut shorter
- * than) the token it carries. Preference: the token's own `exp`; else the
- * lifetime the API reported (`expiresIn`, the configured
- * CUSTOMER_JWT_EXPIRES_IN); else seven days. Capped at 30 days.
+ * than) the token it carries, or `null` when the token must not be stored.
+ *
+ * - The token carries a numeric `exp`: that is authoritative. If no positive
+ *   lifetime remains, the token is already dead and the answer is `null`; the
+ *   reported `expiresIn` is NOT consulted (it would resurrect a dead token as a
+ *   live-looking cookie).
+ * - No readable numeric `exp`: the lifetime the API reported (`expiresIn`, the
+ *   configured CUSTOMER_JWT_EXPIRES_IN), else seven days.
+ * Capped at 30 days.
  */
 export function cookieMaxAgeSeconds(
   token: string,
   expiresIn: unknown,
   nowMs: number = Date.now(),
-): number {
+): number | null {
   const exp = tokenExpiry(token);
-  let seconds: number | null =
-    exp !== null ? Math.floor(exp - nowMs / 1000) : null;
-  if (seconds === null || seconds <= 0) seconds = parseLifetime(expiresIn);
-  if (seconds === null || seconds <= 0) seconds = DEFAULT_LIFETIME_SECONDS;
+  let seconds: number;
+  if (exp !== null) {
+    seconds = Math.floor(exp - nowMs / 1000);
+    if (!(seconds > 0)) return null;
+  } else {
+    seconds = parseLifetime(expiresIn) ?? DEFAULT_LIFETIME_SECONDS;
+  }
   return Math.min(seconds, MAX_LIFETIME_SECONDS);
 }
 
@@ -192,6 +201,11 @@ export async function handleStoreSessionRequest(
   }
 
   const maxAge = cookieMaxAgeSeconds(token, parsed.expiresIn);
+  if (maxAge === null) {
+    // The API issued a token that is already expired: a session that cannot
+    // work. Set no cookie and report a safe error; the token is not relayed.
+    return jsonResponse({ message: 'Unable to start a session. Please try again.' }, 502);
+  }
   return jsonResponse(
     withoutToken(parsed),
     upstream.status,
