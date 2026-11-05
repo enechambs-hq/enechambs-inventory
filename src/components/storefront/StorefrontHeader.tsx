@@ -14,12 +14,6 @@ export default function StorefrontHeader() {
           </span>
         </Link>
         <nav aria-label="Main" className="flex items-center gap-1 sm:gap-2">
-          <Link
-            href="/combos"
-            className="hidden whitespace-nowrap rounded-full px-2.5 py-2 text-sm font-semibold text-[#0f4f2d] transition hover:bg-[#e8f5ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a] min-[400px]:inline-block sm:px-4"
-          >
-            <span className="hidden sm:inline">Year-End </span>Combos
-          </Link>
           <HeaderActions />
         </nav>
       </div>

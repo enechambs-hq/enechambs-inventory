@@ -465,7 +465,7 @@ export default function LoginPage() {
                 Admin Console
               </div>
               <h1 style={{ margin: 0, fontSize: 32, fontWeight: 700, letterSpacing: -0.8, color: C.text }}>
-                Welcome back
+                Admin sign in
               </h1>
               <p style={{ marginTop: 8, fontSize: 14, color: C.muted, lineHeight: 1.55 }}>
                 Sign in to manage your foodstuff inventory, sales and team.

@@ -15,6 +15,15 @@ the rules the storefront milestones build on. Backend counterpart: `enechambs-ap
 | Enforcement | backend customer guard + ownership in every query | backend `JwtAuthGuard` + `@Roles` |
 
 The two never share a cookie, token, secret, route handler or backend guard.
+
+One display-only exception: `GET /api/viewer` (`src/app/api/viewer/route.ts`)
+reads the staff `token` cookie **on the server** and returns only
+`{ staffRole: 'admin' | 'staff' | null }`, decoded from the JWT payload without
+verifying it (`src/lib/server/viewer-role.ts`). The storefront header uses it to
+show "Admin sign in" / "Staff sign in" instead of the customer "Sign in" when
+the browser also holds a staff session. It authorises nothing: staff pages and
+every API call enforce access themselves, and storefront code still never reads
+cookies or storage for it.
 `src/proxy.ts` inspects only the admin `token` cookie and does not know the
 customer cookie exists.
 
