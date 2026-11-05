@@ -340,3 +340,19 @@ test('readCookie finds the named cookie and tolerates junk', () => {
   assert.equal(readCookie('novalue; other', 'ene_cust'), undefined);
   assert.equal(readCookie('xene_cust=1', 'ene_cust'), undefined);
 });
+
+test('a 204 from the API passes through with no body (the address book DELETE answers 204)', async () => {
+  const f = (async () => new Response(null, { status: 204 })) as unknown as typeof fetch;
+  const res = await handleStoreRequest(
+    new Request(`${BASE}/api/store/storefront/addresses/5f1c2c1e-9b57-4f0e-9d58-0c5d6b5a1111`, {
+      method: 'DELETE',
+      headers: headersWith(),
+      body: '{}',
+    }),
+    ['storefront', 'addresses', '5f1c2c1e-9b57-4f0e-9d58-0c5d6b5a1111'],
+    { env: ENV, fetch: f },
+  );
+  assert.equal(res.status, 204);
+  assert.equal(await res.text(), '');
+  assert.equal(res.headers.get('cache-control'), 'no-store');
+});

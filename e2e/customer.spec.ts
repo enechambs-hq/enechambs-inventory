@@ -55,7 +55,8 @@ test.describe('customer journey', () => {
   test('registering from checkout returns to /checkout with the guest cart intact and the header signed in', async () => {
     await register(page, email, '/checkout');
     await page.waitForURL('**/checkout');
-    await expect(page.getByTestId('checkout-total')).toHaveText('₦30,000');
+    // Delivery is the default at checkout: items (₦30,000) plus the flat delivery fee (₦10,000).
+    await expect(page.getByTestId('checkout-total')).toHaveText('₦40,000');
     await expect(page.getByTestId('cart-count')).toHaveText('2');
     // The header must reflect the new session WITHOUT a reload.
     await expect(page.getByRole('button', { name: 'Your profile' })).toBeVisible();
@@ -124,8 +125,35 @@ test.describe('customer journey', () => {
     await page.fill('#password', password);
     await page.click('button[type="submit"]');
     await page.waitForURL('**/checkout');
-    await expect(page.getByTestId('checkout-total')).toHaveText('₦25,000');
+    await expect(page.getByTestId('checkout-total')).toHaveText('₦35,000'); // ₦25,000 plus the delivery fee
     await expect(page.getByRole('button', { name: 'Your profile' })).toBeVisible();
+  });
+
+  test('delivery: a new address adds the fee, is copied onto the order and is saved to the address book', async () => {
+    await page.goto('/checkout');
+    await page.waitForSelector('[data-testid="checkout-total"]');
+    await expect(page.getByTestId('checkout-total')).toHaveText('₦35,000');
+    await page.click('button:has-text("Add delivery address")'); // opens the form beside the total (laptop width)
+    await page.fill('#checkout-address-name', 'Mama Ada');
+    await page.fill('#checkout-address-phone', '08031234567');
+    await page.fill('#checkout-address-line', '12 Admiralty Way, Lekki Phase 1');
+    await page.fill('#checkout-address-city', 'Lagos');
+    await page.fill('#checkout-address-state', 'Lagos State');
+    await page.click('button:has-text("Use this address")');
+    await placeOrderAndGetTxRef(page, 'keep');
+
+    await page.goto('/my-orders');
+    await page.click('a[href^="/my-orders/ENE-"]');
+    await expect(page.getByText('Delivery to Mama Ada')).toBeVisible();
+    await expect(page.getByText('₦35,000').first()).toBeVisible();
+    // Leave no unpaid order behind (a customer may hold only a few at a time).
+    await page.click('button:has-text("Cancel order")');
+    await page.click('button:has-text("Yes, cancel it")');
+    await expect(page.getByText('Cancelled').first()).toBeVisible();
+
+    await page.goto('/account/addresses');
+    await expect(page.getByText('Mama Ada')).toBeVisible();
+    await expect(page.getByText('Default')).toBeVisible();
   });
 
   test('a provider webhook that arrives first confirms the order, and repeated notifications change nothing', async () => {

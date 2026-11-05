@@ -47,7 +47,7 @@ export function messageOf(body: unknown, status: number): string {
 export interface StoreRequest<T> {
   /** Path after /api/store/, e.g. "storefront/orders" or "auth/login". */
   path: string;
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   parse: (json: unknown) => T | null;
   fetcher?: Fetcher;
@@ -103,6 +103,8 @@ const CODE_MESSAGES: Record<string, string> = {
   ORDER_NOT_CANCELLABLE: 'This order can no longer be cancelled.',
   PAYMENT_PROVIDER_UNAVAILABLE: 'We could not reach the payment provider. Your order is saved; you can try paying again from My orders.',
   PAYMENTS_DISABLED: 'Online payment is not available right now. Please try again later.',
+  TOO_MANY_ADDRESSES: 'Your address book is full. Remove an address to add another.',
+  ADDRESS_NOT_FOUND: 'That address could not be found. Please choose another.',
 };
 
 export function friendlyMessage(failure: StoreFailure): string {

@@ -97,7 +97,17 @@ export interface AdminOrderDetail {
   paidAt: string | null;
   createdAt: string;
   customer: { name: string; phone: string; email: string | null };
-  fulfilment: { contactName?: string; contactPhone?: string; contactEmail?: string; note?: string };
+  fulfilment: {
+    contactName?: string;
+    contactPhone?: string;
+    contactEmail?: string;
+    note?: string;
+    /** Absent on orders placed before delivery existed. */
+    method?: 'delivery' | 'pickup';
+    deliveryFee?: number;
+    address?: { recipientName: string; recipientPhone: string; addressLine: string; city: string; state?: string };
+    pickup?: { address: string; hours: string };
+  };
   items: AdminOrderItem[];
   payments: AdminPayment[];
   history: AdminHistoryEntry[];

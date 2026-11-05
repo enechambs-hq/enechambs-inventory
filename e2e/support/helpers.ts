@@ -56,8 +56,13 @@ export async function addToCart(page: Page, slug: string, times = 1): Promise<vo
   for (let i = 0; i < times; i += 1) await page.click('button:has-text("Add")');
 }
 
-/** Clicks "Place order and pay" and returns our payment reference from the hosted-page address. */
-export async function placeOrderAndGetTxRef(page: Page): Promise<string> {
+/**
+ * Clicks "Place order and pay" and returns our payment reference from the hosted-page address.
+ * Delivery is the default at checkout and needs an address, so unless a test has chosen its own delivery
+ * details (`'keep'`), the order is placed for pickup (no address, no delivery fee).
+ */
+export async function placeOrderAndGetTxRef(page: Page, fulfilment: 'pickup' | 'keep' = 'pickup'): Promise<string> {
+  if (fulfilment === 'pickup') await page.getByRole('radio', { name: /Pickup/ }).click();
   const navigation = page.waitForRequest((r) => r.url().startsWith('https://checkout.flutterwave.com/'), { timeout: 20_000 });
   await page.click('button:has-text("Place order and pay")');
   const request = await navigation;

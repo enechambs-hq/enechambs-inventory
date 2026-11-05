@@ -1,13 +1,13 @@
 # Browser end-to-end tests (Playwright)
 
-`e2e/customer.spec.ts` (20 tests) and `e2e/staff.spec.ts` (24 tests) drive the **production build** of this
+`e2e/customer.spec.ts` (21 tests) and `e2e/staff.spec.ts` (24 tests) drive the **production build** of this
 app in Chromium against the **real API and PostgreSQL**. Payment is **scripted**: the hosted Flutterwave page is
 stubbed in the browser and the API's provider is a test double. They never contact Flutterwave or Resend, never
 move money and send no mail. Do not point them at a real provider or a real database.
 
 | Spec | Covers |
 |---|---|
-| `customer.spec.ts` | browse, add to cart, guest cart persistence across register / sign-out / sign-in, registration and sign-in, HttpOnly session, checkout, order creation and stock, payment return that **ignores** URL claims, verified confirmation, webhook-first and repeated webhooks, failed / mismatched payment, cancel and expiry (stock returns once), sold-out and limits, My Orders, customer isolation, staff/customer separation, mobile cart, notification emails |
+| `customer.spec.ts` | browse, add to cart, guest cart persistence across register / sign-out / sign-in, registration and sign-in, HttpOnly session, checkout (delivery by default, with a new address that is copied onto the order and saved to the address book; the other journeys place pickup orders), order creation and stock, payment return that **ignores** URL claims, verified confirmation, webhook-first and repeated webhooks, failed / mismatched payment, cancel and expiry (stock returns once), sold-out and limits, My Orders, customer isolation, staff/customer separation, mobile cart, notification emails |
 | `staff.spec.ts` | role-based navigation, Online Orders list (search, filters, Lagos date range, pagination, loading and error states), order detail, fulfilment, staff 403s on every financial route, admin-only honour and refund decisions with audit, duplicate-charge reconciliation, Online Reports (KPIs from payment records, periods, error state), emails, customer session cannot reach staff pages, customer view of the same orders |
 
 ## How it fits together
