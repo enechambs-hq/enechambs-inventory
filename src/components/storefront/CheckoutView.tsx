@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { cartFingerprint, toRequestItems } from '@/lib/storefront/cart';
 import { cartActions, useCart } from '@/lib/storefront/cart-store';
-import { forgetAttempt, requestIdFor } from '@/lib/storefront/checkout-attempt';
+import { forgetAttempt, rememberHandoff, requestIdFor, takeHandoff } from '@/lib/storefront/checkout-attempt';
 import { formatNaira } from '@/lib/storefront/catalogue';
 import { issueMessage, parseCustomerOrder, quoteIsPurchasable } from '@/lib/storefront/orders';
 import { loginHref } from '@/lib/storefront/redirects';
 import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
 import { startPayment } from './OrderActions';
+import PaymentHandoff from './PaymentHandoff';
 import SignInPrompt from './SignInPrompt';
 import { btnPrimary, btnSecondary, Card, inputClass, linkClass, Notice, Spinner } from './ui';
 import { useHydrated } from './useHydrated';
@@ -23,11 +25,31 @@ export default function CheckoutView() {
   const router = useRouter();
   const lines = useCart();
   const hydrated = useHydrated();
-  const quote = useQuote(lines, hydrated);
+  const liveQuote = useQuote(lines, hydrated);
+  // Once the order is placed the cart is cleared, which would turn the live quote into "empty" while we wait for the
+  // payment page. Keep showing the quote as it was when the customer clicked, until the browser leaves.
+  const [handoff, setHandoff] = useState<{ quote: typeof liveQuote; orderNumber: string } | null>(null);
+  const quote = handoff?.quote ?? liveQuote;
   const session = useSession();
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<{ message: string; code?: string } | null>(null);
+
+  // Coming back here with the browser's Back button after the hand-over: the cart is spent, so go to the pending
+  // order (where "Pay now" is one tap away) instead of showing an empty checkout.
+  useEffect(() => {
+    const pending = takeHandoff(window.sessionStorage);
+    const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+    if (pending && navigation?.type === 'back_forward') router.replace(`/my-orders/${pending}`);
+  }, [router]);
+  // The same, when the browser restores this page from its back/forward cache instead of reloading it.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted && handoff) router.replace(`/my-orders/${handoff.orderNumber}`);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, [handoff, router]);
 
   if (!hydrated || session.status === 'loading' || quote.status === 'loading') return <Spinner label="Preparing checkout" />;
 
@@ -79,10 +101,13 @@ export default function CheckoutView() {
     // The order now holds the stock: the cart is spent and the next purchase needs a new key.
     const orderNumber = created.data.orderNumber;
     forgetAttempt(window.sessionStorage);
+    rememberHandoff(window.sessionStorage, orderNumber);
+    setHandoff({ quote: liveQuote, orderNumber });
     cartActions.clear();
 
     const paid = await startPayment(orderNumber);
     if (!paid.ok) {
+      takeHandoff(window.sessionStorage);
       // The order exists and is payable later from My orders.
       router.push(`/my-orders/${orderNumber}?notice=payment_not_started`);
     }
@@ -91,6 +116,7 @@ export default function CheckoutView() {
 
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_20rem]">
+      {busy && <PaymentHandoff orderNumber={handoff?.orderNumber} />}
       <div className="space-y-5">
         <Card>
           <h2 className="text-lg font-bold text-[#0f4f2d]">Your order</h2>
@@ -152,7 +178,16 @@ export default function CheckoutView() {
             disabled={busy || !purchasable || session.status !== 'signed_in'}
             onClick={placeOrder}
           >
-            {busy ? 'Placing your order…' : 'Place order and pay'}
+            {handoff ? (
+              <>
+                <Loader2 size={18} className="animate-spin" aria-hidden="true" />
+                Opening payment…
+              </>
+            ) : busy ? (
+              'Placing your order…'
+            ) : (
+              'Place order and pay'
+            )}
           </button>
         </Card>
       </aside>
