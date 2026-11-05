@@ -7,6 +7,7 @@ import { cartUnits } from '@/lib/storefront/cart';
 import { useCart } from '@/lib/storefront/cart-store';
 import ProfileMenu from './ProfileMenu';
 import { useSession } from './use-session';
+import { useStaffRole } from './use-staff-role';
 
 const pill =
   'whitespace-nowrap rounded-full px-2.5 py-2 text-sm font-semibold text-[#0f4f2d] transition hover:bg-[#e8f5ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a] sm:px-4';
@@ -19,6 +20,7 @@ export default function HeaderActions() {
   // (signing in or registering ends with a navigation).
   const pathname = usePathname();
   const session = useSession(pathname);
+  const staff = useStaffRole(pathname);
   const router = useRouter();
 
   return (
@@ -41,10 +43,17 @@ export default function HeaderActions() {
             router.refresh();
           }}
         />
-      ) : session.status === 'signed_out' || session.status === 'unavailable' ? (
-        <Link href="/account/login" className={pill}>
-          Sign in
-        </Link>
+      ) : (session.status === 'signed_out' || session.status === 'unavailable') && staff.status === 'known' ? (
+        // A staff or admin session in this browser: show the way into the admin console, not the customer sign-in.
+        staff.role ? (
+          <Link href="/login" className={pill}>
+            {staff.role === 'admin' ? 'Admin sign in' : 'Staff sign in'}
+          </Link>
+        ) : (
+          <Link href="/account/login" className={pill}>
+            Sign in
+          </Link>
+        )
       ) : (
         <span className="h-9 w-16" aria-hidden="true" />
       )}
