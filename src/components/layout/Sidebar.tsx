@@ -21,6 +21,8 @@ import {
   TrendingDown,
   PackagePlus,
   Megaphone,
+  ShoppingBag,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -56,6 +58,7 @@ const LINK_ICONS: Record<string, LucideIcon> = {
   "/dashboard": LayoutDashboard,
   "/inventory": Package,
   "/sales": ShoppingCart,
+  "/storefront-orders": ShoppingBag,
   "/expenses": TrendingDown,
   "/categories": Tag,
   "/suppliers": Truck,
@@ -64,6 +67,7 @@ const LINK_ICONS: Record<string, LucideIcon> = {
   "/purchases": PackagePlus,
   "/customers": Contact,
   "/promotions/combos": Megaphone,
+  "/storefront-reports": Wallet,
   "/users": Users,
 };
 
@@ -335,9 +339,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
                 <KeyRound size={18} className="text-amber-500" />
               </div>
-              <h2 className="text-[15px] font-bold">You'll be logged out</h2>
+              <h2 className="text-[15px] font-bold">You&apos;ll be logged out</h2>
               <p className="text-sm text-muted-foreground mt-1.5">
-                Your password will be updated and you'll need to sign in again with your new password.
+                Your password will be updated and you&apos;ll need to sign in again with your new password.
               </p>
             </div>
             <div className="flex gap-2 px-6 pb-6">

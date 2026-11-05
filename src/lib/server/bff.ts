@@ -216,6 +216,10 @@ export function backendPathFromSegments(segments: string[]): string | null {
     if (!SEGMENT.test(segment)) return null;
   }
   if (segments[0] !== 'storefront') return null;
+  // The payment provider's webhook lives under storefront/payments/. It is called
+  // by the provider straight at the API (authenticated by its own verif-hash
+  // header, which this BFF would strip anyway), never through the browser path.
+  if (segments[1] === 'payments') return null;
   return segments.join('/');
 }
 
