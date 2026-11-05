@@ -44,7 +44,7 @@ test('an order is parsed field by field: unknown fields and unknown timeline eve
   const order = parseCustomerOrder({ ...orderWire(), customerId: 'leak', id: 'leak', providerTransactionId: 'leak' });
   assert.ok(order);
   assert.deepEqual(Object.keys(order).sort(), [
-    'canCancel', 'canPay', 'contact', 'createdAt', 'currency', 'expiresAt', 'items', 'orderNumber', 'paidAt', 'paymentReference',
+    'canCancel', 'canPay', 'contact', 'createdAt', 'currency', 'expiresAt', 'fulfilment', 'items', 'orderNumber', 'paidAt', 'paymentReference',
     'paymentState', 'state', 'subtotal', 'timeline', 'total',
   ]);
   assert.equal(order.timeline.length, 2); // parser keeps well-formed entries; labels for unknown events fall back in the UI

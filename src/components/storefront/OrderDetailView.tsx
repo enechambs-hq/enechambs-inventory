@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { isOrderNumber, parseCustomerOrder, type CustomerOrder } from '@/lib/storefront/orders';
 import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
 import OrderActions from './OrderActions';
-import { formatWhen, OrderItems, PaymentLine, StateBadge, Timeline } from './OrderParts';
+import { formatWhen, FulfilmentSummary, OrderItems, PaymentLine, StateBadge, Timeline } from './OrderParts';
 import SignInPrompt from './SignInPrompt';
 import { btnPrimary, btnSecondary, Card, linkClass, Notice, Spinner } from './ui';
 
@@ -89,6 +89,9 @@ export default function OrderDetailView({ orderNumber, notice }: { orderNumber: 
         </div>
         <p className="mt-1 text-xs text-[#8b7f6b]">Placed {formatWhen(order.createdAt)}</p>
         <div className="mt-4"><OrderItems order={order} /></div>
+        {(order.fulfilment.method === 'delivery' || order.fulfilment.method === 'pickup') && (
+          <div className="mt-4 border-t border-[#f1e9d6] pt-4"><FulfilmentSummary order={order} /></div>
+        )}
         <div className="mt-4 space-y-1"><PaymentLine order={order} /></div>
         {order.contact.note && <p className="mt-3 text-sm"><span className="font-semibold">Your note:</span> {order.contact.note}</p>}
         {order.paymentState === 'under_review' && (

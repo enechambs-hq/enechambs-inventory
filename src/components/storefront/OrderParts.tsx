@@ -1,3 +1,4 @@
+import { Store, Truck } from 'lucide-react';
 import { formatNaira } from '@/lib/storefront/catalogue';
 import {
   ORDER_STATE_LABEL, PAYMENT_STATE_LABEL, TIMELINE_LABEL,
@@ -47,6 +48,18 @@ export function OrderItems({ order }: { order: CustomerOrder }) {
         ))}
       </tbody>
       <tfoot>
+        {order.fulfilment.method === 'delivery' && order.fulfilment.deliveryFee > 0 && (
+          <>
+            <tr>
+              <th scope="row" colSpan={2} className="pt-3 text-right text-sm font-normal text-[#5d5645]">Items</th>
+              <td className="pt-3 text-right text-sm">{formatNaira(order.subtotal)}</td>
+            </tr>
+            <tr>
+              <th scope="row" colSpan={2} className="pt-1 text-right text-sm font-normal text-[#5d5645]">Delivery</th>
+              <td className="pt-1 text-right text-sm">{formatNaira(order.fulfilment.deliveryFee)}</td>
+            </tr>
+          </>
+        )}
         <tr>
           <th scope="row" colSpan={2} className="pt-3 text-right text-sm font-semibold">Total</th>
           <td className="pt-3 text-right text-lg font-extrabold text-[#0f4f2d]">{formatNaira(order.total)}</td>
@@ -77,4 +90,34 @@ export function Timeline({ order }: { order: CustomerOrder }) {
       ))}
     </ol>
   );
+}
+
+/** How this order is received: the address it is going to, or where to collect it. */
+export function FulfilmentSummary({ order }: { order: CustomerOrder }) {
+  const f = order.fulfilment;
+  if (f.method === 'delivery' && f.address) {
+    return (
+      <div className="flex items-start gap-2 text-sm text-[#3b3a33]">
+        <Truck size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[#0f4f2d]" />
+        <div>
+          <p className="font-semibold text-[#0f4f2d]">Delivery to {f.address.recipientName}</p>
+          <p>{[f.address.addressLine, f.address.city, f.address.state].filter(Boolean).join(', ')}</p>
+          <p className="text-xs text-[#8b7f6b]">{f.address.recipientPhone}</p>
+        </div>
+      </div>
+    );
+  }
+  if (f.method === 'pickup' && f.pickup) {
+    return (
+      <div className="flex items-start gap-2 text-sm text-[#3b3a33]">
+        <Store size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-[#0f4f2d]" />
+        <div>
+          <p className="font-semibold text-[#0f4f2d]">Pickup</p>
+          <p>{f.pickup.address}</p>
+          <p className="text-xs text-[#8b7f6b]">Open {f.pickup.hours}</p>
+        </div>
+      </div>
+    );
+  }
+  return null;
 }

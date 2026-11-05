@@ -33,8 +33,28 @@ export interface TimelineEntry {
   at: string;
 }
 
+export type FulfilmentMethod = 'delivery' | 'pickup';
+
+/** The address an order was placed with: a copy, so later edits to the address book never change it. */
+export interface AddressSnapshot {
+  recipientName: string;
+  recipientPhone: string;
+  addressLine: string;
+  city: string;
+  state: string | null;
+}
+
+export interface OrderFulfilment {
+  /** Null for orders placed before delivery existed. */
+  method: FulfilmentMethod | null;
+  deliveryFee: number;
+  address: AddressSnapshot | null;
+  pickup: { address: string; hours: string } | null;
+}
+
 export interface CustomerOrder extends OrderSummary {
   subtotal: number;
+  fulfilment: OrderFulfilment;
   items: OrderLine[];
   contact: { name: string | null; phone: string | null; note: string | null };
   canCancel: boolean;
@@ -92,6 +112,7 @@ export function parseCustomerOrder(v: unknown): CustomerOrder | null {
   return {
     ...base,
     subtotal,
+    fulfilment: parseFulfilment(v.fulfilment),
     items: items as OrderLine[],
     contact: { name: str(contact.name), phone: str(contact.phone), note: str(contact.note) },
     canCancel: v.canCancel === true,
@@ -99,6 +120,27 @@ export function parseCustomerOrder(v: unknown): CustomerOrder | null {
     paidAt: str(v.paidAt),
     paymentReference: str(v.paymentReference),
     timeline,
+  };
+}
+
+export function parseAddressSnapshot(v: unknown): AddressSnapshot | null {
+  if (!isObject(v)) return null;
+  const recipientName = str(v.recipientName);
+  const recipientPhone = str(v.recipientPhone);
+  const addressLine = str(v.addressLine);
+  const city = str(v.city);
+  if (!recipientName || !recipientPhone || !addressLine || !city) return null;
+  return { recipientName, recipientPhone, addressLine, city, state: str(v.state) };
+}
+
+export function parseFulfilment(v: unknown): OrderFulfilment {
+  const f = isObject(v) ? v : {};
+  const pickup = isObject(f.pickup) && str(f.pickup.address) && str(f.pickup.hours) ? { address: str(f.pickup.address) as string, hours: str(f.pickup.hours) as string } : null;
+  return {
+    method: f.method === 'delivery' || f.method === 'pickup' ? f.method : null,
+    deliveryFee: num(f.deliveryFee) ?? 0,
+    address: parseAddressSnapshot(f.address),
+    pickup,
   };
 }
 
@@ -132,6 +174,11 @@ export interface QuoteLine {
 export interface Quote {
   currency: string;
   lines: QuoteLine[];
+  /** Items only. */
+  subtotal: number;
+  /** Added to the total for delivery; zero for pickup. */
+  deliveryFee: number;
+  /** Items plus delivery fee: what the customer pays. */
   total: number;
   withinOrderLimit: boolean;
   limits: { maxPerLine: number; maxPerOrder: number };
@@ -161,7 +208,8 @@ export function parseQuote(v: unknown): Quote | null {
       issue,
     });
   }
-  return { currency: str(v.currency) ?? 'NGN', lines, total, withinOrderLimit: v.withinOrderLimit === true, limits: { maxPerLine, maxPerOrder } };
+  const deliveryFee = num(v.deliveryFee) ?? 0;
+  return { currency: str(v.currency) ?? 'NGN', lines, subtotal: num(v.subtotal) ?? total - deliveryFee, deliveryFee, total, withinOrderLimit: v.withinOrderLimit === true, limits: { maxPerLine, maxPerOrder } };
 }
 
 /** Everything in the cart can be bought as quoted and the order is within limits. */

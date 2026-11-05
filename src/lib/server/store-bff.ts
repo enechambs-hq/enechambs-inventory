@@ -77,6 +77,9 @@ const json = (body: unknown, status: number, extra: HeadersInit = {}) =>
     headers: { 'cache-control': 'no-store', ...extra },
   });
 
+/** Statuses whose responses must not carry a body. */
+const NULL_BODY_STATUSES = new Set([204, 205, 304]);
+
 export async function handleStoreRequest(
   req: Request,
   segments: string[],
@@ -218,6 +221,11 @@ export async function handleStoreRequest(
   if (retryAfter) responseHeaders['retry-after'] = retryAfter;
 
   const upstreamBody = await upstream.arrayBuffer();
+  // A 204/205/304 has no body by definition, and `new Response(body, { status: 204 })` throws. (The address
+  // book's DELETE is the first route to answer 204.)
+  if (NULL_BODY_STATUSES.has(upstream.status)) {
+    return new Response(null, { status: upstream.status, headers: responseHeaders });
+  }
   return new Response(
     options.allowSessionRoutes
       ? upstreamBody // the session handler redacts and sets the cookie itself

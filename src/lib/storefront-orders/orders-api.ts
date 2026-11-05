@@ -80,7 +80,7 @@ function normaliseDetail(d: AdminOrderDetail): AdminOrderDetail {
     })),
     history: d.history ?? [],
     paymentEvents: d.paymentEvents ?? [],
-    fulfilment: d.fulfilment ?? {},
+    fulfilment: d.fulfilment ? { ...d.fulfilment, ...(d.fulfilment.deliveryFee !== undefined ? { deliveryFee: num(d.fulfilment.deliveryFee) } : {}) } : {},
   };
 }
 

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useId, useRef, useState } from 'react';
-import { LogOut, Mail, Phone, ReceiptText, UserRound } from 'lucide-react';
+import { LogOut, Mail, MapPin, Phone, ReceiptText, UserRound } from 'lucide-react';
 import type { CustomerProfile } from '@/lib/storefront/orders';
 
 /**
@@ -81,6 +81,14 @@ export default function ProfileMenu({ profile, onSignOut }: { profile: CustomerP
             >
               <ReceiptText size={16} aria-hidden="true" />
               My orders
+            </Link>
+            <Link
+              href="/account/addresses"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm font-semibold text-[#0f4f2d] transition hover:bg-[#e8f5ee] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1a7a4a]"
+            >
+              <MapPin size={16} aria-hidden="true" />
+              Address book
             </Link>
             <button
               type="button"
