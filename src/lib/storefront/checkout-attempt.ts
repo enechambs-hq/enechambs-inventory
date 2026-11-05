@@ -49,3 +49,30 @@ export function forgetAttempt(storage: KeyValueStorage | null): void {
     /* nothing to do */
   }
 }
+
+/**
+ * The order we are handing over to the payment page. If the customer comes back
+ * with the browser's Back button, checkout is empty (the cart was spent), so
+ * they are sent to that order, where "Pay now" is one tap away.
+ */
+export const HANDOFF_STORAGE_KEY = 'ene_payment_handoff_v1';
+const ORDER_NUMBER = /^ENE-[A-Z0-9]{4,20}$/;
+
+export function rememberHandoff(storage: KeyValueStorage | null, orderNumber: string): void {
+  try {
+    storage?.setItem(HANDOFF_STORAGE_KEY, orderNumber);
+  } catch {
+    /* private mode etc.: Back then simply shows an empty checkout */
+  }
+}
+
+/** Returns the remembered order number (only if it looks like one) and always forgets it. */
+export function takeHandoff(storage: KeyValueStorage | null): string | null {
+  try {
+    const value = storage?.getItem(HANDOFF_STORAGE_KEY) ?? null;
+    storage?.removeItem(HANDOFF_STORAGE_KEY);
+    return value && ORDER_NUMBER.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
