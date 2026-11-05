@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import '@fontsource-variable/inter';
 import { Toaster } from 'sonner';
 import './globals.css';
 
