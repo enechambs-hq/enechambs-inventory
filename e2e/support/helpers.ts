@@ -35,19 +35,19 @@ export async function staffContext(browser: Browser, who: 'admin' | 'staff', tok
   return context;
 }
 
-/** Registers through the real two-step flow (code is read from the fake mailer). */
+/** Registers through the real flow: details first, then the emailed code (read from the fake mailer). */
 export async function register(page: Page, email: string, next?: string, phone: string = uniquePhone()): Promise<void> {
   await page.goto(`/account/register${next ? `?next=${encodeURIComponent(next)}` : ''}`);
+  await page.fill('#name', 'Ada Obi');
   await page.fill('#email', email);
-  await page.click('button:has-text("Send me a code")');
+  await page.fill('#phone', phone);
+  await page.fill('#password', password);
+  await page.click('button:has-text("Create account")');
   await page.waitForSelector('#code');
   const { code } = await ctl<{ code: string | null }>(`/code?email=${encodeURIComponent(email)}`);
   ok(code && /^\d{6}$/.test(code), 'a six-digit code was emailed');
   await page.fill('#code', code as string);
-  await page.fill('#name', 'Ada Obi');
-  await page.fill('#phone', phone);
-  await page.fill('#password', password);
-  await page.click('button:has-text("Create account")');
+  await page.click('button:has-text("Verify and sign in")');
 }
 
 export async function addToCart(page: Page, slug: string, times = 1): Promise<void> {

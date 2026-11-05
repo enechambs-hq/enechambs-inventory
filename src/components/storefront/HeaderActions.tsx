@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ShoppingBag } from 'lucide-react';
 import { cartUnits } from '@/lib/storefront/cart';
 import { useCart } from '@/lib/storefront/cart-store';
+import ProfileMenu from './ProfileMenu';
 import { useSession } from './use-session';
 
 const pill =
@@ -32,23 +33,14 @@ export default function HeaderActions() {
         )}
       </Link>
       {session.status === 'signed_in' ? (
-        <>
-          <Link href="/my-orders" className={pill}>
-            <span className="sm:hidden">Orders</span>
-            <span className="hidden sm:inline">My orders</span>
-          </Link>
-          <button
-            type="button"
-            className={pill}
-            onClick={async () => {
-              await session.signOut();
-              router.push('/combos');
-              router.refresh();
-            }}
-          >
-            Sign out
-          </button>
-        </>
+        <ProfileMenu
+          profile={session.profile}
+          onSignOut={async () => {
+            await session.signOut();
+            router.push('/combos');
+            router.refresh();
+          }}
+        />
       ) : session.status === 'signed_out' || session.status === 'unavailable' ? (
         <Link href="/account/login" className={pill}>
           Sign in
