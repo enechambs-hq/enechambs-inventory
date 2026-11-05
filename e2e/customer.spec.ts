@@ -58,7 +58,7 @@ test.describe('customer journey', () => {
     await expect(page.getByTestId('checkout-total')).toHaveText('₦30,000');
     await expect(page.getByTestId('cart-count')).toHaveText('2');
     // The header must reflect the new session WITHOUT a reload.
-    await expect(page.locator('button:has-text("Sign out")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Your profile' })).toBeVisible();
     await expect(page.locator('header a:has-text("Sign in")')).toHaveCount(0);
   });
 
@@ -115,6 +115,7 @@ test.describe('customer journey', () => {
 
   test('signing out keeps a guest cart and signing in preserves it', async () => {
     await addToCart(page, 'party-pack', 1);
+    await page.getByRole('button', { name: 'Your profile' }).click();
     await page.click('button:has-text("Sign out")');
     await page.waitForSelector('a:has-text("Sign in")');
     await expect(page.getByTestId('cart-count')).toHaveText('1');
@@ -124,7 +125,7 @@ test.describe('customer journey', () => {
     await page.click('button[type="submit"]');
     await page.waitForURL('**/checkout');
     await expect(page.getByTestId('checkout-total')).toHaveText('₦25,000');
-    await expect(page.locator('button:has-text("Sign out")')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Your profile' })).toBeVisible();
   });
 
   test('a provider webhook that arrives first confirms the order, and repeated notifications change nothing', async () => {
