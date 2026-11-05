@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Check, CreditCard, ShoppingBag } from 'lucide-react';
 import { cartActions, useCart } from '@/lib/storefront/cart-store';
-import SignInPrompt from './SignInPrompt';
+import SignInModal from './SignInModal';
 import { btnPrimary, btnSecondary, linkClass } from './ui';
 import { useSession } from './use-session';
 
@@ -33,7 +33,7 @@ export default function AddToCartButton({ slug, name, soldOut }: { slug: string;
     return result.ok;
   }
 
-  /** Buy now: make sure the combo is in the cart (without stacking another unit), then check out. A visitor without an account is asked to sign in or register first; the cart is kept. */
+  /** Buy now: make sure the combo is in the cart (without stacking another unit), then check out. A visitor without an account is asked, in a modal, to sign in or register first; the cart is kept. */
   function buyNow() {
     if (session.status === 'loading') return;
     if (inCart === 0 && !add()) return;
@@ -70,7 +70,7 @@ export default function AddToCartButton({ slug, name, soldOut }: { slug: string;
         </p>
       )}
       {askToSignIn && session.status === 'signed_out' && (
-        <SignInPrompt next="/checkout" reason="You need an account to place an order." />
+        <SignInModal next="/checkout" reason="You need an account to place an order." onClose={() => setAskToSignIn(false)} />
       )}
     </div>
   );
