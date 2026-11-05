@@ -166,6 +166,9 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
                 </tbody>
                 <tfoot>
                   <tr><td colSpan={3} className="pt-3 text-right text-gray-500">Subtotal</td><td className="pt-3 text-right whitespace-nowrap">{formatNaira(order.subtotal)}</td></tr>
+                  {order.fulfilment.method === 'delivery' && (
+                    <tr><td colSpan={3} className="pt-1 text-right text-gray-500">Delivery fee</td><td className="pt-1 text-right whitespace-nowrap" data-testid="order-delivery-fee">{formatNaira(Number(order.fulfilment.deliveryFee ?? 0))}</td></tr>
+                  )}
                   <tr><td colSpan={3} className="pt-1 text-right font-semibold">Total</td><td className="pt-1 text-right whitespace-nowrap text-base font-bold text-[#14693f]" data-testid="order-total">{formatNaira(order.total)}</td></tr>
                 </tfoot>
               </table>
@@ -240,6 +243,23 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
               {order.fulfilment.note && <Row label="Order note">{order.fulfilment.note}</Row>}
             </dl>
           </Section>
+
+          {(order.fulfilment.method === 'delivery' || order.fulfilment.method === 'pickup') && (
+            <Section title={order.fulfilment.method === 'delivery' ? 'Delivery' : 'Pickup'}>
+              {order.fulfilment.method === 'delivery' && order.fulfilment.address ? (
+                <dl>
+                  <Row label="Deliver to">{order.fulfilment.address.recipientName}</Row>
+                  <Row label="Phone">{order.fulfilment.address.recipientPhone}</Row>
+                  <Row label="Address">{[order.fulfilment.address.addressLine, order.fulfilment.address.city, order.fulfilment.address.state].filter(Boolean).join(', ')}</Row>
+                </dl>
+              ) : (
+                <dl>
+                  <Row label="Collect from">{order.fulfilment.pickup?.address ?? 'Store'}</Row>
+                  {order.fulfilment.pickup && <Row label="Hours">{order.fulfilment.pickup.hours}</Row>}
+                </dl>
+              )}
+            </Section>
+          )}
 
           <Section title="Order timing">
             <dl>

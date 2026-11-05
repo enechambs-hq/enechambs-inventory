@@ -4,7 +4,7 @@
  * honoured (no scheme, no host, no protocol-relative `//`, no backslashes, no
  * control characters). Anything else falls back to the default.
  */
-const ALLOWED_PREFIXES = ['/checkout', '/my-orders', '/cart', '/combos'] as const;
+const ALLOWED_PREFIXES = ['/checkout', '/my-orders', '/cart', '/combos', '/account/addresses'] as const;
 
 export function safeNextPath(raw: string | string[] | null | undefined, fallback = '/my-orders'): string {
   const value = Array.isArray(raw) ? raw[0] : raw;
