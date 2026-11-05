@@ -137,7 +137,9 @@ test('login and register links carry only a validated next', () => {
 test('only an https Flutterwave checkout address is ever navigated to', () => {
   assert.equal(isTrustedCheckoutUrl('https://checkout.flutterwave.com/v3/hosted/pay/abc'), true);
   assert.equal(isTrustedCheckoutUrl('https://flutterwave.com/pay/x'), true);
+  assert.equal(isTrustedCheckoutUrl('https://checkout-v2.dev-flutterwave.com/v3/hosted/pay/abc'), true);
   for (const bad of [
+    'https://evildev-flutterwave.com/x', 'https://dev-flutterwave.com.evil.example/x',
     'http://checkout.flutterwave.com/x', 'https://evil.example/pay', 'https://flutterwave.com.evil.example/x', 'https://evilflutterwave.com/x',
     'javascript:alert(1)', '//checkout.flutterwave.com/x', 'https://flutterwave.com@evil.example/x', '', null, 42,
   ]) {

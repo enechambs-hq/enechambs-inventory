@@ -39,7 +39,9 @@ export function isTrustedCheckoutUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2048) return false;
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && (url.hostname === 'flutterwave.com' || url.hostname.endsWith('.flutterwave.com'));
+    // dev-flutterwave.com is the host of Flutterwave's Test Mode hosted checkout.
+    const onFlutterwave = (domain: string) => url.hostname === domain || url.hostname.endsWith(`.${domain}`);
+    return url.protocol === 'https:' && (onFlutterwave('flutterwave.com') || onFlutterwave('dev-flutterwave.com'));
   } catch {
     return false;
   }
