@@ -79,3 +79,20 @@ test('src/proxy.ts decides with isPublicPath + the server-side flag, and still r
   assert.doesNotMatch(source, /startsWith\(r\)/); // the old prefix check is gone
   assert.match(source, /api\//); // matcher still excludes API routes (they enforce their own checks)
 });
+
+// ── M3.5/M4: cart, checkout, account, my-orders ───────────────────────────────
+const CUSTOMER_PAGES = ['/cart', '/checkout', '/checkout/payment-return', '/account/login', '/account/register', '/account/forgot-password', '/my-orders', '/my-orders/ENE-ABCD2345'];
+
+test('with the flag on, the customer pages are public shells (customers have no staff token)', () => {
+  for (const path of CUSTOMER_PAGES) assert.equal(isPublicPath(path, on), true, path);
+});
+
+test('with the flag off, none of them is public: the staff proxy redirects exactly as before', () => {
+  for (const path of CUSTOMER_PAGES) assert.equal(isPublicPath(path, off), false, path);
+});
+
+test('the new sections are matched by whole segment: lookalikes and staff pages stay protected', () => {
+  for (const path of ['/cartx', '/cart-extra', '/checkoutx', '/accounts', '/account-settings', '/my-ordersx', '/my-orders-admin', '/orders', '/sales', '/customers']) {
+    assert.equal(isPublicPath(path, on), false, path);
+  }
+});

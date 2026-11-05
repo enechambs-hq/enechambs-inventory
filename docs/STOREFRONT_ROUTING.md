@@ -1,6 +1,6 @@
 # Storefront routing, sessions and feature flag
 
-Status: M0 foundations, plus M2b (public pages, section 7). This document fixes
+Status: M0 foundations, M2b (public pages, section 7), M3 (customer session handlers, sections 8 and 9), M3.5 and M4 (cart, accounts, checkout, orders; sections 10 and 11). This document fixes
 the rules the storefront milestones build on. Backend counterpart: `enechambs-api/docs/STOREFRONT_FOUNDATIONS.md`.
 
 ## 1. Two audiences, two boundaries
@@ -297,3 +297,89 @@ headers   = x-bff-auth-version: v2, x-bff-auth-timestamp: <ms>,
 
 The staff session, the `/api/v1` admin proxy and `proxy.ts` do not use or know
 about any of this.
+
+## 10. M3.5: cart and account pages (as built)
+
+| Route | Notes |
+|---|---|
+| `/cart` | quantities, server re-pricing through `POST storefront/cart/quote` |
+| `/account/login`, `/account/register`, `/account/forgot-password` | forms over the section 8 handlers; `?next=` is validated by `safeNextPath` (same-site customer paths only) |
+| `/checkout`, `/checkout/payment-return`, `/my-orders`, `/my-orders/[orderNumber]` | see section 11 |
+
+**The guest cart** is `{slug, quantity, name}` lines in `localStorage` (`ene_cart_v1`),
+`src/lib/storefront/cart.ts` (pure) + `cart-store.ts` (browser). It is not tied to the
+session: signing in, registering and signing out never read, merge or clear it. Only a
+successfully created order empties it. Stored data is untrusted: it is parsed defensively,
+and price, availability and limits always come from the server's quote.
+
+**Public shells.** `/cart`, `/checkout`, `/account` and `/my-orders` are public in
+`src/lib/route-access.ts` (flag on only, whole-segment match) because customers have no
+staff token. What they show is protected where it matters: cookie -> BFF -> API
+ownership checks. A signed-out visitor sees a sign-in prompt with `next` set.
+
+**Header.** `HeaderActions` (client island) shows the cart count and Sign in / Orders /
+Sign out. It asks `auth/me` again on every pathname change, because the header outlives
+client-side navigation and would otherwise keep saying "Sign in" after a login.
+
+**Browser storage** is allowed in exactly two files, enforced by
+`tests/storefront-separation.test.mts`: `cart-store.ts` (localStorage, the cart) and
+`CheckoutView.tsx` (sessionStorage, the checkout idempotency key). Neither may mention
+credentials. No storefront file may read cookies or set `Authorization`.
+
+## 11. M4: checkout, payment and orders (as built)
+
+```
+/cart -> /checkout -> POST storefront/orders {items:[{slug,quantity}], requestId, note?}
+      -> POST storefront/orders/:n/pay -> {checkoutUrl}  -> Flutterwave hosted page
+      -> /checkout/payment-return?order=ENE-... -> POST .../payment/refresh (polled ~60 s)
+      -> /my-orders/:n
+```
+
+- The order body carries only slug and quantity (the API refuses price, total, status,
+  customer id). `requestId` is one UUID per cart fingerprint (`checkout-attempt.ts`), so
+  a double click or retry returns the same order.
+- The browser navigates only to an **https Flutterwave** address
+  (`isTrustedCheckoutUrl`); anything else from the API is refused.
+- **`/checkout/payment-return` reads only `order`.** Flutterwave appends `status`,
+  `tx_ref` and `transaction_id`; none is read. The page asks the API to check with the
+  provider by *our* reference and shows what the API recorded, so editing the URL cannot
+  make an order look paid. Outcomes: confirmed, under review (amount/currency mismatch or
+  late payment), failed (retry opens a new attempt), cancelled/expired, still waiting.
+- The cart is cleared once the order exists (it now holds the stock). If the payment page
+  cannot be opened the customer lands on the order with a "Pay now" button.
+- With payments off the API answers `503 PAYMENTS_DISABLED` to order creation; the page
+  shows "Online payment is not available right now".
+
+**BFF allowlist fix (M4).** `storefront/payments/*` is now refused by the BFF
+(`backendPathFromSegments`). The Flutterwave webhook sits under `storefront/` in the API,
+so the "storefront/* only" allowlist had quietly made it reachable from the browser path
+(harmless, the `verif-hash` header is stripped so it 401s, but it broke the rule in
+section 3). Tested in `tests/bff.test.mts` against the real route.
+
+Tests: `tests/storefront-cart.test.mts`, `tests/storefront-orders-client.test.mts`
+(drives the real BFF handler with a fake backend), plus the extended route-access and
+separation tests.
+
+## 12. M4.1: staff online orders and storefront reports
+
+Staff-side screens for the online channel. They are part of the **staff** app: pages in
+`(inventory)`, protected by the staff `token` cookie like every other staff page, calling the
+backend through the staff axios client and the `/api/v1` proxy. They never use the customer
+BFF, and the customer cookie opens none of them (a browser test checks it).
+
+| Route | Who | Backend |
+|---|---|---|
+| `/storefront-orders` | staff, admin | `GET admin/storefront-orders` (search, status, payment status, needs review, Lagos date range, pagination) |
+| `/storefront-orders/[order number]` | staff, admin | `GET .../:orderNumber`; `PATCH .../fulfilment` (staff, admin); `POST .../honour-late-payment` and `POST .../payments/:id/record-refund` (**admin only**, written reason required) |
+| `/storefront-reports` | **admin only** | `GET admin/storefront-reports` |
+
+Nav: "Online Orders" (after in-store "Sales") for staff and admin; "Online Reports" for admin
+only (`src/lib/nav-config.ts`, tested). The pages also hide controls a role cannot use, but
+that is a courtesy: the backend answers 403 to a staff token on every financial route, which
+the browser tests call by hand.
+
+Code: `src/lib/storefront-orders/` (typed API factory over an injected HTTP client, format and
+state helpers, Lagos date bounds; unit tested), `src/lib/services/storefront-orders.service.ts`,
+`src/components/storefront-orders/`. The UI reflects the backend's response after each action
+(no optimistic updates). The staff app is not available below tablet width (existing behaviour).
+Backend counterpart: `enechambs-api/docs/STOREFRONT_OPERATIONS.md`.

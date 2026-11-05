@@ -100,6 +100,9 @@ test('path: staff routes, webhooks and the root are refused', () => {
     ['inventory', 'abc'],
     ['auth', 'login'],
     ['webhooks', 'flutterwave'],
+    // The REAL Flutterwave webhook route (enechambs-api M4) sits under storefront/.
+    ['storefront', 'payments', 'flutterwave', 'webhook'],
+    ['storefront', 'payments'],
     ['admin', 'combos'],
     ['storefront'],
     [],
