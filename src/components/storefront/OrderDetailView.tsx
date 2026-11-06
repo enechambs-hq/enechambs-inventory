@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { isOrderNumber, parseCustomerOrder, type CustomerOrder } from '@/lib/storefront/orders';
+import { isOrderNumber, parseCustomerOrder, stageMessage, type CustomerOrder } from '@/lib/storefront/orders';
 import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
 import OrderActions from './OrderActions';
 import { formatWhen, FulfilmentSummary, OrderItems, PaymentLine, StateBadge, Timeline } from './OrderParts';
@@ -85,9 +85,14 @@ export default function OrderDetailView({ orderNumber, notice }: { orderNumber: 
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-[#0f4f2d]" data-testid="order-number">{order.orderNumber}</h2>
-          <StateBadge state={order.state} />
+          <StateBadge state={order.state} method={order.fulfilmentMethod} />
         </div>
         <p className="mt-1 text-xs text-[#8b7f6b]">Placed {formatWhen(order.createdAt)}</p>
+        {stageMessage(order.state, order.fulfilmentMethod) && (
+          <div className="mt-3">
+            <Notice tone={order.state === 'completed' ? 'success' : 'info'}>{stageMessage(order.state, order.fulfilmentMethod)}</Notice>
+          </div>
+        )}
         <div className="mt-4"><OrderItems order={order} /></div>
         {(order.fulfilment.method === 'delivery' || order.fulfilment.method === 'pickup') && (
           <div className="mt-4 border-t border-[#f1e9d6] pt-4"><FulfilmentSummary order={order} /></div>

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { handleStoreRequest } from '../src/lib/server/store-bff.ts';
 import {
   isOrderNumber, issueMessage, paymentSettled, parseCheckoutUrl, parseCustomerOrder, parseOrderList, parseOrderSummary, parseProfile, parseQuote,
-  quoteIsPurchasable,
+  orderStateLabel, quoteIsPurchasable, stageMessage, timelineLabel,
 } from '../src/lib/storefront/orders.ts';
 import { friendlyMessage, kindOf, messageOf, storeRequest } from '../src/lib/storefront/store-client.ts';
 
@@ -44,7 +44,7 @@ test('an order is parsed field by field: unknown fields and unknown timeline eve
   const order = parseCustomerOrder({ ...orderWire(), customerId: 'leak', id: 'leak', providerTransactionId: 'leak' });
   assert.ok(order);
   assert.deepEqual(Object.keys(order).sort(), [
-    'canCancel', 'canPay', 'contact', 'createdAt', 'currency', 'expiresAt', 'fulfilment', 'items', 'orderNumber', 'paidAt', 'paymentReference',
+    'canCancel', 'canPay', 'contact', 'createdAt', 'currency', 'expiresAt', 'fulfilment', 'fulfilmentMethod', 'items', 'orderNumber', 'paidAt', 'paymentReference',
     'paymentState', 'state', 'subtotal', 'timeline', 'total',
   ]);
   assert.equal(order.timeline.length, 2); // parser keeps well-formed entries; labels for unknown events fall back in the UI
@@ -168,4 +168,37 @@ test('a transport failure is "unavailable", a malformed success body is an error
   assert.ok(!down.ok && down.kind === 'unavailable' && down.status === 0);
   const odd = await storeRequest({ path: 'storefront/orders', fetcher: async () => Response.json({ nope: true }), parse: parseOrderList });
   assert.ok(!odd.ok && odd.kind === 'error');
+});
+
+// ── fulfilment stages, as the customer sees them ───────────────────────────────
+test('the customer sees On its way for delivery, Ready for pickup for pickup, and Received when done', () => {
+  assert.equal(orderStateLabel('processing', 'delivery'), 'Being prepared');
+  assert.equal(orderStateLabel('dispatched', 'delivery'), 'On its way');
+  assert.equal(orderStateLabel('dispatched', 'pickup'), 'Ready for pickup');
+  assert.equal(orderStateLabel('completed', 'delivery'), 'Received');
+  assert.equal(orderStateLabel('completed', 'pickup'), 'Received');
+  assert.equal(orderStateLabel('dispatched', null), 'Ready for pickup'); // no recorded method reads as pickup
+  assert.equal(orderStateLabel('paid', 'delivery'), 'Paid'); // other states do not change with the method
+  assert.equal(timelineLabel('dispatched', 'delivery'), 'On its way');
+  assert.equal(timelineLabel('completed', 'pickup'), 'Received');
+  assert.equal(timelineLabel('payment_confirmed'), 'Payment confirmed');
+  assert.equal(timelineLabel('something_new'), 'Update');
+});
+
+test('the order page says something plain once fulfilment starts, and nothing before', () => {
+  assert.equal(stageMessage('paid'), null);
+  assert.equal(stageMessage('awaiting_payment'), null);
+  assert.equal(stageMessage('cancelled'), null);
+  assert.match(stageMessage('processing') as string, /preparing/);
+  assert.match(stageMessage('dispatched', 'delivery') as string, /on its way/);
+  assert.match(stageMessage('dispatched', 'pickup') as string, /collect it/);
+  assert.match(stageMessage('completed', 'delivery') as string, /received/);
+  assert.match(stageMessage('completed', 'pickup') as string, /received/);
+});
+
+test('an order in the new dispatched state parses, with its method from the list or the detail', () => {
+  const wire = { ...orderWire(), state: 'dispatched', paymentState: 'paid' };
+  assert.equal(parseOrderSummary({ ...wire, fulfilmentMethod: 'delivery' })?.fulfilmentMethod, 'delivery');
+  assert.equal(parseOrderSummary({ ...wire, fulfilmentMethod: 'bogus' })?.fulfilmentMethod, null);
+  assert.equal(parseOrderSummary(wire)?.state, 'dispatched');
 });

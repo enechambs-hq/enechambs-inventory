@@ -4,12 +4,12 @@
  * (enechambs-api src/orders/admin-orders.service.ts, storefront-reports.service.ts).
  * Staff-only: nothing here is used by the customer storefront.
  */
-export type AdminOrderStatus = 'pending' | 'confirmed' | 'processing' | 'completed' | 'cancelled' | 'expired';
+export type AdminOrderStatus = 'pending' | 'confirmed' | 'processing' | 'dispatched' | 'completed' | 'cancelled' | 'expired';
 export type AdminPaymentStatus = 'unpaid' | 'paid' | 'review' | 'refunded' | 'failed';
 export type ReviewReason = 'late_payment' | 'duplicate_charge' | 'payment_mismatch';
 export type PaymentRecordStatus = 'initiated' | 'paid' | 'failed' | 'quarantined' | 'refunded';
 export type PaymentReconciliation = 'duplicate_charge' | 'late_payment' | 'amount_mismatch' | 'currency_mismatch';
-export type FulfilmentTarget = 'processing' | 'completed';
+export type FulfilmentTarget = 'processing' | 'dispatched' | 'completed';
 
 export interface AdminOrderRow {
   orderNumber: string;

@@ -6,11 +6,12 @@ import {
 } from '@/lib/storefront-orders/format';
 import type { AdminOrderStatus, AdminPaymentStatus } from '@/types/storefront-orders';
 
-const ORDER_STYLES: Record<AdminOrderStatus, string> = {
-  pending: 'bg-amber-50 text-amber-700 border-amber-200',
-  confirmed: 'bg-[#e8f5ee] text-[#1a7a4a] border-[#b9e0c9]',
-  processing: 'bg-blue-50 text-blue-700 border-blue-200',
-  completed: 'bg-[#e8f5ee] text-[#14693f] border-[#b9e0c9]',
+export const ORDER_STYLES: Record<AdminOrderStatus, string> = {
+  pending: 'bg-yellow-50 text-yellow-800 border-yellow-200',
+  confirmed: 'bg-sky-50 text-sky-700 border-sky-200',
+  processing: 'bg-orange-50 text-orange-700 border-orange-300',
+  dispatched: 'bg-blue-50 text-blue-700 border-blue-300',
+  completed: 'bg-green-100 text-green-800 border-green-300',
   cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
   expired: 'bg-gray-100 text-gray-600 border-gray-200',
 };

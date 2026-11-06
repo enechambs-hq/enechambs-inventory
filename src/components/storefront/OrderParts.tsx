@@ -1,22 +1,23 @@
 import { Store, Truck } from 'lucide-react';
 import { formatNaira } from '@/lib/storefront/catalogue';
 import {
-  ORDER_STATE_LABEL, PAYMENT_STATE_LABEL, TIMELINE_LABEL,
-  type CustomerOrder, type OrderState,
+  orderStateLabel, PAYMENT_STATE_LABEL, timelineLabel,
+  type CustomerOrder, type FulfilmentMethod, type OrderState,
 } from '@/lib/storefront/orders';
 
 const BADGE: Record<OrderState, string> = {
   awaiting_payment: 'bg-[#fdf6dc] text-[#7a5a0c]',
-  paid: 'bg-[#e5f4ea] text-[#0f4f2d]',
-  processing: 'bg-[#e8f0fb] text-[#1d4a8a]',
-  completed: 'bg-[#e5f4ea] text-[#0f4f2d]',
+  paid: 'bg-[#e0f2fb] text-[#0b5373]',
+  processing: 'bg-[#ffecd6] text-[#9a4a05]',
+  dispatched: 'bg-[#dbe8ff] text-[#1d4ed8]',
+  completed: 'bg-[#cdeedb] text-[#0f5c30]',
   cancelled: 'bg-[#efece4] text-[#5d5645]',
   expired: 'bg-[#efece4] text-[#5d5645]',
   under_review: 'bg-[#fdf6dc] text-[#7a5a0c]',
 };
 
-export function StateBadge({ state }: { state: OrderState }) {
-  return <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${BADGE[state]}`}>{ORDER_STATE_LABEL[state]}</span>;
+export function StateBadge({ state, method }: { state: OrderState; method?: FulfilmentMethod | null }) {
+  return <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${BADGE[state]}`}>{orderStateLabel(state, method)}</span>;
 }
 
 export const formatWhen = (iso: string): string => {
@@ -84,7 +85,7 @@ export function Timeline({ order }: { order: CustomerOrder }) {
     <ol className="space-y-2 border-l-2 border-[#eadfc8] pl-4" aria-label="Order history">
       {order.timeline.map((t, i) => (
         <li key={`${t.event}-${i}`} className="text-sm">
-          <span className="font-medium text-[#1d2a22]">{TIMELINE_LABEL[t.event] ?? 'Update'}</span>
+          <span className="font-medium text-[#1d2a22]">{timelineLabel(t.event, order.fulfilmentMethod)}</span>
           <span className="ml-2 text-xs text-[#8b7f6b]">{formatWhen(t.at)}</span>
         </li>
       ))}

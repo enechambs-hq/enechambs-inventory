@@ -178,7 +178,8 @@ test.describe('staff and admin: online orders and reports', () => {
       await P.goto(`/storefront-orders/${S.paid}`);
       await P.waitForSelector('[data-testid="order-number"]');
       await expect(P.locator('button:has-text("Start processing")')).toBeVisible();
-      await expect(P.locator('button:has-text("Mark completed")')).toBeVisible();
+      // one step at a time: nothing past "Start processing" is offered on a confirmed order
+      await expect(P.locator('button:has-text("Mark as")')).toHaveCount(0);
       eq((await P.locator('button:has-text("Honour")').count()) + (await P.locator('button:has-text("refund")').count()), 0, 'no financial buttons for staff');
       await P.click('button:has-text("Start processing")');
       await P.click('[role=dialog] button:has-text("Confirm")');
@@ -186,6 +187,8 @@ test.describe('staff and admin: online orders and reports', () => {
       await P.waitForSelector('span:text-is("Processing")');
       eq((await orderFact(S.paid)).status, 'processing', 'database');
       await expect(P.locator('button:has-text("Start processing")')).toHaveCount(0);
+      // the next step is now offered: a pickup order is marked ready for pickup (this seeded order has no delivery choice)
+      await expect(P.locator('button:has-text("Mark as ready for pickup")')).toBeVisible();
     });
 
     test('STAFF: cannot fulfil an unpaid order, and is told why', async () => {
