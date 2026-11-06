@@ -12,6 +12,8 @@
  * ownership: the backend offers no such route, and this client has no such method.
  */
 import type {
+  AdminCustomerListResponse,
+  AdminCustomerRow,
   AdminOrderDetail,
   AdminOrderFilters,
   AdminOrderListResponse,
@@ -30,6 +32,7 @@ export interface HttpClient {
 
 const ORDERS = '/admin/storefront-orders';
 const REPORTS = '/admin/storefront-reports';
+const CUSTOMERS = '/admin/storefront-customers';
 export const ORDERS_PAGE_SIZE = 10;
 export const MAX_SEARCH_LENGTH = 30;
 
@@ -61,7 +64,22 @@ export function buildReportParams({ range, from, to }: ReportParamsInput): Recor
   return { range, from: from ?? '', to: to ?? '' };
 }
 
+/** Only parameters the backend accepts, and only when they carry a value. */
+export function buildCustomerListParams(input: { page?: number; limit?: number; search?: string } = {}): Record<string, string | number> {
+  const params: Record<string, string | number> = {
+    page: Number.isInteger(input.page) && (input.page as number) >= 1 ? (input.page as number) : 1,
+    limit: Number.isInteger(input.limit) && (input.limit as number) >= 1 ? Math.min(input.limit as number, 50) : ORDERS_PAGE_SIZE,
+  };
+  const search = (input.search ?? '').trim().slice(0, 100);
+  if (search) params.search = search;
+  return params;
+}
+
 const num = (v: unknown): number => Number(v ?? 0);
+
+function normaliseCustomer(c: AdminCustomerRow): AdminCustomerRow {
+  return { ...c, orderCount: num(c.orderCount), paidOrderCount: num(c.paidOrderCount), totalPaid: num(c.totalPaid) };
+}
 
 function normaliseRow(r: AdminOrderRow): AdminOrderRow {
   return { ...r, total: num(r.total), itemCount: num(r.itemCount), chargeCount: num(r.chargeCount) };
@@ -110,6 +128,12 @@ export function createStorefrontOrdersApi(http: HttpClient) {
       normaliseDetail(
         (await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/payments/${id(paymentId)}/record-refund`, { note: trimNote(note) })).data,
       ),
+
+    /** Admin only: people with an online account, with order count and money paid. */
+    customers: async (filters: { page?: number; limit?: number; search?: string } = {}): Promise<AdminCustomerListResponse> => {
+      const res = (await http.get<AdminCustomerListResponse>(CUSTOMERS, { params: buildCustomerListParams(filters) })).data;
+      return { ...res, data: (res.data ?? []).map(normaliseCustomer) };
+    },
 
     /** Admin only. */
     report: async (input: ReportParamsInput): Promise<StorefrontReport> =>

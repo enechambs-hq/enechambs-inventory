@@ -172,3 +172,22 @@ export interface StorefrontReport {
   }>;
   definitions: Record<string, string>;
 }
+
+/** One online customer as the admin list returns it (money as numbers after normalising). */
+export interface AdminCustomerRow {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  joinedAt: string;
+  lastLoginAt: string | null;
+  orderCount: number;
+  paidOrderCount: number;
+  totalPaid: number;
+  lastOrderAt: string | null;
+}
+
+export interface AdminCustomerListResponse {
+  data: AdminCustomerRow[];
+  meta: ListMeta;
+}

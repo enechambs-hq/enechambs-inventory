@@ -66,6 +66,7 @@ const LINK_ICONS: Record<string, LucideIcon> = {
   "/reports": BarChart2,
   "/purchases": PackagePlus,
   "/customers": Contact,
+  "/storefront-customers": Contact,
   "/promotions/combos": Megaphone,
   "/storefront-reports": Wallet,
   "/users": Users,
