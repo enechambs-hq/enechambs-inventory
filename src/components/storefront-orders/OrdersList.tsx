@@ -3,22 +3,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ChevronLeft, ChevronRight, RefreshCw, Search, ShoppingBag } from 'lucide-react';
+import ActionDialog from '@/components/promotions/ActionDialog';
 import SkeletonRow from '@/components/shared/SkeletonRow';
-import { OrderStatusBadge, PaymentStatusBadge, WarningChip } from './badges';
+import { canManageOnlineOrders } from '@/lib/nav-config';
+import { useAuthStore } from '@/store/auth.store';
+import { ORDER_STYLES, OrderStatusBadge, PaymentStatusBadge, WarningChip } from './badges';
 import { describeApiError, explainProblem } from '@/lib/combos/errors';
 import { storefrontOrdersService } from '@/lib/services/storefront-orders.service';
 import {
   formatLagosDateTime,
   formatNaira,
+  fulfilmentTargets,
+  ORDER_STATUS_LABEL,
   ORDER_STATUS_OPTIONS,
   orderWarnings,
   PAYMENT_STATUS_OPTIONS,
   paymentDeadline,
 } from '@/lib/storefront-orders/format';
 import { MAX_SEARCH_LENGTH, ORDERS_PAGE_SIZE } from '@/lib/storefront-orders/orders-api';
-import type { AdminOrderRow, AdminOrderStatus, AdminPaymentStatus, ListMeta } from '@/types/storefront-orders';
+import type { AdminOrderRow, AdminOrderStatus, AdminPaymentStatus, FulfilmentTarget, ListMeta } from '@/types/storefront-orders';
 
 const SEARCH_DEBOUNCE_MS = 350;
+const STAFF_STEPS: FulfilmentTarget[] = ['processing', 'dispatched', 'completed'];
 const HEADERS = ['Order', 'Customer', 'Placed', 'Total', 'Payment', 'Status'];
 
 const field = 'px-3.5 py-2 text-sm border border-gray-200 rounded-lg bg-white outline-none focus:border-[#1a7a4a] focus:ring-1 focus:ring-[#1a7a4a]/20';
@@ -37,6 +43,27 @@ export default function OrdersList() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
+
+  const role = useAuthStore((s) => s.user?.role);
+  const canFulfil = canManageOnlineOrders(role);
+  const [pending, setPending] = useState<{ order: AdminOrderRow; target: FulfilmentTarget } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const applyStatus = async () => {
+    if (!pending) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const updated = await storefrontOrdersService.updateFulfilment(pending.order.orderNumber, pending.target);
+      setOrders((rows) => rows.map((r) => (r.orderNumber === updated.orderNumber ? { ...r, status: updated.status } : r)));
+      setPending(null);
+    } catch (err) {
+      setSaveError(explainProblem(describeApiError(err), 'save'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const appliedSearch = useRef('');
   useEffect(() => {
@@ -203,7 +230,19 @@ export default function OrdersList() {
                         </td>
                         <td className="px-3 py-4"><PaymentStatusBadge status={o.paymentStatus} /></td>
                         <td className="px-3 py-4 pr-5 whitespace-nowrap">
-                          <OrderStatusBadge status={o.status} />
+                          {canFulfil && fulfilmentTargets(o).length > 0 ? (
+                            <select
+                              aria-label={`Status of ${o.orderNumber}`}
+                              value={o.status}
+                              onChange={(e) => { setSaveError(null); setPending({ order: o, target: e.target.value as FulfilmentTarget }); }}
+                              className={`px-2.5 py-1.5 text-xs font-semibold border rounded-full outline-none cursor-pointer ${ORDER_STYLES[o.status]}`}
+                            >
+                              {o.status === 'confirmed' && <option value="confirmed" disabled>{ORDER_STATUS_LABEL.confirmed}</option>}
+                              {STAFF_STEPS.map((t) => <option key={t} value={t} disabled={t !== o.status && !fulfilmentTargets(o).includes(t)}>{ORDER_STATUS_LABEL[t]}</option>)}
+                            </select>
+                          ) : (
+                            <OrderStatusBadge status={o.status} />
+                          )}
                           {deadline && (
                             <span className={`mt-1 block text-[11px] ${deadline.overdue ? 'font-medium text-red-600' : 'text-gray-500'}`} data-testid="pay-by">
                               {deadline.overdue ? 'Overdue since' : 'Pay by'} {deadline.label}
@@ -234,6 +273,18 @@ export default function OrdersList() {
           </nav>
         )}
       </div>
+
+      <ActionDialog
+        open={pending !== null}
+        title={pending ? `Change status to ${ORDER_STATUS_LABEL[pending.target]}` : ''}
+        description={pending ? `Move ${pending.order.orderNumber} to "${ORDER_STATUS_LABEL[pending.target]}"? The customer sees the new status and is emailed. This cannot be undone.` : ''}
+        confirmLabel="Confirm"
+        busyLabel="Saving…"
+        isLoading={saving}
+        error={saveError}
+        onClose={() => setPending(null)}
+        onConfirm={() => void applyStatus()}
+      />
     </div>
   );
 }

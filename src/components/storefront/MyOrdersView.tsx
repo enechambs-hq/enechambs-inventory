@@ -62,7 +62,7 @@ export default function MyOrdersView() {
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Link href={`/my-orders/${o.orderNumber}`} className="font-bold text-[#0f4f2d] hover:underline">{o.orderNumber}</Link>
-                <StateBadge state={o.state} />
+                <StateBadge state={o.state} method={o.fulfilmentMethod} />
               </div>
               <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2 text-sm text-[#5d5645]">
                 <span>{formatWhen(o.createdAt)}</span>
