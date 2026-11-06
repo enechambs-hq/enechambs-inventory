@@ -29,17 +29,32 @@ export const ADMIN_LINKS: NavLinkDef[] = [
   { href: '/purchases', label: 'Purchases' },
   { href: '/customers', label: 'Customers' },
   { href: '/promotions/combos', label: 'Promotions' },
+  { href: '/storefront-customers', label: 'Online Customers' },
   { href: '/storefront-reports', label: 'Online Reports' },
   { href: '/users', label: 'Users' },
 ];
 
 export const PROMOTIONS_HREF = '/promotions/combos';
+export const STOREFRONT_CUSTOMERS_HREF = '/storefront-customers';
 export const STOREFRONT_REPORTS_HREF = '/storefront-reports';
 export const STOREFRONT_ORDERS_HREF = '/storefront-orders';
 
+/**
+ * Pages hidden from the sidebar while the business runs on the online store
+ * only. The pages and their routes are untouched; empty this set to bring the
+ * links back.
+ */
+export const HIDDEN_HREFS: ReadonlySet<string> = new Set([
+  '/dashboard', '/inventory', '/sales', '/expenses', '/categories', '/suppliers',
+  '/stock-alerts', '/reports', '/purchases', '/customers',
+]);
+
 /** Only the literal string 'admin' sees admin links; anything else (staff, unknown, signed out) sees the staff set. */
 export const linksForRole = (role: string | null | undefined): NavLinkDef[] =>
-  role === 'admin' ? ADMIN_LINKS : STAFF_LINKS;
+  (role === 'admin' ? ADMIN_LINKS : STAFF_LINKS).filter((l) => !HIDDEN_HREFS.has(l.href));
+
+/** Where a signed-in user lands: Online Reports is the admin's home for now, Online Orders is staff's. */
+export const homeForRole = (role: string | null | undefined): string => (role === 'admin' ? STOREFRONT_REPORTS_HREF : STOREFRONT_ORDERS_HREF);
 
 export const canManagePromotions = (role: string | null | undefined): boolean => role === 'admin';
 

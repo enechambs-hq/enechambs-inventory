@@ -4,7 +4,7 @@ import {
   awaitsLatePaymentDecision, customRangeError, formatLagosDateTime, formatNaira, fulfilmentTargets, lagosRangeToInstants, orderWarnings,
   paymentDeadline, refundablePayments,
 } from '../src/lib/storefront-orders/format.ts';
-import { buildOrderListParams, buildReportParams, createStorefrontOrdersApi, type HttpClient } from '../src/lib/storefront-orders/orders-api.ts';
+import { buildCustomerListParams, buildOrderListParams, buildReportParams, createStorefrontOrdersApi, type HttpClient } from '../src/lib/storefront-orders/orders-api.ts';
 import type { AdminOrderDetail, AdminOrderRow, AdminPayment } from '../src/types/storefront-orders.ts';
 
 const row = (over: Partial<AdminOrderRow> = {}): AdminOrderRow => ({
@@ -62,9 +62,9 @@ test('report params and custom range validation', () => {
 });
 
 // ── the API surface ───────────────────────────────────────────────────────────
-test('the client exposes ONLY list, get, fulfilment, honour, refund and report: no way to mark paid or edit money', () => {
+test('the client exposes ONLY list, get, fulfilment, honour, refund, report and the read-only customers list: no way to mark paid or edit money', () => {
   const api = createStorefrontOrdersApi(fakeHttp().http);
-  assert.deepEqual(Object.keys(api).sort(), ['get', 'honourLatePayment', 'list', 'recordRefund', 'report', 'updateFulfilment']);
+  assert.deepEqual(Object.keys(api).sort(), ['customers', 'get', 'honourLatePayment', 'list', 'recordRefund', 'report', 'updateFulfilment']);
 });
 
 test('each call goes to the right backend route with the right verb and body', async () => {
@@ -160,4 +160,25 @@ test('the detail type has everything the detail page shows (compile-time contrac
     paidAt: null, createdAt: '', customer: { name: 'A', phone: '1', email: null }, fulfilment: {}, items: [], payments: [], history: [], paymentEvents: [],
   };
   assert.equal(d.items.length, 0);
+});
+
+// ── online customers ──────────────────────────────────────────────────────────
+test('customer list params: defaults, a capped page size and a trimmed, bounded search', () => {
+  assert.deepEqual(buildCustomerListParams(), { page: 1, limit: 10 });
+  assert.deepEqual(buildCustomerListParams({ page: 2, limit: 500, search: '  ada ' }), { page: 2, limit: 50, search: 'ada' });
+  assert.deepEqual(buildCustomerListParams({ page: -1, limit: 0, search: '   ' }), { page: 1, limit: 10 });
+  assert.equal((buildCustomerListParams({ search: 'x'.repeat(300) }).search as string).length, 100);
+});
+
+test('customers: calls the admin endpoint and turns money and counts into numbers', async () => {
+  const { http, calls } = fakeHttp({
+    data: [{ id: 'c1', customerName: 'Ada', customerPhone: '+2348031234567', customerEmail: 'ada@example.com', joinedAt: '2026-11-01T10:00:00Z', lastLoginAt: null, orderCount: '2', paidOrderCount: '1', totalPaid: '30000.00', lastOrderAt: null }],
+    meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+  });
+  const res = await createStorefrontOrdersApi(http).customers({ search: 'ada' });
+  assert.deepEqual(calls, [{ method: 'GET', url: '/admin/storefront-customers', params: { page: 1, limit: 10, search: 'ada' } }]);
+  assert.equal(res.data[0].orderCount, 2);
+  assert.equal(res.data[0].paidOrderCount, 1);
+  assert.equal(res.data[0].totalPaid, 30000);
+  assert.equal(res.meta.total, 1);
 });

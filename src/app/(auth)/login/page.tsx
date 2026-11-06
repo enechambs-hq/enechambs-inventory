@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { authService } from "@/lib/services/auth.service";
 import { toast } from "sonner";
 import { UserRole } from "@/types";
+import { homeForRole } from "@/lib/nav-config";
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -232,7 +233,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      router.replace(user.role === UserRole.ADMIN ? "/dashboard" : "/inventory");
+      router.replace(homeForRole(user.role));
     }
   }, [isAuthenticated, user, router]);
 
