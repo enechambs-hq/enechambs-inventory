@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  awaitsLatePaymentDecision, customRangeError, formatLagosDateTime, formatNaira, fulfilmentTargets, lagosRangeToInstants, orderWarnings,
+  awaitsLatePaymentDecision, customRangeError, fulfilmentAction, formatLagosDateTime, formatNaira, fulfilmentTargets, lagosRangeToInstants, orderWarnings,
   paymentDeadline, refundablePayments,
 } from '../src/lib/storefront-orders/format.ts';
 import { buildCustomerListParams, buildOrderListParams, buildReportParams, createStorefrontOrdersApi, type HttpClient } from '../src/lib/storefront-orders/orders-api.ts';
@@ -112,8 +112,9 @@ test('numbers arrive as numbers even if the API sends decimal strings; missing a
 
 // ── what to offer ─────────────────────────────────────────────────────────────
 test('fulfilment is offered only for PAID orders, only forward', () => {
-  assert.deepEqual(fulfilmentTargets({ status: 'confirmed', paymentStatus: 'paid' }), ['processing', 'completed']);
-  assert.deepEqual(fulfilmentTargets({ status: 'processing', paymentStatus: 'paid' }), ['completed']);
+  assert.deepEqual(fulfilmentTargets({ status: 'confirmed', paymentStatus: 'paid' }), ['processing']);
+  assert.deepEqual(fulfilmentTargets({ status: 'processing', paymentStatus: 'paid' }), ['dispatched']);
+  assert.deepEqual(fulfilmentTargets({ status: 'dispatched', paymentStatus: 'paid' }), ['completed']);
   for (const status of ['pending', 'completed', 'cancelled', 'expired'] as const) assert.deepEqual(fulfilmentTargets({ status, paymentStatus: 'paid' }), [], status);
   for (const paymentStatus of ['unpaid', 'review', 'refunded', 'failed'] as const) assert.deepEqual(fulfilmentTargets({ status: 'confirmed', paymentStatus }), [], paymentStatus);
 });
@@ -181,4 +182,20 @@ test('customers: calls the admin endpoint and turns money and counts into number
   assert.equal(res.data[0].paidOrderCount, 1);
   assert.equal(res.data[0].totalPaid, 30000);
   assert.equal(res.meta.total, 1);
+});
+
+// ── the fulfilment steps and their wording ─────────────────────────────────────
+test('each fulfilment step reads right for delivery and for pickup, and says what the customer will see', () => {
+  assert.equal(fulfilmentAction('processing', 'delivery').label, 'Start processing');
+  assert.equal(fulfilmentAction('dispatched', 'delivery').label, 'Mark as sent out');
+  assert.equal(fulfilmentAction('dispatched', 'pickup').label, 'Mark as ready for pickup');
+  assert.equal(fulfilmentAction('completed', 'delivery').label, 'Mark as delivered');
+  assert.equal(fulfilmentAction('completed', 'pickup').label, 'Mark as collected');
+  // no recorded method (an order from before delivery existed) reads as pickup, like the emails
+  assert.equal(fulfilmentAction('dispatched', undefined).label, 'Mark as ready for pickup');
+  assert.equal(fulfilmentAction('completed', null).label, 'Mark as collected');
+  for (const t of ['processing', 'dispatched', 'completed'] as const) {
+    for (const m of ['delivery', 'pickup'] as const) assert.match(fulfilmentAction(t, m).question, /emailed/, `${t} ${m}`);
+  }
+  assert.match(fulfilmentAction('completed', 'delivery').question, /cannot be undone/);
 });

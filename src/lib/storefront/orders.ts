@@ -4,10 +4,10 @@
  * Unknown fields are dropped, so nothing the API adds later can leak into the
  * page by accident. Relative imports only (node:test loads this).
  */
-export type OrderState = 'awaiting_payment' | 'paid' | 'processing' | 'completed' | 'cancelled' | 'expired' | 'under_review';
+export type OrderState = 'awaiting_payment' | 'paid' | 'processing' | 'dispatched' | 'completed' | 'cancelled' | 'expired' | 'under_review';
 export type PaymentState = 'unpaid' | 'awaiting_payment' | 'paid' | 'failed' | 'under_review' | 'refunded';
 
-const ORDER_STATES: readonly OrderState[] = ['awaiting_payment', 'paid', 'processing', 'completed', 'cancelled', 'expired', 'under_review'];
+const ORDER_STATES: readonly OrderState[] = ['awaiting_payment', 'paid', 'processing', 'dispatched', 'completed', 'cancelled', 'expired', 'under_review'];
 const PAYMENT_STATES: readonly PaymentState[] = ['unpaid', 'awaiting_payment', 'paid', 'failed', 'under_review', 'refunded'];
 
 export interface OrderLine {
@@ -22,6 +22,8 @@ export interface OrderSummary {
   orderNumber: string;
   state: OrderState;
   paymentState: PaymentState;
+  /** How the order reaches the customer; null for orders from before delivery existed. */
+  fulfilmentMethod: FulfilmentMethod | null;
   currency: string;
   total: number;
   createdAt: string;
@@ -84,7 +86,8 @@ export function parseOrderSummary(v: unknown): OrderSummary | null {
   const createdAt = str(v.createdAt);
   if (!orderNumber || !isOrderNumber(orderNumber) || total === null || !createdAt) return null;
   if (!state || !ORDER_STATES.includes(state) || !paymentState || !PAYMENT_STATES.includes(paymentState)) return null;
-  return { orderNumber, state, paymentState, currency: str(v.currency) ?? 'NGN', total, createdAt, canPay: v.canPay === true };
+  const fulfilmentMethod = v.fulfilmentMethod === 'delivery' || v.fulfilmentMethod === 'pickup' ? v.fulfilmentMethod : null;
+  return { orderNumber, state, paymentState, fulfilmentMethod, currency: str(v.currency) ?? 'NGN', total, createdAt, canPay: v.canPay === true };
 }
 
 function parseLine(v: unknown): OrderLine | null {
@@ -109,10 +112,12 @@ export function parseCustomerOrder(v: unknown): CustomerOrder | null {
   const timeline = (Array.isArray(v.timeline) ? v.timeline : [])
     .map((t) => (isObject(t) && str(t.event) && str(t.at) ? { event: str(t.event) as string, at: str(t.at) as string } : null))
     .filter((t): t is TimelineEntry => t !== null);
+  const fulfilment = parseFulfilment(v.fulfilment);
   return {
     ...base,
+    fulfilmentMethod: base.fulfilmentMethod ?? fulfilment.method,
     subtotal,
-    fulfilment: parseFulfilment(v.fulfilment),
+    fulfilment,
     items: items as OrderLine[],
     contact: { name: str(contact.name), phone: str(contact.phone), note: str(contact.note) },
     canCancel: v.canCancel === true,
@@ -241,7 +246,8 @@ export const ORDER_STATE_LABEL: Record<OrderState, string> = {
   awaiting_payment: 'Awaiting payment',
   paid: 'Paid',
   processing: 'Being prepared',
-  completed: 'Completed',
+  dispatched: 'Sent out',
+  completed: 'Received',
   cancelled: 'Cancelled',
   expired: 'Expired',
   under_review: 'Payment under review',
@@ -263,10 +269,47 @@ export const TIMELINE_LABEL: Record<string, string> = {
   order_honoured: 'Order confirmed after review',
   refund_recorded: 'Refund recorded',
   processing: 'Being prepared',
-  completed: 'Completed',
+  dispatched: 'Sent out',
+  completed: 'Received',
   cancelled: 'Cancelled',
   expired: 'Payment window ended',
 };
+
+/**
+ * What the customer reads for a fulfilment stage. A delivery order is "On its
+ * way" then "Received"; a pickup order is "Ready for pickup" then "Received".
+ * An order with no recorded method (placed before delivery existed) reads as
+ * pickup, like the emails.
+ */
+const STAGE_WORDS: Record<'dispatched' | 'completed', Record<FulfilmentMethod, string>> = {
+  dispatched: { delivery: 'On its way', pickup: 'Ready for pickup' },
+  completed: { delivery: 'Received', pickup: 'Received' },
+};
+
+export function orderStateLabel(state: OrderState, method?: FulfilmentMethod | null): string {
+  if (state === 'dispatched' || state === 'completed') return STAGE_WORDS[state][method === 'delivery' ? 'delivery' : 'pickup'];
+  return ORDER_STATE_LABEL[state];
+}
+
+/** A sentence for the order page once fulfilment has started; null before that and for orders that did not complete. */
+export function stageMessage(state: OrderState, method?: FulfilmentMethod | null): string | null {
+  const delivery = method === 'delivery';
+  switch (state) {
+    case 'processing':
+      return 'We are preparing your order. It will be sent out soon.';
+    case 'dispatched':
+      return delivery ? 'Your order is on its way to you. Please keep your phone close.' : 'Your order is ready. Come and collect it from our store during opening hours.';
+    case 'completed':
+      return delivery ? 'Your order has been received. Enjoy, and thank you for shopping with us!' : 'Your order has been received. Enjoy, and thank you for shopping with us!';
+    default:
+      return null;
+  }
+}
+
+export function timelineLabel(event: string, method?: FulfilmentMethod | null): string {
+  if (event === 'dispatched' || event === 'completed') return STAGE_WORDS[event][method === 'delivery' ? 'delivery' : 'pickup'];
+  return TIMELINE_LABEL[event] ?? 'Update';
+}
 
 /** Statuses after which the payment-return page can stop asking the API. */
 export function paymentSettled(order: Pick<CustomerOrder, 'state' | 'paymentState'>): boolean {

@@ -13,6 +13,7 @@ import {
   awaitsLatePaymentDecision,
   formatLagosDateTime,
   formatNaira,
+  fulfilmentAction,
   fulfilmentTargets,
   HISTORY_EVENT_LABEL,
   RECONCILIATION_LABEL,
@@ -22,7 +23,6 @@ import {
 import { useAuthStore } from '@/store/auth.store';
 import type { AdminOrderDetail, AdminPayment, FulfilmentTarget } from '@/types/storefront-orders';
 
-const TARGET_LABEL: Record<FulfilmentTarget, string> = { processing: 'Start processing', completed: 'Mark completed' };
 
 function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
   return (
@@ -276,7 +276,7 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
                 <div className="flex flex-wrap gap-2">
                   {targets.map((t) => (
                     <button key={t} type="button" onClick={() => { setActionError(null); setPendingTarget(t); }} className="rounded-lg bg-[#1a7a4a] px-4 py-2 text-sm font-medium text-white hover:bg-[#145c37]">
-                      {TARGET_LABEL[t]}
+                      {fulfilmentAction(t, order.fulfilment.method).label}
                     </button>
                   ))}
                 </div>
@@ -308,14 +308,14 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
 
       <ActionDialog
         open={pendingTarget !== null}
-        title={pendingTarget ? TARGET_LABEL[pendingTarget] : ''}
-        description={pendingTarget === 'completed' ? 'Mark this paid order as completed? The customer is emailed. This cannot be undone.' : 'Move this paid order to processing? The customer is emailed.'}
+        title={pendingTarget ? fulfilmentAction(pendingTarget, order.fulfilment.method).label : ''}
+        description={pendingTarget ? fulfilmentAction(pendingTarget, order.fulfilment.method).question : ''}
         confirmLabel="Confirm"
         busyLabel="Saving…"
         isLoading={busy}
         error={actionError}
         onClose={() => setPendingTarget(null)}
-        onConfirm={() => { if (pendingTarget) void run(() => storefrontOrdersService.updateFulfilment(order.orderNumber, pendingTarget), pendingTarget === 'completed' ? 'Order marked completed.' : 'Order moved to processing.', () => setPendingTarget(null)); }}
+        onConfirm={() => { if (pendingTarget) void run(() => storefrontOrdersService.updateFulfilment(order.orderNumber, pendingTarget), fulfilmentAction(pendingTarget, order.fulfilment.method).done, () => setPendingTarget(null)); }}
       />
 
       <ReasonDialog

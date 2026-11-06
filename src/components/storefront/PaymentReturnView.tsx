@@ -121,7 +121,7 @@ export default function PaymentReturnView({ orderNumber }: { orderNumber: string
       <Card>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="font-bold text-[#0f4f2d]" data-testid="order-number">Order {order.orderNumber}</p>
-          <StateBadge state={order.state} />
+          <StateBadge state={order.state} method={order.fulfilmentMethod} />
         </div>
         <div className="mt-3"><OrderItems order={order} /></div>
         <div className="mt-3"><PaymentLine order={order} /></div>

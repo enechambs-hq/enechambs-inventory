@@ -25,7 +25,8 @@ export const ORDER_STATUS_LABEL: Record<AdminOrderStatus, string> = {
   pending: 'Awaiting payment',
   confirmed: 'Confirmed',
   processing: 'Processing',
-  completed: 'Completed',
+  dispatched: 'Sent out',
+  completed: 'Delivered',
   cancelled: 'Cancelled',
   expired: 'Expired',
 };
@@ -69,7 +70,8 @@ export const HISTORY_EVENT_LABEL: Record<string, string> = {
   order_honoured: 'Late payment honoured',
   refund_recorded: 'Refund decision recorded',
   processing: 'Moved to processing',
-  completed: 'Marked completed',
+  dispatched: 'Marked as sent out',
+  completed: 'Marked as delivered (customer has it)',
   cancelled: 'Cancelled',
   expired: 'Payment window ended',
 };
@@ -152,9 +154,63 @@ export function customRangeError(from: string, to: string): string | null {
 /** Which fulfilment steps to OFFER. Mirrors the backend's rule: only PAID orders move, and only forward. */
 export function fulfilmentTargets(order: Pick<AdminOrderRow | AdminOrderDetail, 'status' | 'paymentStatus'>): FulfilmentTarget[] {
   if (order.paymentStatus !== 'paid') return [];
-  if (order.status === 'confirmed') return ['processing', 'completed'];
-  if (order.status === 'processing') return ['completed'];
+  if (order.status === 'confirmed') return ['processing'];
+  if (order.status === 'processing') return ['dispatched'];
+  if (order.status === 'dispatched') return ['completed'];
   return [];
+}
+
+export type FulfilmentMethod = 'delivery' | 'pickup';
+
+export interface FulfilmentAction {
+  /** The button. */
+  label: string;
+  /** The question in the confirm dialog (it says what the customer will see and be emailed). */
+  question: string;
+  /** The toast once it is saved. */
+  done: string;
+}
+
+/**
+ * Wording for each fulfilment step. A delivery order is "sent out" and
+ * "delivered"; a pickup order is "ready for pickup" and "collected". An order
+ * with no recorded method (placed before delivery existed) reads as pickup,
+ * like the emails the API sends.
+ */
+export function fulfilmentAction(target: FulfilmentTarget, method: FulfilmentMethod | null | undefined): FulfilmentAction {
+  const delivery = method === 'delivery';
+  switch (target) {
+    case 'processing':
+      return {
+        label: 'Start processing',
+        question: 'Move this order to processing? The customer sees "Being prepared" and is emailed.',
+        done: 'Order moved to processing.',
+      };
+    case 'dispatched':
+      return delivery
+        ? {
+            label: 'Mark as sent out',
+            question: 'Mark this order as sent out for delivery? The customer sees "On its way" and is emailed.',
+            done: 'Order marked as sent out.',
+          }
+        : {
+            label: 'Mark as ready for pickup',
+            question: 'Mark this order as ready for pickup? The customer sees "Ready for pickup" and is emailed.',
+            done: 'Order marked as ready for pickup.',
+          };
+    case 'completed':
+      return delivery
+        ? {
+            label: 'Mark as delivered',
+            question: 'Confirm the customer has received this order? It is marked delivered, the customer is emailed, and the order is closed. This cannot be undone.',
+            done: 'Order marked as delivered.',
+          }
+        : {
+            label: 'Mark as collected',
+            question: 'Confirm the customer has collected this order? It is marked collected, the customer is emailed, and the order is closed. This cannot be undone.',
+            done: 'Order marked as collected.',
+          };
+  }
 }
 
 /** A late payment awaiting an administrator's decision (the order was already expired or cancelled). */
