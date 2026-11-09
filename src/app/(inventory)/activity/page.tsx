@@ -1,47 +1,39 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { format } from 'date-fns';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { UserRole, ActivityLog } from '@/types';
+import { ActivityLog } from '@/types';
 import { dashboardService } from '@/lib/services/dashboard.service';
-import { toast } from 'sonner';
 import { formatActivityDescription } from '@/lib/utils';
-
-const ACTION_COLORS: Record<string, string> = {
-  LOGIN: 'bg-green-500/10 text-green-700',
-  LOGOUT: 'bg-gray-100 text-gray-600',
-  SALE: 'bg-blue-500/10 text-blue-700',
-  CREDIT: 'bg-purple-500/10 text-purple-700',
-  COLLECTION: 'bg-yellow-500/10 text-yellow-700',
-  INVENTORY: 'bg-orange-500/10 text-orange-700',
-};
-
-function actionStyle(action: string) {
-  const key = Object.keys(ACTION_COLORS).find((k) => action.toUpperCase().includes(k));
-  return key ? ACTION_COLORS[key] : 'bg-muted text-muted-foreground';
-}
+import { useMediaQuery } from '@/components/storefront/useMediaQuery';
+import { ActionTag, formatEventTime } from '@/components/activity/ActivityParts';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 
 export default function ActivityPage() {
-  useAuthGuard(UserRole.ADMIN);
+  const cards = useMediaQuery('(max-width: 1279px)');
 
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  // A failed request is shown as a failure, never as an empty history.
+  const [error, setError] = useState<AppError | null>(null);
 
   const limit = 25;
 
   const fetchLogs = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const data = await dashboardService.getAllActivity(page, limit);
       setLogs(data.data);
       setTotal(data.meta.total);
       setTotalPages(data.meta.totalPages);
-    } catch {
-      // fail silently
+    } catch (err) {
+      setLogs([]);
+      setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'the activity log' }));
     } finally {
       setIsLoading(false);
     }
@@ -49,91 +41,76 @@ export default function ActivityPage() {
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
+  const pagerBtn = 'inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40';
+  const actor = (log: ActivityLog) => (log.user ? `${log.user.firstName} ${log.user.lastName}` : '—');
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Activity Log</h1>
-        <p className="text-sm text-muted-foreground">{total} total events</p>
+    <div className="mx-auto w-full max-w-[80rem]">
+      <div className="mb-6">
+        <h1 className="text-[1.75rem] font-bold leading-8 text-[#0f4f2d] md:text-[2rem] md:leading-10">Activity Log</h1>
+        {!error && <p className="mt-1 text-sm text-gray-600">{total} total events</p>}
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              {['User', 'Role', 'Action', 'Description', 'Time'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {isLoading ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center">
-                  <div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>
-                </td>
-              </tr>
-            ) : logs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                  No activity found
-                </td>
-              </tr>
-            ) : (
-              logs.map((log) => (
-                <tr key={log.id} className="hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 font-medium">
-                    {log.user ? `${log.user.firstName} ${log.user.lastName}` : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {log.user ? (
-                      <span className="capitalize text-xs text-muted-foreground">{log.user.role}</span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${actionStyle(log.action)}`}>
-                      {log.action.replace(/_/g, ' ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">
-                    {formatActivityDescription(log.description)}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                    {format(new Date(log.timestamp), 'MMM d, yyyy · h:mm a')}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {isLoading ? (
+        <div role="status" aria-label="Loading activity" className="flex justify-center rounded-2xl border border-gray-200 bg-white py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1a7a4a] border-t-transparent" />
         </div>
+      ) : error ? (
+        <LoadErrorPanel error={error} onRetry={() => void fetchLogs()} title="Could not load the activity log" />
+      ) : logs.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center text-base text-gray-600">No activity found</div>
+      ) : cards ? (
+        <ul className="space-y-3">
+          {logs.map((log) => (
+            <li key={log.id} className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <ActionTag action={log.action} />
+                <p className="text-sm text-gray-600">{formatEventTime(log.timestamp)}</p>
+              </div>
+              <p className="mt-2 text-base font-semibold text-[#0f4f2d]">
+                {actor(log)}
+                {log.user && <span className="ml-2 text-sm font-normal capitalize text-gray-600">({log.user.role})</span>}
+              </p>
+              <p className="mt-1 break-words text-base text-gray-800">{formatActivityDescription(log.description)}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="rounded-2xl border border-gray-200 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                {['User', 'Role', 'Action', 'Description', 'Time'].map((h) => (
+                  <th key={h} scope="col" className="sticky top-14 z-[1] border-b border-gray-200 bg-gray-50 px-3 py-3 text-left text-sm font-semibold text-gray-700 first:rounded-tl-2xl first:pl-5 last:rounded-tr-2xl last:pr-5">
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map((log) => (
+                <tr key={log.id} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50">
+                  <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d] [overflow-wrap:anywhere]">{actor(log)}</td>
+                  <td className="px-3 py-3 text-sm capitalize text-gray-700">{log.user ? log.user.role : '—'}</td>
+                  <td className="px-3 py-3"><ActionTag action={log.action} /></td>
+                  <td className="px-3 py-3 text-sm text-gray-800 [overflow-wrap:anywhere]">{formatActivityDescription(log.description)}</td>
+                  <td className="whitespace-nowrap px-3 py-3 pr-5 text-sm text-gray-700">{formatEventTime(log.timestamp)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t text-sm">
-            <p className="text-muted-foreground">Page {page} of {totalPages}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1 rounded-md border disabled:opacity-50 hover:bg-muted transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1 rounded-md border disabled:opacity-50 hover:bg-muted transition-colors"
-              >
-                Next
-              </button>
-            </div>
+      {totalPages > 1 && !error && (
+        <div className="mt-4 grid grid-cols-2 items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 sm:flex sm:justify-between">
+          <p className="order-1 col-span-2 sm:order-none">Page {page} of {totalPages}</p>
+          <div className="contents sm:flex sm:gap-2">
+            <button type="button" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className={`order-3 sm:order-none ${pagerBtn}`}>Previous</button>
+            <button type="button" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className={`order-4 sm:order-none ${pagerBtn}`}>Next</button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

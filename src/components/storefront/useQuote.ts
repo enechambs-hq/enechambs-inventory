@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { toRequestItems, type CartLine } from '@/lib/storefront/cart';
 import { parseQuote, type FulfilmentMethod, type Quote } from '@/lib/storefront/orders';
 import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 
 export type QuoteState =
   | { status: 'empty' }
   | { status: 'loading' }
   | { status: 'ready'; quote: Quote }
-  | { status: 'error'; message: string };
+  | { status: 'error'; message: string; error: AppError };
 
 /**
  * The server's authoritative view of the cart (price, availability, limits).
@@ -37,7 +39,8 @@ export function useQuote(lines: CartLine[], hydrated: boolean, method: Fulfilmen
       signal: controller.signal,
     }).then((r) => {
       if (controller.signal.aborted) return;
-      setState(r.ok ? { status: 'ready', quote: r.data } : { status: 'error', message: friendlyMessage(r) });
+      // A quote is a price check that changes nothing, so asking again is safe (idempotent) even though it is a POST.
+      setState(r.ok ? { status: 'ready', quote: r.data } : { status: 'error', message: friendlyMessage(r), error: appErrorFromStore(r, { method: 'POST', idempotent: true, what: 'your cart' }) });
     });
     return () => controller.abort();
     // `key` stands for `lines`: re-ask only when contents change.

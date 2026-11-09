@@ -7,8 +7,6 @@ import { NumericInput } from '@/components/shared/NumericInput';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { UserRole } from '@/types';
 import { purchasesService } from '@/lib/services/purchases.service';
 import type { Purchase } from '@/types';
 
@@ -38,7 +36,6 @@ function fmtDate(iso: string) {
 }
 
 export default function PurchasesPage() {
-  useAuthGuard(UserRole.ADMIN);
 
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);

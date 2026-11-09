@@ -28,6 +28,8 @@ export interface AdminOrderRow {
   /** Still holding stock and waiting for payment: the payment deadline applies. */
   awaitingPayment: boolean;
   chargeCount: number;
+  /** A cancellation has been requested for this paid order and its refund is not recorded yet. */
+  cancellationPending?: boolean;
 }
 
 export interface ListMeta {
@@ -64,6 +66,9 @@ export interface AdminPayment {
   refundedAt: string | null;
   resolutionNote: string | null;
   createdAt: string;
+  /** The Flutterwave refund reference recorded for a cancellation refund. */
+  refundReference?: string | null;
+  refundedBy?: string | null;
 }
 
 export interface AdminHistoryEntry {
@@ -82,6 +87,36 @@ export interface AdminPaymentEvent {
   outcome: string;
   createdAt: string;
   txRef: string;
+}
+
+/** requested = refund not started; refund_started = manual refund under way (no withdrawal); completed = finalised. */
+export type CancellationState = 'none' | 'requested' | 'refund_started' | 'completed';
+
+export interface CancellationActor {
+  id: string;
+  name: string | null;
+}
+
+/**
+ * Paid-order cancellation (manual full refund). The backend decides every flag:
+ * the screen offers exactly what it says and nothing more.
+ */
+export interface AdminCancellation {
+  state: CancellationState;
+  refundStartedAt?: string | null;
+  refundStartedBy?: CancellationActor | null;
+  requestedAt: string | null;
+  reason: string | null;
+  requestedBy: CancellationActor | null;
+  /** The full amount to refund, derived from the captured payment (never typed in). */
+  refundAmount: number | null;
+  refund: { paymentId: string; reference: string; refundedAt: string; refundedBy: CancellationActor | null } | null;
+  canRequest: boolean;
+  canWithdraw: boolean;
+  canStartRefund: boolean;
+  canRecordRefund: boolean;
+  canRecordFailedRefund: boolean;
+  blockedReason: string | null;
 }
 
 export interface AdminOrderDetail {
@@ -112,6 +147,8 @@ export interface AdminOrderDetail {
   payments: AdminPayment[];
   history: AdminHistoryEntry[];
   paymentEvents: AdminPaymentEvent[];
+  /** Absent from an older API; treated as no cancellation. */
+  cancellation?: AdminCancellation;
 }
 
 export interface AdminOrderFilters {
@@ -121,6 +158,8 @@ export interface AdminOrderFilters {
   status?: AdminOrderStatus | '';
   paymentStatus?: AdminPaymentStatus | '';
   needsReview?: boolean;
+  /** Only paid orders still awaiting fulfilment (the "new paid orders" alert). */
+  awaitingFulfilment?: boolean;
   /** Lagos calendar days, YYYY-MM-DD, both inclusive. */
   fromDate?: string;
   toDate?: string;

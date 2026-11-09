@@ -4,11 +4,11 @@
  * Unknown fields are dropped, so nothing the API adds later can leak into the
  * page by accident. Relative imports only (node:test loads this).
  */
-export type OrderState = 'awaiting_payment' | 'paid' | 'processing' | 'dispatched' | 'completed' | 'cancelled' | 'expired' | 'under_review';
-export type PaymentState = 'unpaid' | 'awaiting_payment' | 'paid' | 'failed' | 'under_review' | 'refunded';
+export type OrderState = 'awaiting_payment' | 'paid' | 'processing' | 'dispatched' | 'completed' | 'cancelled' | 'expired' | 'cancellation_pending' | 'refund_processing' | 'under_review';
+export type PaymentState = 'unpaid' | 'awaiting_payment' | 'paid' | 'failed' | 'under_review' | 'refund_pending' | 'refund_processing' | 'refunded';
 
-const ORDER_STATES: readonly OrderState[] = ['awaiting_payment', 'paid', 'processing', 'dispatched', 'completed', 'cancelled', 'expired', 'under_review'];
-const PAYMENT_STATES: readonly PaymentState[] = ['unpaid', 'awaiting_payment', 'paid', 'failed', 'under_review', 'refunded'];
+const ORDER_STATES: readonly OrderState[] = ['awaiting_payment', 'paid', 'processing', 'dispatched', 'completed', 'cancelled', 'expired', 'cancellation_pending', 'refund_processing', 'under_review'];
+const PAYMENT_STATES: readonly PaymentState[] = ['unpaid', 'awaiting_payment', 'paid', 'failed', 'under_review', 'refund_pending', 'refund_processing', 'refunded'];
 
 export interface OrderLine {
   slug: string;
@@ -250,6 +250,8 @@ export const ORDER_STATE_LABEL: Record<OrderState, string> = {
   completed: 'Received',
   cancelled: 'Cancelled',
   expired: 'Expired',
+  cancellation_pending: 'Cancellation requested',
+  refund_processing: 'Refund in progress',
   under_review: 'Payment under review',
 };
 
@@ -259,6 +261,8 @@ export const PAYMENT_STATE_LABEL: Record<PaymentState, string> = {
   paid: 'Paid',
   failed: 'Payment failed',
   under_review: 'Under review',
+  refund_pending: 'Refund not started yet',
+  refund_processing: 'Refund in progress, not confirmed yet',
   refunded: 'Refunded',
 };
 
@@ -268,6 +272,8 @@ export const TIMELINE_LABEL: Record<string, string> = {
   payment_under_review: 'Payment under review',
   order_honoured: 'Order confirmed after review',
   refund_recorded: 'Refund recorded',
+  cancellation_requested: 'Cancellation requested',
+  cancellation_withdrawn: 'Cancellation withdrawn',
   processing: 'Being prepared',
   dispatched: 'Sent out',
   completed: 'Received',
@@ -299,6 +305,10 @@ export function stageMessage(state: OrderState, method?: FulfilmentMethod | null
       return 'We are preparing your order. It will be sent out soon.';
     case 'dispatched':
       return delivery ? 'Your order is on its way to you. Please keep your phone close.' : 'Your order is ready. Come and collect it from our store during opening hours.';
+    case 'cancellation_pending':
+      return 'We have received a request to cancel this order and we will refund the full amount you paid. The refund has not been made yet. We will email you when it has. Please do not pay again.';
+    case 'refund_processing':
+      return 'We have started your refund. It is not confirmed yet, so please do not expect it in your account yet. We will email you when it is complete. Please do not pay again.';
     case 'completed':
       return delivery ? 'Your order has been received. Enjoy, and thank you for shopping with us!' : 'Your order has been received. Enjoy, and thank you for shopping with us!';
     default:
@@ -313,6 +323,111 @@ export function timelineLabel(event: string, method?: FulfilmentMethod | null): 
 
 /** Statuses after which the payment-return page can stop asking the API. */
 export function paymentSettled(order: Pick<CustomerOrder, 'state' | 'paymentState'>): boolean {
-  if (order.paymentState === 'paid' || order.paymentState === 'under_review' || order.paymentState === 'refunded') return true;
+  if (order.paymentState === 'paid' || order.paymentState === 'under_review' || order.paymentState === 'refund_pending' || order.paymentState === 'refund_processing' || order.paymentState === 'refunded') return true;
   return order.state === 'cancelled' || order.state === 'expired';
+}
+
+export type PaymentReturnKind = 'paid' | 'under_review' | 'refund_pending' | 'refund_processing' | 'refunded' | 'closed' | 'failed' | 'timeout' | 'pending';
+export type PaymentReturnAction = 'view_order' | 'my_orders' | 'continue_shopping' | 'try_again' | 'check_again';
+export interface PaymentReturnOutcome {
+  kind: PaymentReturnKind;
+  tone: 'success' | 'info' | 'warn' | 'error';
+  headline: string;
+  body: string | null;
+  /** In display order; the first is the primary button. `try_again` appears only for an order that can still be paid. */
+  actions: PaymentReturnAction[];
+}
+
+/**
+ * What the payment-return page tells the customer. It is decided ONLY from the order our API returned (which the API
+ * verified with the provider by our own reference); the redirect's query string is never an input. The payment status
+ * and the order status are read independently: a refunded payment is described as refunded whatever stage the order is
+ * in, and nothing here can offer to pay again for a payment that was refunded, is under review or was captured.
+ *
+ * `polling` is the page's own progress: still asking, gave up after about a minute, or finished (settled).
+ */
+export function paymentReturnOutcome(order: CustomerOrder, polling: 'checking' | 'timeout' | 'done'): PaymentReturnOutcome {
+  if (order.paymentState === 'paid') {
+    return {
+      kind: 'paid',
+      tone: 'success',
+      headline: 'Payment confirmed',
+      // The next step follows the order's actual stage: "we will prepare it" only while it is still just paid.
+      body:
+        order.state === 'paid'
+          ? 'Thank you! Your order is confirmed and we will prepare it.'
+          : (stageMessage(order.state, order.fulfilmentMethod) ?? 'You can view your order for the latest updates.'),
+      actions: ['view_order', 'continue_shopping'],
+    };
+  }
+  if (order.paymentState === 'under_review') {
+    return {
+      kind: 'under_review',
+      tone: 'warn',
+      headline: 'We received your payment',
+      body: 'Something about it needs a quick check by our team. You do not need to pay again; we will update this order.',
+      actions: ['view_order', 'my_orders'],
+    };
+  }
+  if (order.paymentState === 'refund_pending') {
+    return {
+      kind: 'refund_pending',
+      tone: 'info',
+      headline: 'Your cancellation was requested',
+      body: 'We will refund the full amount you paid. The refund has not been made yet; we will email you when it has. You do not need to pay again.',
+      actions: ['view_order', 'my_orders'],
+    };
+  }
+  if (order.paymentState === 'refund_processing') {
+    return {
+      kind: 'refund_processing',
+      tone: 'info',
+      headline: 'Your refund is in progress',
+      body: 'We have started your refund. It is not confirmed yet; we will email you when it is complete. You do not need to pay again.',
+      actions: ['view_order', 'my_orders'],
+    };
+  }
+  if (order.paymentState === 'refunded') {
+    return {
+      kind: 'refunded',
+      tone: 'info',
+      headline: 'Your payment was refunded',
+      body: 'The payment for this order has been refunded. If you have any questions, please contact us with your order number.',
+      actions: ['view_order', 'continue_shopping'],
+    };
+  }
+  if (order.state === 'cancelled' || order.state === 'expired') {
+    return {
+      kind: 'closed',
+      tone: 'warn',
+      headline: order.state === 'expired' ? 'This order expired' : 'This order was cancelled',
+      body: 'If you were charged, please contact us with your order number and we will sort it out.',
+      actions: ['my_orders', 'continue_shopping'],
+    };
+  }
+  if (order.paymentState === 'failed') {
+    return {
+      kind: 'failed',
+      tone: 'error',
+      headline: 'Your payment did not go through',
+      body: 'You have not been charged for this order. You can try again.',
+      actions: order.canPay ? ['try_again', 'view_order'] : ['view_order', 'my_orders'],
+    };
+  }
+  if (polling === 'timeout') {
+    return {
+      kind: 'timeout',
+      tone: 'warn',
+      headline: 'Still waiting for confirmation',
+      body: 'We have not received confirmation yet. If you already paid, please do not pay again: check My orders in a few minutes.',
+      actions: order.canPay ? ['check_again', 'view_order', 'try_again'] : ['check_again', 'view_order'],
+    };
+  }
+  return {
+    kind: 'pending',
+    tone: 'info',
+    headline: 'Confirming your payment…',
+    body: 'This usually takes a few seconds. Please keep this page open.',
+    actions: [],
+  };
 }

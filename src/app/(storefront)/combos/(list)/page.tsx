@@ -30,19 +30,19 @@ export default async function CombosPage({ searchParams }: { searchParams: Searc
   const result = await getComboList({ page, limit: CATALOGUE_PAGE_SIZE, q });
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto max-w-[80rem] px-4 py-10 sm:px-6 md:py-12 lg:px-8">
+      <div className="mb-10 flex flex-col gap-5 lg:mb-12 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0f4f2d] sm:text-4xl">Year-End Combos</h1>
-          <p className="mt-2 max-w-lg text-[#5d5645]">Prices are in Nigerian Naira. Availability is shown as it is right now.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0f4f2d] sm:text-4xl">Year-End Combos</h1>
+          <p className="mt-2 text-base text-[#5d5645]">Pick your combos and add them to your cart.</p>
         </div>
         {/* A plain GET form: works without JavaScript and keeps the URL shareable. */}
-        <form action="/combos" method="get" role="search" className="flex w-full max-w-sm items-center gap-2">
+        <form action="/combos" method="get" role="search" className="flex w-full items-center gap-2 lg:max-w-sm">
           <label htmlFor="combo-search" className="sr-only">
             Search combos
           </label>
           <div className="relative flex-1">
-            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8b7f6b]" aria-hidden="true" />
+            <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 hidden -translate-y-1/2 text-[#8b7f6b] sm:block" aria-hidden="true" />
             <input
               id="combo-search"
               name="q"
@@ -50,12 +50,20 @@ export default async function CombosPage({ searchParams }: { searchParams: Searc
               defaultValue={q}
               maxLength={MAX_SEARCH_LENGTH}
               placeholder="Search combos"
-              className="w-full rounded-full border border-[#eadfc8] bg-white py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-[#1a7a4a] focus:ring-2 focus:ring-[#1a7a4a]/20"
+              className="w-full rounded-full border border-[#eadfc8] bg-white py-2.5 pl-4 pr-12 text-base outline-none transition focus:border-[#1a7a4a] focus:ring-2 focus:ring-[#1a7a4a]/20 sm:pl-10 sm:pr-4 sm:text-sm"
             />
+            {/* Phones: the magnifier is the submit control, inside the field. */}
+            <button
+              type="submit"
+              aria-label="Search combos"
+              className="absolute right-1 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-[#0f4f2d] transition hover:bg-[#e8f5ee] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a] sm:hidden"
+            >
+              <Search size={20} aria-hidden="true" />
+            </button>
           </div>
           <button
             type="submit"
-            className="rounded-full bg-[#1a7a4a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#145c37] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a]"
+            className="hidden rounded-full bg-[#1a7a4a] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#145c37] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a] sm:inline-flex"
           >
             Search
           </button>
@@ -63,7 +71,7 @@ export default async function CombosPage({ searchParams }: { searchParams: Searc
       </div>
 
       {!result.ok ? (
-        <LoadError kind={result.kind} retryHref={here} />
+        <LoadError kind={result.kind} status={result.status} retryHref={here} />
       ) : result.data.data.length === 0 ? (
         result.data.meta.total > 0 ? (
           <PageOutOfRange href={catalogueHref({ q })} />
@@ -79,7 +87,7 @@ export default async function CombosPage({ searchParams }: { searchParams: Searc
               {result.data.meta.total} {result.data.meta.total === 1 ? 'combo' : 'combos'} matching &ldquo;{q}&rdquo;
             </p>
           )}
-          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-6 xl:grid-cols-4">
             {result.data.data.map((combo, i) => (
               <ComboCard key={combo.slug} combo={combo} priority={i < 4} />
             ))}

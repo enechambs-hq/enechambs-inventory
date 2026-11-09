@@ -6,7 +6,12 @@ import { useState } from 'react';
 import { Check, CreditCard, ShoppingBag } from 'lucide-react';
 import { cartActions, useCart } from '@/lib/storefront/cart-store';
 import SignInModal from './SignInModal';
-import { btnPrimary, btnSecondary, linkClass } from './ui';
+import { linkClass } from './ui';
+
+const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a]';
+const action = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-base font-bold transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${focus}`;
+const primary = `${action} bg-[#0f4f2d] text-white shadow-sm hover:bg-[#14693f]`;
+const secondary = `${action} border border-[#1a7a4a] bg-white text-[#0f4f2d] hover:bg-[#e8f5ee]`;
 import { useSession } from './use-session';
 
 export default function AddToCartButton({ slug, name, soldOut }: { slug: string; name: string; soldOut: boolean }) {
@@ -19,7 +24,7 @@ export default function AddToCartButton({ slug, name, soldOut }: { slug: string;
 
   if (soldOut) {
     return (
-      <button type="button" disabled className={`${btnPrimary} w-full sm:w-auto`}>
+      <button type="button" disabled className={primary}>
         Sold out
       </button>
     );
@@ -47,13 +52,13 @@ export default function AddToCartButton({ slug, name, soldOut }: { slug: string;
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button type="button" className={`${btnPrimary} w-full sm:w-auto`} disabled={session.status === 'loading'} onClick={buyNow}>
-          <CreditCard size={18} aria-hidden="true" />
-          Buy now
-        </button>
-        <button type="button" className={`${btnSecondary} w-full sm:w-auto`} onClick={add}>
+        <button type="button" className={primary} onClick={add}>
           {inCart > 0 ? <Check size={18} aria-hidden="true" /> : <ShoppingBag size={18} aria-hidden="true" />}
           {inCart > 0 ? 'Add another' : 'Add to cart'}
+        </button>
+        <button type="button" className={secondary} disabled={session.status === 'loading'} onClick={buyNow}>
+          <CreditCard size={18} aria-hidden="true" />
+          Buy now
         </button>
       </div>
       {inCart > 0 && (

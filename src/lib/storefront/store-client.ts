@@ -7,6 +7,8 @@
  * Imports no staff code (axios client, stores, services): the separation test
  * enforces it. The transport is injected so tests run it without a browser.
  */
+import { reportApiFailure } from '../monitoring/report.ts';
+
 export type StoreFailureKind = 'unauthenticated' | 'validation' | 'conflict' | 'not_found' | 'rate_limited' | 'unavailable' | 'error';
 
 export interface StoreFailure {
@@ -16,6 +18,8 @@ export interface StoreFailure {
   /** Machine-readable code from the API when it sent one (e.g. INSUFFICIENT_STOCK). */
   code?: string;
   message: string;
+  /** The correlation id (X-Request-ID) of the failed exchange, when the response carried one. */
+  requestId?: string;
 }
 export type StoreResult<T> = { ok: true; status: number; data: T } | StoreFailure;
 
@@ -78,17 +82,35 @@ export async function storeRequest<T>(req: StoreRequest<T>): Promise<StoreResult
   }
   if (!response.ok) {
     const code = (json as { code?: unknown } | null)?.code;
+    // Monitoring: server faults only (status >= 500); never the body, cookies or query string.
+    reportApiFailure({
+      status: response.status,
+      method,
+      url: `/api/store/${req.path}`,
+      code: typeof code === 'string' ? code : undefined,
+      requestId: response.headers?.get?.('x-request-id') ?? (json as { requestId?: string } | null)?.requestId,
+      source: 'storefront',
+    });
     return {
       ok: false,
       kind: kindOf(response.status),
       status: response.status,
       code: typeof code === 'string' ? code : undefined,
       message: messageOf(json, response.status),
+      ...requestIdOf(response, json),
     };
   }
   const data = req.parse(json);
   if (data === null) return { ok: false, kind: 'error', status: response.status, message: 'Unexpected response from the server.' };
   return { ok: true, status: response.status, data };
+}
+
+/** The correlation id from the header or the body; only a well-formed one is kept. */
+function requestIdOf(response: Response, json: unknown): { requestId?: string } {
+  const header = response.headers?.get?.('x-request-id');
+  const body = (json as { requestId?: unknown } | null)?.requestId;
+  const id = [header, body].find((v) => typeof v === 'string' && /^[A-Za-z0-9._:-]{6,80}$/.test(v));
+  return id ? { requestId: id as string } : {};
 }
 
 /** Friendly wording for the API's refusal codes; unknown codes fall back to the API's own message. */
