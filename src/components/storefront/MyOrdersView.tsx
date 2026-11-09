@@ -6,10 +6,14 @@ import type { ReactNode } from 'react';
 import { ChevronRight, CircleCheck, CircleX, Clock, Package, PackageCheck, ShieldAlert, ShoppingBag, Store, TimerOff, Truck } from 'lucide-react';
 import { formatNaira } from '@/lib/storefront/catalogue';
 import { orderStateLabel, parseOrderList, type OrderList, type OrderState, type OrderSummary } from '@/lib/storefront/orders';
-import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
+import { storeRequest } from '@/lib/storefront/store-client';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
+import type { AppError } from '@/lib/errors/app-error';
+import { normalizeError } from '@/lib/errors/normalize';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import { formatWhen } from './OrderParts';
 import SignInPrompt from './SignInPrompt';
-import { Notice, Spinner } from './ui';
+import { Spinner } from './ui';
 
 const PAGE_SIZE = 10;
 
@@ -69,7 +73,7 @@ export default function MyOrdersView() {
   const [attempt, setAttempt] = useState(0);
   // The result remembers which request produced it; "loading" is derived, never set in the effect.
   const requestKey = `${page}:${attempt}`;
-  const [result, setResult] = useState<{ key: string; list: OrderList | null; kind: 'ok' | 'signed_out' | 'error'; message: string } | null>(null);
+  const [result, setResult] = useState<{ key: string; list: OrderList | null; kind: 'ok' | 'signed_out' | 'error'; error: AppError | null } | null>(null);
   const [list, setList] = useState<OrderList | null>(null);
 
   useEffect(() => {
@@ -78,15 +82,15 @@ export default function MyOrdersView() {
       if (controller.signal.aborted) return;
       if (r.ok) {
         setList(r.data);
-        setResult({ key: requestKey, list: r.data, kind: 'ok', message: '' });
-      } else if (r.kind === 'unauthenticated') setResult({ key: requestKey, list: null, kind: 'signed_out', message: '' });
-      else setResult({ key: requestKey, list: null, kind: 'error', message: friendlyMessage(r) });
+        setResult({ key: requestKey, list: r.data, kind: 'ok', error: null });
+      } else if (r.kind === 'unauthenticated') setResult({ key: requestKey, list: null, kind: 'signed_out', error: null });
+      else setResult({ key: requestKey, list: null, kind: 'error', error: appErrorFromStore(r, { method: 'GET', what: 'your orders' }) });
     });
     return () => controller.abort();
   }, [page, requestKey]);
 
   const status: 'loading' | 'ready' | 'signed_out' | 'error' = result === null || (result.key !== requestKey && result.kind !== 'ok' && !list) ? 'loading' : result.kind === 'ok' ? 'ready' : result.kind;
-  const message = result?.message ?? '';
+  const loadError = result?.error ?? null;
 
   if (status === 'loading' && !list) {
     return (
@@ -103,14 +107,10 @@ export default function MyOrdersView() {
     );
   }
   if (status === 'error') {
+    // A failed request is never shown as "no orders": if the details were somehow missing, the generic safe error is used.
     return (
       <Frame>
-        <div className="space-y-4">
-          <Notice tone="error">{message}</Notice>
-          <button type="button" className={primaryClass} onClick={() => setAttempt((n) => n + 1)}>
-            Try again
-          </button>
-        </div>
+        <LoadErrorPanel error={loadError ?? normalizeError(null, { method: 'GET' })} onRetry={() => setAttempt((n) => n + 1)} title="We could not load your orders" />
       </Frame>
     );
   }

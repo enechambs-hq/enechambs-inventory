@@ -2,10 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { CheckCircle2, RefreshCw } from 'lucide-react';
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
-import { describeApiError, explainProblem } from '@/lib/combos/errors';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 import { storefrontOrdersService } from '@/lib/services/storefront-orders.service';
 import {
   customRangeError,
@@ -66,7 +68,7 @@ export default function StorefrontReport() {
 
   const [report, setReport] = useState<Report | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const requestId = useRef(0);
   const load = useCallback(async () => {
@@ -79,7 +81,7 @@ export default function StorefrontReport() {
       setReport(result);
     } catch (err) {
       if (id !== requestId.current) return;
-      setError(explainProblem(describeApiError(err), 'load'));
+      setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'the online report' }));
     } finally {
       if (id === requestId.current) setIsLoading(false);
     }
@@ -145,11 +147,8 @@ export default function StorefrontReport() {
       {rangeError && <p role="alert" className="mb-4 text-sm text-red-600">{rangeError}</p>}
 
       {error ? (
-        <div role="alert" className="mx-auto max-w-lg rounded-2xl border border-gray-200 bg-white p-6 text-center sm:p-8">
-          <AlertCircle size={28} className="mx-auto mb-3 text-red-400" />
-          <p className="text-base font-medium text-gray-800">Could not load the report</p>
-          <p className="mt-1 text-sm text-gray-600">{error}</p>
-          <button type="button" onClick={() => void load()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#b9e0c9] px-4 text-sm font-medium text-[#1a7a4a] hover:bg-[#e8f5ee]"><RefreshCw size={14} /> Try again</button>
+        <div className="mx-auto max-w-lg">
+          <LoadErrorPanel error={error} onRetry={() => void load()} title="Could not load the report" />
         </div>
       ) : !report || !s ? (
         <div role="status" aria-busy="true">

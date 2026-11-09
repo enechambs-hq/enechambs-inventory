@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ChevronLeft, ChevronRight, RefreshCw, Search, ShoppingBag } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, ShoppingBag } from 'lucide-react';
 import ActionDialog from '@/components/promotions/ActionDialog';
 import SkeletonRow from '@/components/shared/SkeletonRow';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
 import { canManageOnlineOrders } from '@/lib/nav-config';
 import { useAuthStore } from '@/store/auth.store';
 import { LabelledBadge, ORDER_STYLES, OrderStatusBadge, PaymentStatusBadge, WarningChip } from './badges';
-import { describeApiError, explainProblem } from '@/lib/combos/errors';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 import { storefrontOrdersService } from '@/lib/services/storefront-orders.service';
 import {
   formatLagosDateTime,
@@ -33,7 +35,7 @@ export default function OrdersList() {
   const [orders, setOrders] = useState<AdminOrderRow[]>([]);
   const [meta, setMeta] = useState<ListMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
@@ -59,7 +61,8 @@ export default function OrdersList() {
       setOrders((rows) => rows.map((r) => (r.orderNumber === updated.orderNumber ? { ...r, status: updated.status } : r)));
       setPending(null);
     } catch (err) {
-      setSaveError(explainProblem(describeApiError(err), 'save'));
+      // The dialog stays open with this message; nothing the person chose is discarded.
+      setSaveError(appErrorFromStaff(err, { action: 'change', one: 'order' }).message);
     } finally {
       setSaving(false);
     }
@@ -90,7 +93,7 @@ export default function OrdersList() {
       setMeta(result.meta);
     } catch (err) {
       if (id !== requestId.current) return;
-      setError(explainProblem(describeApiError(err), 'load'));
+      setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'online orders', one: 'order' }));
     } finally {
       if (id === requestId.current) setIsLoading(false);
     }
@@ -124,16 +127,6 @@ export default function OrdersList() {
 
   const input = 'block min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900 outline-none focus:border-[#1a7a4a] focus:ring-2 focus:ring-[#1a7a4a]/20 md:text-sm';
   const label = 'mb-1 block text-sm font-medium text-gray-700';
-  const emptyOrError = error ? (
-    <div role="alert" className="flex flex-col items-center px-6 py-14 text-center">
-      <AlertCircle size={28} className="mb-3 text-red-400" />
-      <p className="text-base font-medium text-gray-800">Could not load online orders</p>
-      <p className="mt-1 max-w-md text-sm text-gray-600">{error}</p>
-      <button type="button" onClick={() => void load()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#b9e0c9] px-4 text-sm font-medium text-[#1a7a4a] hover:bg-[#e8f5ee]">
-        <RefreshCw size={14} /> Try again
-      </button>
-    </div>
-  ) : null;
   const emptyState = (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#e8f5ee]">
@@ -234,7 +227,7 @@ export default function OrdersList() {
 
       <div className="mt-4" aria-busy={isLoading}>
         {error ? (
-          <div className="rounded-2xl border border-gray-200 bg-white">{emptyOrError}</div>
+          <LoadErrorPanel error={error} onRetry={() => void load()} title="Could not load online orders" />
         ) : phone ? (
           isLoading ? (
             <ul className="space-y-3" aria-label="Loading orders">

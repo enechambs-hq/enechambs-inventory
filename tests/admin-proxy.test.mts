@@ -181,20 +181,20 @@ function failingBackend(error: unknown) {
   return calls;
 }
 
-test('the upstream request is given a bounded timeout signal', async () => {
-  const seen: number[] = [];
-  const realTimeout = AbortSignal.timeout.bind(AbortSignal);
-  AbortSignal.timeout = ((ms: number) => {
-    seen.push(ms);
-    return realTimeout(ms);
-  }) as typeof AbortSignal.timeout;
+test('the upstream request is given a signal and a 25s deadline timer (no AbortSignal.any, which can lose its timeout)', async () => {
+  const delays: number[] = [];
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((fn: () => void, ms?: number, ...rest: unknown[]) => {
+    if (typeof ms === 'number') delays.push(ms);
+    return realSetTimeout(fn, ms, ...rest);
+  }) as typeof setTimeout;
   try {
     const calls = stubBackend({ status: 200, body: '{}', headers: { 'content-type': 'application/json' } });
     await GET(req('GET', '/api/v1/users'), ctx('users'));
-    assert.deepEqual(seen, [STAFF_PROXY_UPSTREAM_TIMEOUT_MS]);
+    assert.ok(delays.includes(STAFF_PROXY_UPSTREAM_TIMEOUT_MS), `deadline timer of ${STAFF_PROXY_UPSTREAM_TIMEOUT_MS}ms was set`);
     assert.ok((calls[0].init.signal as AbortSignal) instanceof AbortSignal);
   } finally {
-    AbortSignal.timeout = realTimeout;
+    globalThis.setTimeout = realSetTimeout;
   }
 });
 

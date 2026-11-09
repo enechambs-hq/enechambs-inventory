@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader2, MapPin, ShoppingBag } from 'lucide-react';
@@ -11,7 +12,8 @@ import { forgetAttempt, rememberHandoff, requestIdFor, takeHandoff } from '@/lib
 import { formatNaira } from '@/lib/storefront/catalogue';
 import { issueMessage, parseCustomerOrder, quoteIsPurchasable, type FulfilmentMethod } from '@/lib/storefront/orders';
 import { loginHref } from '@/lib/storefront/redirects';
-import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
+import { storeRequest } from '@/lib/storefront/store-client';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
 import { ADDRESS_FIELD_ORDER } from './AddressForm';
 import AddressModal from './AddressModal';
 import AddressPicker, { NEW_ADDRESS, type NewAddress } from './AddressPicker';
@@ -125,12 +127,7 @@ export default function CheckoutView() {
     return (
       <>
         {heading}
-        <div className="space-y-4">
-          <Notice tone="error">{quote.message}</Notice>
-          <button type="button" className={btnSecondary} onClick={quote.retry}>
-            Try again
-          </button>
-        </div>
+        <LoadErrorPanel error={quote.error} onRetry={quote.retry} title="We could not check your cart" actions={<Link href="/cart" className={btnSecondary}>Back to cart</Link>} />
       </>
     );
   }
@@ -219,7 +216,8 @@ export default function CheckoutView() {
     if (!created.ok) {
       setBusy(false);
       if (created.kind === 'unauthenticated') return router.push(loginHref('/checkout'));
-      return setFailure({ message: friendlyMessage(created), code: created.code });
+      // Creating an order is a write: it is never retried for the customer. Same wording as before for the API's own codes.
+      return setFailure({ message: appErrorFromStore(created, { method: 'POST', action: 'change', what: 'orders' }).message, code: created.code });
     }
     // The order now holds the stock: the cart is spent and the next purchase needs a new key.
     const orderNumber = created.data.orderNumber;

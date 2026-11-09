@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowLeft, RefreshCw, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, RefreshCw, ShieldAlert } from 'lucide-react';
 import ActionDialog from '@/components/promotions/ActionDialog';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
 import { LabelledBadge, OrderStatusBadge, PaymentRecordBadge, PaymentStatusBadge } from './badges';
 import ReasonDialog from './ReasonDialog';
-import { describeApiError, explainProblem } from '@/lib/combos/errors';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 import { canDecideStorefrontPayments, canManageOnlineOrders } from '@/lib/nav-config';
 import { storefrontOrdersService } from '@/lib/services/storefront-orders.service';
 import {
@@ -55,7 +57,7 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
 
   const [order, setOrder] = useState<AdminOrderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
 
   const [pendingTarget, setPendingTarget] = useState<FulfilmentTarget | null>(null);
   const [decision, setDecision] = useState<Decision>(null);
@@ -74,8 +76,7 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
       setOrder(result);
     } catch (err) {
       if (id !== requestId.current) return;
-      const problem = describeApiError(err);
-      setError(problem.status === 404 ? 'This order does not exist.' : explainProblem(problem, 'load'));
+      setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'this order', one: 'order' }));
     } finally {
       if (id === requestId.current) setIsLoading(false);
     }
@@ -95,7 +96,8 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
       setNotice(success);
       close();
     } catch (err) {
-      setActionError(explainProblem(describeApiError(err), 'save'));
+      // The dialog stays open with this message and keeps whatever the person typed (e.g. the reason).
+      setActionError(appErrorFromStaff(err, { action: 'change', one: 'order' }).message);
     } finally {
       setBusy(false);
     }
@@ -109,14 +111,13 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
   if (error || !order) {
     return (
       <div className="mx-auto w-full max-w-[80rem]">
-        <div role="alert" className="mx-auto max-w-lg rounded-2xl border border-gray-200 bg-white p-6 text-center sm:p-8">
-          <AlertCircle size={28} className="mx-auto mb-3 text-red-400" />
-          <p className="text-base font-medium text-gray-800">Could not load this order</p>
-          <p className="mt-1 text-sm text-gray-600">{error}</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#b9e0c9] px-4 text-sm font-medium text-[#1a7a4a] hover:bg-[#e8f5ee]"><RefreshCw size={14} /> Try again</button>
-            <Link href="/storefront-orders" className="inline-flex min-h-11 items-center px-4 text-sm text-[#1a7a4a] hover:underline">Back to online orders</Link>
-          </div>
+        <div className="mx-auto max-w-lg">
+          <LoadErrorPanel
+            error={error ?? appErrorFromStaff(null, { method: 'GET', one: 'order' })}
+            onRetry={() => void load()}
+            title="Could not load this order"
+            actions={<Link href="/storefront-orders" className="inline-flex min-h-11 items-center px-4 text-base font-medium text-[#1a7a4a] hover:underline">Back to online orders</Link>}
+          />
         </div>
       </div>
     );

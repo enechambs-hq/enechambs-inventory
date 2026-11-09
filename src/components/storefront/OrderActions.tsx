@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { isTrustedCheckoutUrl } from '@/lib/storefront/redirects';
 import { parseCheckoutUrl, parseCustomerOrder, type CustomerOrder } from '@/lib/storefront/orders';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
+import { makeAppError, type AppError } from '@/lib/errors/app-error';
 import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
 import { Notice } from './ui';
 
@@ -11,10 +13,14 @@ const primaryClass = `inline-flex min-h-12 w-full items-center justify-center ga
 const secondaryClass = `inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-[#d9ccaf] bg-white px-6 text-base font-semibold text-[#0f4f2d] transition hover:bg-[#f6efe0] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${focus}`;
 
 /** Starts (or resumes) the hosted checkout for an order and navigates to it. */
-export async function startPayment(orderNumber: string): Promise<{ ok: true } | { ok: false; message: string; code?: string }> {
+export async function startPayment(orderNumber: string): Promise<{ ok: true } | { ok: false; message: string; code?: string; error: AppError }> {
   const r = await storeRequest({ path: `storefront/orders/${orderNumber}/pay`, method: 'POST', body: {}, parse: parseCheckoutUrl });
-  if (!r.ok) return { ok: false, message: friendlyMessage(r), code: r.code };
-  if (!isTrustedCheckoutUrl(r.data)) return { ok: false, message: 'We received an unexpected payment address, so we did not open it. Please try again.' };
+  // Starting a payment is a write: the shared model never marks it retryable. The person chooses to press "Try payment again".
+  if (!r.ok) return { ok: false, message: friendlyMessage(r), code: r.code, error: appErrorFromStore(r, { method: 'POST', action: 'change', one: 'order' }) };
+  if (!isTrustedCheckoutUrl(r.data)) {
+    const message = 'We received an unexpected payment address, so we did not open it. Please try again.';
+    return { ok: false, message, error: makeAppError({ kind: 'unexpected', message, retryable: false }) };
+  }
   window.location.assign(r.data);
   return { ok: true };
 }

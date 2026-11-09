@@ -51,10 +51,12 @@ export default function AddressPicker({
   if (addresses.status === 'error') {
     return (
       <div>
-        <Notice tone="error">{addresses.message}</Notice>
-        <button type="button" className={`${secondary} mt-3`} onClick={onRetry}>
-          Try again
-        </button>
+        <Notice tone="error">{addresses.error.message}</Notice>
+        {addresses.error.retryable && (
+          <button type="button" className={`${secondary} mt-3`} onClick={onRetry}>
+            Try again
+          </button>
+        )}
       </div>
     );
   }

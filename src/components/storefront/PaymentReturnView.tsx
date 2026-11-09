@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react';
 import { CircleAlert, CircleCheck, Clock, Loader2, SearchX, Undo2 } from 'lucide-react';
 import { formatNaira } from '@/lib/storefront/catalogue';
 import { isOrderNumber, paymentReturnOutcome, paymentSettled, parseCustomerOrder, type CustomerOrder, type PaymentReturnAction, type PaymentReturnKind } from '@/lib/storefront/orders';
-import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
+import { storeRequest } from '@/lib/storefront/store-client';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
+import type { AppError } from '@/lib/errors/app-error';
+import { normalizeError } from '@/lib/errors/normalize';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import { StateBadge } from './OrderParts';
 import { startPayment } from './OrderActions';
 import SignInPrompt from './SignInPrompt';
@@ -120,7 +124,7 @@ const MAX_POLLS = 20; // about a minute
 export default function PaymentReturnView({ orderNumber }: { orderNumber: string | null }) {
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [state, setState] = useState<'checking' | 'signed_out' | 'not_found' | 'error' | 'timeout' | 'done'>('checking');
-  const [message, setMessage] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<AppError | null>(null);
   const [retrying, setRetrying] = useState(false);
   const [round, setRound] = useState(0);
   const valid = !!orderNumber && isOrderNumber(orderNumber);
@@ -139,7 +143,8 @@ export default function PaymentReturnView({ orderNumber }: { orderNumber: string
         if (!r.ok) {
           if (r.kind === 'unauthenticated') return setState('signed_out');
           if (r.kind === 'not_found') return setState('not_found');
-          setMessage(friendlyMessage(r));
+          // Re-checking a payment asks the API to look it up again and decides nothing by itself, so a retry is safe.
+          setLoadError(appErrorFromStore(r, { method: 'POST', idempotent: true, what: 'this payment' }));
           return setState('error');
         }
         setOrder(r.data);
@@ -187,14 +192,19 @@ export default function PaymentReturnView({ orderNumber }: { orderNumber: string
     return column(
       <div>
         <h1 className="mb-5 text-3xl font-bold tracking-tight text-[#0f4f2d] sm:text-4xl">Your payment</h1>
-        <div role="alert" className="rounded-xl border border-[#e4b4ae] bg-[#fdf1ef] px-4 py-3 text-base text-[#8a2a1d]">
-          {message}
-        </div>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <button type="button" className={primaryClass} onClick={check}>
-            Check again
-          </button>
-        </div>
+        <LoadErrorPanel
+          error={loadError ?? normalizeError(null, { method: 'POST', idempotent: true })}
+          onRetry={check}
+          retryLabel="Check again"
+          title="We could not check your payment"
+          actions={
+            loadError?.retryable ? undefined : (
+              <button type="button" className={primaryClass} onClick={check}>
+                Check again
+              </button>
+            )
+          }
+        />
       </div>,
     );
   }
@@ -251,7 +261,7 @@ export default function PaymentReturnView({ orderNumber }: { orderNumber: string
               const r = await startPayment(order.orderNumber);
               if (!r.ok) {
                 setRetrying(false);
-                setMessage(r.message);
+                setLoadError(r.error);
                 setState('error');
               }
             }}

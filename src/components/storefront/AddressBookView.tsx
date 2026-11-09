@@ -13,7 +13,9 @@ import {
   type AddressErrors,
   type AddressInput,
 } from '@/lib/storefront/addresses';
-import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
+import { storeRequest } from '@/lib/storefront/store-client';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import AddressForm, { ADDRESS_FIELD_ORDER } from './AddressForm';
 import SignInPrompt from './SignInPrompt';
 import { Notice, Spinner } from './ui';
@@ -69,10 +71,7 @@ export default function AddressBookView() {
   if (book.status === 'error') {
     return (
       <Frame>
-        <div className="space-y-4">
-          <Notice tone="error">{book.message}</Notice>
-          <button type="button" className={primary} onClick={book.reload}>Try again</button>
-        </div>
+        <LoadErrorPanel error={book.error} onRetry={book.reload} title="We could not load your addresses" />
       </Frame>
     );
   }
@@ -124,7 +123,7 @@ export default function AddressBookView() {
       parse: ok,
     });
     setBusy(false);
-    if (!r.ok) return setFailure(friendlyMessage(r));
+    if (!r.ok) return setFailure(appErrorFromStore(r, { method: isNew ? 'POST' : 'PATCH', action: 'change' }).message);
     setEditing(null);
     book.reload();
   }
@@ -134,7 +133,7 @@ export default function AddressBookView() {
     setFailure(null);
     const r = await storeRequest({ path: `storefront/addresses/${a.id}`, method: 'PATCH', body: { isDefault: true }, parse: ok });
     setBusy(false);
-    if (!r.ok) return setFailure(friendlyMessage(r));
+    if (!r.ok) return setFailure(appErrorFromStore(r, { method: 'PATCH', action: 'change' }).message);
     book.reload();
   }
 
@@ -144,7 +143,7 @@ export default function AddressBookView() {
     const r = await storeRequest({ path: `storefront/addresses/${a.id}`, method: 'DELETE', body: {}, parse: ok });
     setBusy(false);
     setConfirmingDelete(null);
-    if (!r.ok) return setFailure(friendlyMessage(r));
+    if (!r.ok) return setFailure(appErrorFromStore(r, { method: 'DELETE', action: 'change' }).message);
     book.reload();
   }
 

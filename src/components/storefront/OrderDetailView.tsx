@@ -15,7 +15,10 @@ import {
   type CustomerOrder,
   type OrderState,
 } from '@/lib/storefront/orders';
-import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
+import { storeRequest } from '@/lib/storefront/store-client';
+import { appErrorFromStore } from '@/lib/errors/store-adapter';
+import type { AppError } from '@/lib/errors/app-error';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import OrderActions from './OrderActions';
 import { formatWhen } from './OrderParts';
 import SignInPrompt from './SignInPrompt';
@@ -189,7 +192,7 @@ export default function OrderDetailView({ orderNumber, notice }: { orderNumber: 
   const valid = isOrderNumber(orderNumber);
   const [order, setOrder] = useState<CustomerOrder | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'signed_out' | 'not_found' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [loadError, setLoadError] = useState<AppError | null>(null);
   const [checking, setChecking] = useState(false);
   const [checkNote, setCheckNote] = useState<string | null>(null);
 
@@ -206,7 +209,7 @@ export default function OrderDetailView({ orderNumber, notice }: { orderNumber: 
       }
       if (r.kind === 'unauthenticated') return setStatus('signed_out');
       if (r.kind === 'not_found') return setStatus('not_found');
-      setMessage(friendlyMessage(r));
+      setLoadError(appErrorFromStore(r, { method: 'GET', one: 'order', what: 'this order' }));
       setStatus('error');
     });
     return () => controller.abort();
@@ -225,7 +228,7 @@ export default function OrderDetailView({ orderNumber, notice }: { orderNumber: 
     if (r.ok) {
       setOrder(r.data);
       setCheckNote(r.data.paymentState === 'paid' ? 'Your payment is confirmed.' : 'No payment confirmation yet. If you just paid, wait a minute and check again.');
-    } else setCheckNote(friendlyMessage(r));
+    } else setCheckNote(appErrorFromStore(r, { method: 'POST', idempotent: true }).message);
   }
 
   if (!valid)
@@ -251,12 +254,12 @@ export default function OrderDetailView({ orderNumber, notice }: { orderNumber: 
   }
   if (status === 'error' || !order) {
     return titleOnly(
-      <div className="space-y-4">
-        <Notice tone="error">{message}</Notice>
-        <button type="button" className={secondaryClass} onClick={retry}>
-          Try again
-        </button>
-      </div>,
+      <LoadErrorPanel
+        error={loadError ?? appErrorFromStore({ ok: false, kind: 'error', status: 500, message: '' }, { method: 'GET' })}
+        onRetry={retry}
+        title="We could not load this order"
+        actions={<Link href="/my-orders" className={secondaryClass}>My orders</Link>}
+      />,
     );
   }
 

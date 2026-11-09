@@ -71,7 +71,7 @@ export default async function CombosPage({ searchParams }: { searchParams: Searc
       </div>
 
       {!result.ok ? (
-        <LoadError kind={result.kind} retryHref={here} />
+        <LoadError kind={result.kind} status={result.status} retryHref={here} />
       ) : result.data.data.length === 0 ? (
         result.data.meta.total > 0 ? (
           <PageOutOfRange href={catalogueHref({ q })} />

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
 import { cartActions, useCart } from '@/lib/storefront/cart-store';
 import { cartUnits } from '@/lib/storefront/cart';
@@ -67,12 +68,7 @@ export default function CartView() {
     return (
       <>
         {heading}
-        <div className="space-y-4">
-          <Notice tone="error">{quote.message}</Notice>
-          <button type="button" className={btnSecondary} onClick={quote.retry}>
-            Try again
-          </button>
-        </div>
+        <LoadErrorPanel error={quote.error} onRetry={quote.retry} title="We could not check your cart" actions={<Link href="/combos" className={btnSecondary}>Browse combos</Link>} />
       </>
     );
   }

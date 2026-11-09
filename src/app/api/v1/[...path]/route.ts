@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchBounded } from '../../../../lib/server/staff-upstream.ts';
 import { STAFF_PROXY_UPSTREAM_TIMEOUT_MS } from '../../../../lib/timeouts.ts';
 
 const BACKEND =
@@ -46,12 +47,13 @@ async function proxy(req: NextRequest, { params }: { params: Params }) {
   // One bounded attempt, never retried here: a write may already have been applied, so repeating it is not safe.
   // The request is also abandoned if the browser goes away.
   let upstream: Response;
-  let data: ArrayBuffer | null = null;
-  const signal = AbortSignal.any([req.signal, AbortSignal.timeout(STAFF_PROXY_UPSTREAM_TIMEOUT_MS)]);
+  let data: ArrayBuffer | null;
   try {
-    upstream = await fetch(url.toString(), { method: req.method, headers, body, signal });
-    // The timeout also covers reading the body, so a stalled response cannot hang the proxy after the headers arrive.
-    if (!NO_BODY_STATUSES.has(upstream.status)) data = await upstream.arrayBuffer();
+    ({ response: upstream, data } = await fetchBounded(url.toString(), { method: req.method, headers, body }, {
+      timeoutMs: STAFF_PROXY_UPSTREAM_TIMEOUT_MS,
+      signal: req.signal,
+      noBodyStatuses: NO_BODY_STATUSES,
+    }));
   } catch (error) {
     const timedOut = error instanceof Error && error.name === 'TimeoutError';
     return timedOut

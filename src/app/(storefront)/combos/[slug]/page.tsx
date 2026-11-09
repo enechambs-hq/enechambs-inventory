@@ -37,7 +37,7 @@ export default async function ComboPage({ params }: { params: Params }) {
     if (result.kind === 'not_found') notFound();
     return (
       <div className="mx-auto max-w-[80rem] px-4 py-10 sm:px-6 lg:px-8">
-        <LoadError kind={result.kind} retryHref={`/combos/${slug}`} />
+        <LoadError kind={result.kind} status={result.status} retryHref={`/combos/${slug}`} />
       </div>
     );
   }

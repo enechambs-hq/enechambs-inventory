@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertCircle, ChevronLeft, ChevronRight, RefreshCw, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
-import { describeApiError, explainProblem } from '@/lib/combos/errors';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 import { storefrontOrdersService } from '@/lib/services/storefront-orders.service';
 import { formatLagosDateTime, formatNaira } from '@/lib/storefront-orders/format';
 import { ORDERS_PAGE_SIZE } from '@/lib/storefront-orders/orders-api';
@@ -66,7 +68,7 @@ export default function OnlineCustomers() {
   const [customers, setCustomers] = useState<AdminCustomerRow[]>([]);
   const [meta, setMeta] = useState<ListMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -96,7 +98,7 @@ export default function OnlineCustomers() {
       setMeta(result.meta);
     } catch (err) {
       if (id !== requestId.current) return;
-      setError(explainProblem(describeApiError(err), 'load'));
+      setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'online customers' }));
     } finally {
       if (id === requestId.current) setIsLoading(false);
     }
@@ -156,14 +158,7 @@ export default function OnlineCustomers() {
       </div>
 
       {error ? (
-        <div role="alert" className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white px-6 py-14 text-center">
-          <AlertCircle size={28} className="mb-3 text-red-500" />
-          <p className="text-base font-semibold text-gray-900">Could not load online customers</p>
-          <p className="mt-1 max-w-md text-base text-gray-600">{error}</p>
-          <button type="button" onClick={() => void load()} className={`${outlineBtn} mt-4`}>
-            <RefreshCw size={16} /> Try again
-          </button>
-        </div>
+        <LoadErrorPanel error={error} onRetry={() => void load()} title="Could not load online customers" />
       ) : cards ? (
         <div aria-busy={isLoading}>
           {isLoading ? (
