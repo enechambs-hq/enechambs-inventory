@@ -274,6 +274,8 @@ export default function PaymentReturnView({ orderNumber }: { orderNumber: string
   const ICON: Record<PaymentReturnKind, ReactNode> = {
     paid: <CircleCheck size={28} />,
     under_review: <Clock size={28} />,
+    refund_pending: <Undo2 size={28} />,
+    refund_processing: <Undo2 size={28} />,
     refunded: <Undo2 size={28} />,
     closed: <Clock size={28} />,
     failed: <CircleAlert size={28} />,

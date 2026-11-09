@@ -59,3 +59,8 @@ export function LabelledBadge({ label, children }: { label: string; children: Re
     </span>
   );
 }
+
+/** Shown beside the badges while a paid order is being cancelled and its refund is not recorded yet. */
+export function CancellationChip() {
+  return <span className={`${base} border-amber-300 bg-amber-50 text-amber-800`}>Cancellation pending</span>;
+}

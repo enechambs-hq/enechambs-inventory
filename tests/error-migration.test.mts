@@ -66,9 +66,13 @@ test('a failed status change or order action only shows the error: it does not c
 
   const detail = read('src/components/storefront-orders/OrderDetail.tsx');
   const run = detail.slice(detail.indexOf('async function run'), detail.indexOf('const phone'));
-  const detailCatch = run.slice(run.indexOf('} catch'), run.indexOf('} finally'));
-  assert.match(detailCatch, /setActionError/);
-  assert.doesNotMatch(detailCatch, /close\(\)|setDecision\(null\)|setPendingTarget\(null\)/);
+  // The action now runs through runDecision (tests/paid-order-cancellation.test.mts proves its behaviour): the
+  // dialog is closed only inside onApplied, and the failure handler only shows the message.
+  const applied = run.slice(run.indexOf('onApplied'), run.indexOf('onFailed'));
+  const failedHandler = run.slice(run.indexOf('onFailed'));
+  assert.match(applied, /close\(\)/);
+  assert.match(failedHandler, /setActionError/);
+  assert.doesNotMatch(failedHandler, /close\(\)|setDecision\(null\)|setPendingTarget\(null\)/);
 });
 
 // ── the storefront consumers use the shared model for their failures ─────────

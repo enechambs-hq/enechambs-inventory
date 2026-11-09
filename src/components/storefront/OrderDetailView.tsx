@@ -39,6 +39,8 @@ const STAGE_STYLE: Record<OrderState, string> = {
   completed: 'bg-[#cdeedb] text-[#0f5c30]',
   cancelled: 'bg-[#efece4] text-[#5d5645]',
   expired: 'bg-[#efece4] text-[#5d5645]',
+  cancellation_pending: 'bg-[#fdf6dc] text-[#7a5a0c]',
+  refund_processing: 'bg-[#fdf6dc] text-[#7a5a0c]',
   under_review: 'bg-[#fdf6dc] text-[#7a5a0c]',
 };
 

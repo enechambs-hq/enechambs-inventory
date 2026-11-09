@@ -68,7 +68,11 @@ export const HISTORY_EVENT_LABEL: Record<string, string> = {
   payment_under_review: 'Payment flagged for review',
   duplicate_charge_recorded: 'Duplicate charge recorded',
   order_honoured: 'Late payment honoured',
-  refund_recorded: 'Refund decision recorded',
+  refund_recorded: 'Refund recorded',
+  cancellation_requested: 'Cancellation requested (refund pending)',
+  cancellation_withdrawn: 'Cancellation withdrawn',
+  refund_started: 'Manual refund started (cannot be withdrawn)',
+  refund_attempt_failed: 'Refund attempt recorded as failed',
   processing: 'Moved to processing',
   dispatched: 'Marked as sent out',
   completed: 'Marked as delivered (customer has it)',
@@ -152,8 +156,10 @@ export function customRangeError(from: string, to: string): string | null {
 
 // ── what to show for an order ────────────────────────────────────────────────
 /** Which fulfilment steps to OFFER. Mirrors the backend's rule: only PAID orders move, and only forward. */
-export function fulfilmentTargets(order: Pick<AdminOrderRow | AdminOrderDetail, 'status' | 'paymentStatus'>): FulfilmentTarget[] {
+export function fulfilmentTargets(order: Pick<AdminOrderRow | AdminOrderDetail, 'status' | 'paymentStatus'> & { cancellationPending?: boolean; cancellation?: { state: string } }): FulfilmentTarget[] {
   if (order.paymentStatus !== 'paid') return [];
+  // A pending cancellation blocks every step (the backend refuses them too).
+  if (order.cancellationPending || (order.cancellation?.state === 'requested' || order.cancellation?.state === 'refund_started')) return [];
   if (order.status === 'confirmed') return ['processing'];
   if (order.status === 'processing') return ['dispatched'];
   if (order.status === 'dispatched') return ['completed'];
@@ -246,6 +252,7 @@ export function orderWarnings(row: AdminOrderRow, now: Date = new Date()): Order
   const out: OrderWarning[] = [];
   if (row.reviewReason) out.push({ key: row.reviewReason, label: REVIEW_REASON_LABEL[row.reviewReason] });
   else if (row.paymentStatus === 'review') out.push({ key: 'review', label: 'Needs review' });
+  if (row.cancellationPending) out.push({ key: 'cancelling', label: 'Cancellation pending' });
   if (row.chargeCount > 1 && row.reviewReason !== 'duplicate_charge') out.push({ key: 'multi', label: `${row.chargeCount} charges` });
   if (paymentDeadline(row, now)?.overdue) out.push({ key: 'overdue', label: 'Payment overdue' });
   return out;
