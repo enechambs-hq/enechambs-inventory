@@ -10,6 +10,8 @@ interface ActionDialogProps {
   confirmLabel: string;
   busyLabel: string;
   tone?: 'primary' | 'warning';
+  /** Optional roomier presentation (16px text, 44px buttons). Off by default; behaviour is identical. */
+  large?: boolean;
   isLoading: boolean;
   /** A server error from the attempted action; the dialog stays open so it can be read and retried. */
   error?: string | null;
@@ -29,6 +31,7 @@ export default function ActionDialog({
   confirmLabel,
   busyLabel,
   tone = 'primary',
+  large = false,
   isLoading,
   error,
   onClose,
@@ -62,7 +65,7 @@ export default function ActionDialog({
         <h3 id="action-dialog-title" className="text-base font-semibold text-gray-900 mb-1">
           {title}
         </h3>
-        <div className="text-sm text-gray-500 mb-4">{description}</div>
+        <div className={`mb-4 text-gray-500 ${large ? 'text-base text-gray-700' : 'text-sm'}`}>{description}</div>
         {error && (
           <div
             role="alert"
@@ -78,7 +81,7 @@ export default function ActionDialog({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-60 transition-colors"
+            className={`flex-1 px-4 font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-60 transition-colors ${large ? 'min-h-11 text-base' : 'py-2.5 text-sm'}`}
           >
             Cancel
           </button>
@@ -86,7 +89,7 @@ export default function ActionDialog({
             type="button"
             onClick={onConfirm}
             disabled={isLoading}
-            className={`flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${confirmClass}`}
+            className={`flex-1 px-4 font-medium text-white rounded-lg disabled:opacity-60 disabled:cursor-not-allowed transition-colors ${large ? 'min-h-11 text-base' : 'py-2.5 text-sm'} ${confirmClass}`}
           >
             {isLoading ? busyLabel : error ? 'Try again' : confirmLabel}
           </button>

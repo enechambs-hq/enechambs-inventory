@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -72,10 +72,22 @@ const LINK_ICONS: Record<string, LucideIcon> = {
   "/users": Users,
 };
 
-export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export default function Sidebar({
+  isOpen,
+  onClose,
+  onCloseForDialog,
+  menuButton,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  /** Closes the drawer without moving focus back to the menu button (a dialog is about to take focus). */
+  onCloseForDialog: () => void;
+  menuButton: React.RefObject<HTMLButtonElement | null>;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
+  const closeButton = useRef<HTMLButtonElement>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -84,6 +96,45 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  // Drawer opened: put the keyboard focus inside it. The drawer only becomes focusable once it is
+  // visible, so wait for that (the slide-in has just started) instead of focusing in the same frame.
+  useEffect(() => {
+    if (!isOpen) return;
+    const t = window.setTimeout(() => closeButton.current?.focus(), 50);
+    return () => window.clearTimeout(t);
+  }, [isOpen]);
+
+  // Change-password dialog: focus goes to its first field, Tab stays inside it, and when it is gone
+  // focus returns to the menu button (phones, where the drawer was the opener) or the Password button.
+  const passwordButton = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogWasOpen = useRef(false);
+  useEffect(() => {
+    if (changePwOpen) {
+      dialogWasOpen.current = true;
+      const t = window.setTimeout(() => dialogRef.current?.querySelector('input')?.focus(), 0);
+      return () => window.clearTimeout(t);
+    }
+    if (dialogWasOpen.current && !confirmOpen) {
+      dialogWasOpen.current = false;
+      const menu = menuButton.current;
+      (menu && menu.offsetParent !== null ? menu : passwordButton.current)?.focus();
+    }
+  }, [changePwOpen, confirmOpen, menuButton]);
+  const trapTab = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const items = [...e.currentTarget.querySelectorAll<HTMLElement>('input, button:not([disabled])')];
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
   const links = linksForRole(user?.role).map((l) => ({ ...l, icon: LINK_ICONS[l.href] }));
 
   const {
@@ -147,11 +198,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         <div
           className="fixed inset-0 bg-black/40 lg:hidden z-40"
           onClick={onClose}
+          aria-hidden="true"
         />
       )}
     <aside
-      className={`w-52 lg:w-64 h-screen fixed left-0 top-0 flex flex-col border-r bg-card z-50 transition-transform duration-200 ease-in-out lg:translate-x-0 ${
-        isOpen ? 'translate-x-0' : '-translate-x-full'
+      id="admin-sidebar"
+      className={`w-64 max-w-[85vw] md:w-52 lg:w-64 h-dvh fixed left-0 top-0 flex flex-col border-r bg-card z-50 duration-200 ease-in-out lg:translate-x-0 lg:visible ${
+        // Opening makes it visible at once (so it can take focus); closing keeps it visible until the slide-out ends.
+        isOpen ? 'translate-x-0 transition-transform' : '-translate-x-full invisible transition-[transform,visibility]'
       }`}
     >
       {/* Logo */}
@@ -187,17 +241,26 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               Food Inventory
             </p>
           </div>
+          <button
+            ref={closeButton}
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className="lg:hidden ml-auto -mr-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav aria-label="Main" className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
         {links.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 hover:scale-[1.1] active:scale-[0.98]",
+                "flex items-center gap-3 px-3 py-2 max-lg:py-3 rounded-md text-sm font-medium transition-all duration-200 hover:scale-[1.1] active:scale-[0.98]",
                 isLinkActive(pathname, href)
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -231,9 +294,13 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         {/* Actions */}
         <div className="flex gap-1">
           <button
-            onClick={() => setChangePwOpen(true)}
+            ref={passwordButton}
+            onClick={() => {
+              onCloseForDialog();
+              setChangePwOpen(true);
+            }}
             title="Change Password"
-            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 max-lg:py-3 rounded-md text-[12px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
             <KeyRound size={13} />
             <span>Password</span>
@@ -243,7 +310,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
             onClick={handleLogout}
             disabled={isLoggingOut}
             title="Logout"
-            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-[12px] text-muted-foreground hover:bg-red-500/8 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 max-lg:py-3 rounded-md text-[12px] text-muted-foreground hover:bg-red-500/8 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoggingOut ? (
               <div className="h-3 w-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -257,8 +324,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
     </aside>
 
       {changePwOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-100">
-          <div className="bg-card rounded-2xl border border-border w-full max-w-sm mx-4 shadow-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-100" onKeyDown={trapTab}>
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-label="Change password" className="bg-card rounded-2xl border border-border w-full max-w-sm mx-4 shadow-2xl max-h-[90dvh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-border">
               <div className="flex items-center gap-3">

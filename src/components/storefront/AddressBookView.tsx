@@ -1,7 +1,7 @@
 'use client';
 
-import { Pencil, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { MapPin } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 import {
   addressErrors,
   addressToInput,
@@ -14,14 +14,37 @@ import {
   type AddressInput,
 } from '@/lib/storefront/addresses';
 import { friendlyMessage, storeRequest } from '@/lib/storefront/store-client';
-import AddressForm from './AddressForm';
+import AddressForm, { ADDRESS_FIELD_ORDER } from './AddressForm';
 import SignInPrompt from './SignInPrompt';
-import { btnPrimary, btnSecondary, Card, linkClass, Notice, Spinner } from './ui';
+import { Notice, Spinner } from './ui';
 import { useAddresses } from './useAddresses';
 import { useSession } from './use-session';
 
 const ok = () => true as const;
 type Editing = { id: string | 'new' } | null;
+
+const focus = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a] disabled:cursor-not-allowed disabled:opacity-50';
+const primary = `inline-flex min-h-12 items-center justify-center rounded-full bg-[#0f4f2d] px-6 text-base font-bold text-white transition hover:bg-[#14693f] ${focus}`;
+const secondary = `inline-flex min-h-12 items-center justify-center rounded-full border border-[#d9ccaf] bg-white px-6 text-base font-semibold text-[#0f4f2d] transition hover:bg-[#f6efe0] ${focus}`;
+const danger = `inline-flex min-h-12 items-center justify-center rounded-full border border-[#e4b4ae] bg-white px-6 text-base font-bold text-[#8a2a1d] transition hover:bg-[#fdf1ef] ${focus}`;
+const action = `inline-flex min-h-11 items-center justify-center rounded-full border border-[#d9ccaf] bg-white px-4 text-base font-semibold text-[#0f4f2d] transition hover:bg-[#f6efe0] ${focus}`;
+const actionDanger = `inline-flex min-h-11 items-center justify-center rounded-full border border-[#e4b4ae] bg-white px-4 text-base font-semibold text-[#8a2a1d] transition hover:bg-[#fdf1ef] ${focus}`;
+const panel = 'rounded-2xl border border-[#eadfc8] bg-white p-5';
+
+const FIELD_SUFFIX = { recipientName: 'name', recipientPhone: 'phone', addressLine: 'line', city: 'city', state: 'state', label: 'label' } as const;
+
+/** The 640px reading column with the page heading; every state of the page sits inside it. */
+function Frame({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto max-w-[40rem]">
+      <header className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#0f4f2d] sm:text-4xl">Address book</h1>
+        <p className="mt-1 text-base text-[#5d5645]">Save addresses for yourself, friends and family, and pick one at checkout.</p>
+      </header>
+      {children}
+    </div>
+  );
+}
 
 /**
  * The customer's saved delivery addresses. Each has its own recipient name and
@@ -39,16 +62,18 @@ export default function AddressBookView() {
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
 
-  if (session.status === 'loading') return <Spinner label="Loading your address book" />;
-  if (session.status === 'signed_out') return <SignInPrompt next="/account/addresses" reason="Sign in to see your saved addresses." />;
-  if (session.status === 'unavailable') return <Notice tone="error">We could not check your sign-in right now. Please refresh the page in a moment.</Notice>;
-  if (book.status === 'loading') return <Spinner label="Loading your addresses" />;
+  if (session.status === 'loading') return <Frame><Spinner label="Loading your address book" /></Frame>;
+  if (session.status === 'signed_out') return <Frame><SignInPrompt next="/account/addresses" reason="Sign in to see your saved addresses." /></Frame>;
+  if (session.status === 'unavailable') return <Frame><Notice tone="error">We could not check your sign-in right now. Please refresh the page in a moment.</Notice></Frame>;
+  if (book.status === 'loading') return <Frame><Spinner label="Loading your addresses" /></Frame>;
   if (book.status === 'error') {
     return (
-      <div className="space-y-4">
-        <Notice tone="error">{book.message}</Notice>
-        <button type="button" className={btnSecondary} onClick={book.reload}>Try again</button>
-      </div>
+      <Frame>
+        <div className="space-y-4">
+          <Notice tone="error">{book.message}</Notice>
+          <button type="button" className={primary} onClick={book.reload}>Try again</button>
+        </div>
+      </Frame>
     );
   }
 
@@ -73,12 +98,23 @@ export default function AddressBookView() {
     setFailure(null);
   };
 
+  /** After a failed save attempt: focus the first invalid field. */
+  function focusFirstInvalid(found: AddressErrors) {
+    const first = ADDRESS_FIELD_ORDER.find((key) => found[key]);
+    if (!first || !editing) return;
+    const prefix = editing.id === 'new' ? 'new-address' : `edit-${editing.id}`;
+    window.setTimeout(() => document.getElementById(`${prefix}-${FIELD_SUFFIX[first]}`)?.focus(), 0);
+  }
+
   async function save() {
     if (!editing || busy) return;
     const found = addressErrors(draft);
     setErrors(found);
     setFailure(null);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      focusFirstInvalid(found);
+      return;
+    }
     setBusy(true);
     const isNew = editing.id === 'new';
     const r = await storeRequest({
@@ -112,100 +148,105 @@ export default function AddressBookView() {
     book.reload();
   }
 
+  const hasErrors = Object.keys(errors).length > 0;
+  const defaultBox = (
+    <label className="flex min-h-11 cursor-pointer items-center gap-3 text-base text-[#1d2a22]">
+      <input type="checkbox" className="h-5 w-5 shrink-0 accent-[#0f4f2d]" checked={makeDefault} onChange={(e) => setMakeDefault(e.target.checked)} />
+      Make this my default address
+    </label>
+  );
+  const formButtons = (label: string) => (
+    <>
+      {hasErrors && (
+        <p role="alert" className="text-base font-medium text-[#8a2a1d]">
+          Please fix the highlighted fields.
+        </p>
+      )}
+      <div className="flex flex-wrap gap-3">
+        <button type="button" className={primary} disabled={busy} onClick={save}>{busy ? 'Saving…' : label}</button>
+        <button type="button" className={secondary} disabled={busy} onClick={cancel}>Cancel</button>
+      </div>
+    </>
+  );
+  const addButton = (
+    <button type="button" className={primary} onClick={startAdd}>
+      Add an address
+    </button>
+  );
+
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-[#5d5645]">Save addresses for yourself, friends and family, and pick one at checkout.</p>
-      {failure && editing === null && <Notice tone="error">{failure}</Notice>}
+    <Frame>
+      <div className="flex flex-col gap-3 sm:gap-4">
+        {failure && editing === null && <Notice tone="error">{failure}</Notice>}
 
-      {addresses.length === 0 && editing === null && (
-        <Card className="text-center">
-          <p className="text-[#5d5645]">You have no saved addresses yet.</p>
-        </Card>
-      )}
+        {addresses.length === 0 && editing === null && (
+          <div className="flex flex-col items-center rounded-3xl border border-[#eadfc8] bg-white/70 px-6 py-14 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f6efe0] text-[#1a7a4a]">
+              <MapPin size={26} aria-hidden="true" />
+            </div>
+            <h2 className="text-lg font-semibold text-[#1d2a22]">You have no saved addresses yet.</h2>
+            <div className="mt-5">{addButton}</div>
+          </div>
+        )}
 
-      {addresses.map((a) =>
-        editing?.id === a.id ? (
-          <Card key={a.id}>
-            <h2 className="text-lg font-bold text-[#0f4f2d]">Edit address</h2>
-            {failure && <div className="mt-3"><Notice tone="error">{failure}</Notice></div>}
-            <div className="mt-3 space-y-4">
-              <AddressForm value={draft} onChange={setDraft} errors={errors} idPrefix={`edit-${a.id}`} />
-              {!a.isDefault && (
-                <label className="flex items-start gap-2 text-sm text-[#3b3a33]">
-                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#0f4f2d]" checked={makeDefault} onChange={(e) => setMakeDefault(e.target.checked)} />
-                  Make this my default address
-                </label>
-              )}
-              <div className="flex gap-3">
-                <button type="button" className={btnPrimary} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
-                <button type="button" className={btnSecondary} disabled={busy} onClick={cancel}>Cancel</button>
+        {addresses.map((a) =>
+          editing?.id === a.id ? (
+            <div key={a.id} className={panel}>
+              <h2 className="text-lg font-semibold text-[#0f4f2d]">Edit address</h2>
+              {failure && <div className="mt-3"><Notice tone="error">{failure}</Notice></div>}
+              <div className="mt-4 space-y-5">
+                <AddressForm value={draft} onChange={setDraft} errors={errors} idPrefix={`edit-${a.id}`} large noRecipientAutofill />
+                {!a.isDefault && defaultBox}
+                {formButtons('Save changes')}
               </div>
             </div>
-          </Card>
-        ) : (
-          <Card key={a.id}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0 text-sm text-[#3b3a33]">
+          ) : (
+            <div key={a.id} className={panel}>
+              <div className="min-w-0 text-base text-[#3b3a33]">
                 <p className="flex flex-wrap items-center gap-2">
-                  <span className="text-base font-bold text-[#0f4f2d]">{a.recipientName}</span>
-                  {a.label && <span className="rounded-full bg-[#f1e9d6] px-2 py-0.5 text-[11px] font-semibold text-[#5d5645]">{a.label}</span>}
-                  {a.isDefault && <span className="rounded-full bg-[#e5f4ea] px-2 py-0.5 text-[11px] font-semibold text-[#14693f]">Default</span>}
+                  <span className="break-words text-base font-semibold text-[#0f4f2d]">{a.recipientName}</span>
+                  {a.isDefault && <span className="rounded-full bg-[#e5f4ea] px-2.5 py-0.5 text-sm font-semibold text-[#14693f]">Default</span>}
+                  {a.label && <span className="rounded-full bg-[#f1e9d6] px-2.5 py-0.5 text-sm font-semibold text-[#5d5645]">{a.label}</span>}
                 </p>
-                <p className="mt-1">{formatAddressLine(a)}</p>
-                <p className="text-xs text-[#8b7f6b]">{a.recipientPhone}</p>
+                <p className="mt-1 break-words">{formatAddressLine(a)}</p>
+                <p className="break-words">{a.recipientPhone}</p>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-sm">
+              <div className="mt-4 flex flex-wrap gap-2 border-t border-[#f1e9d6] pt-4">
                 {!a.isDefault && (
-                  <button type="button" className={linkClass} disabled={busy} onClick={() => makeDefaultAddress(a)}>Make default</button>
+                  <button type="button" className={action} disabled={busy} onClick={() => makeDefaultAddress(a)}>Make default</button>
                 )}
-                <button type="button" className={`${linkClass} inline-flex items-center gap-1`} disabled={busy} onClick={() => startEdit(a)}>
-                  <Pencil size={14} aria-hidden="true" />
-                  Edit
-                </button>
-                {confirmingDelete === a.id ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="text-[#5d5645]">Delete this address?</span>
-                    <button type="button" className="font-semibold text-[#8a2a1d] underline-offset-4 hover:underline" disabled={busy} onClick={() => remove(a)}>Yes, delete</button>
-                    <button type="button" className={linkClass} onClick={() => setConfirmingDelete(null)}>Keep it</button>
-                  </span>
-                ) : (
-                  <button type="button" className="inline-flex items-center gap-1 font-medium text-[#8a2a1d] underline-offset-4 hover:underline" disabled={busy} onClick={() => setConfirmingDelete(a.id)}>
-                    <Trash2 size={14} aria-hidden="true" />
-                    Delete
-                  </button>
+                <button type="button" className={action} disabled={busy} onClick={() => startEdit(a)}>Edit</button>
+                {confirmingDelete !== a.id && (
+                  <button type="button" className={actionDanger} disabled={busy} onClick={() => setConfirmingDelete(a.id)}>Delete</button>
                 )}
               </div>
+              {confirmingDelete === a.id && (
+                <div className="mt-4 rounded-xl border border-[#e4b4ae] bg-[#fdf1ef] p-4">
+                  <p className="text-base font-semibold text-[#8a2a1d]">Delete this address?</p>
+                  <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                    <button type="button" className={`${danger} w-full sm:w-auto`} disabled={busy} onClick={() => remove(a)}>Yes, delete</button>
+                    <button type="button" className={`${secondary} w-full sm:w-auto`} onClick={() => setConfirmingDelete(null)}>Keep it</button>
+                  </div>
+                </div>
+              )}
             </div>
-          </Card>
-        ),
-      )}
+          ),
+        )}
 
-      {editing?.id === 'new' ? (
-        <Card>
-          <h2 className="text-lg font-bold text-[#0f4f2d]">Add an address</h2>
-          {failure && <div className="mt-3"><Notice tone="error">{failure}</Notice></div>}
-          <div className="mt-3 space-y-4">
-            <AddressForm value={draft} onChange={setDraft} errors={errors} idPrefix="new-address" />
-            {addresses.length > 0 && (
-              <label className="flex items-start gap-2 text-sm text-[#3b3a33]">
-                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#0f4f2d]" checked={makeDefault} onChange={(e) => setMakeDefault(e.target.checked)} />
-                Make this my default address
-              </label>
-            )}
-            <div className="flex gap-3">
-              <button type="button" className={btnPrimary} disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save address'}</button>
-              <button type="button" className={btnSecondary} disabled={busy} onClick={cancel}>Cancel</button>
+        {editing?.id === 'new' ? (
+          <div className={panel}>
+            <h2 className="text-lg font-semibold text-[#0f4f2d]">Add an address</h2>
+            {failure && <div className="mt-3"><Notice tone="error">{failure}</Notice></div>}
+            <div className="mt-4 space-y-5">
+              <AddressForm value={draft} onChange={setDraft} errors={errors} idPrefix="new-address" large noRecipientAutofill />
+              {addresses.length > 0 && defaultBox}
+              {formButtons('Save address')}
             </div>
           </div>
-        </Card>
-      ) : (
-        editing === null && (
-          <button type="button" className={btnPrimary} onClick={startAdd}>
-            <Plus size={16} aria-hidden="true" />
-            Add an address
-          </button>
-        )
-      )}
-    </div>
+        ) : (
+          editing === null && addresses.length > 0 && <div>{addButton}</div>
+        )}
+      </div>
+    </Frame>
   );
 }

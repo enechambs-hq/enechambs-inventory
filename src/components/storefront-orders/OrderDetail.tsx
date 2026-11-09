@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, RefreshCw, ShieldAlert } from 'lucide-react';
 import ActionDialog from '@/components/promotions/ActionDialog';
-import { OrderStatusBadge, PaymentRecordBadge, PaymentStatusBadge } from './badges';
+import { useMediaQuery } from '@/components/storefront/useMediaQuery';
+import { LabelledBadge, OrderStatusBadge, PaymentRecordBadge, PaymentStatusBadge } from './badges';
 import ReasonDialog from './ReasonDialog';
 import { describeApiError, explainProblem } from '@/lib/combos/errors';
 import { canDecideStorefrontPayments, canManageOnlineOrders } from '@/lib/nav-config';
@@ -24,11 +25,11 @@ import { useAuthStore } from '@/store/auth.store';
 import type { AdminOrderDetail, AdminPayment, FulfilmentTarget } from '@/types/storefront-orders';
 
 
-function Section({ title, children, aside }: { title: string; children: React.ReactNode; aside?: React.ReactNode }) {
+function Section({ title, children, aside, className = '' }: { title: string; children: React.ReactNode; aside?: React.ReactNode; className?: string }) {
   return (
-    <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{title}</h2>
+    <section className={`rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 ${className}`}>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">{title}</h2>
         {aside}
       </div>
       {children}
@@ -37,11 +38,13 @@ function Section({ title, children, aside }: { title: string; children: React.Re
 }
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className="flex gap-3 py-1 text-sm">
-    <dt className="w-32 shrink-0 text-gray-400">{label}</dt>
-    <dd className="min-w-0 break-words text-gray-800">{children}</dd>
+  <div className="flex flex-col gap-0.5 py-1.5 text-sm sm:flex-row sm:gap-3">
+    <dt className="shrink-0 text-gray-600 sm:w-32">{label}</dt>
+    <dd className="min-w-0 break-words text-gray-900 [overflow-wrap:anywhere]">{children}</dd>
   </div>
 );
+
+const primaryButton = 'inline-flex min-h-11 items-center justify-center rounded-lg bg-[#1a7a4a] px-5 text-sm font-medium text-white hover:bg-[#145c37]';
 
 type Decision = { kind: 'honour' } | { kind: 'refund'; payment: AdminPayment } | null;
 
@@ -98,19 +101,21 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
     }
   }
 
+  const phone = useMediaQuery('(max-width: 639px)');
+
   if (isLoading && !order) {
-    return <div className="p-6 text-sm text-gray-500" role="status" aria-busy="true">Loading order…</div>;
+    return <div className="mx-auto w-full max-w-[80rem] text-sm text-gray-600" role="status" aria-busy="true">Loading order…</div>;
   }
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-[#f0f2f0] p-6">
-        <div role="alert" className="max-w-lg mx-auto bg-white rounded-2xl border border-gray-100 p-8 text-center">
-          <AlertCircle size={28} className="text-red-400 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-800">Could not load this order</p>
-          <p className="text-sm text-gray-500 mt-1">{error}</p>
-          <div className="mt-4 flex justify-center gap-3">
-            <button type="button" onClick={() => void load()} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1a7a4a] border border-[#b9e0c9] rounded-lg hover:bg-[#e8f5ee]"><RefreshCw size={14} /> Try again</button>
-            <Link href="/storefront-orders" className="px-4 py-2 text-sm text-gray-600 hover:underline">Back to online orders</Link>
+      <div className="mx-auto w-full max-w-[80rem]">
+        <div role="alert" className="mx-auto max-w-lg rounded-2xl border border-gray-200 bg-white p-6 text-center sm:p-8">
+          <AlertCircle size={28} className="mx-auto mb-3 text-red-400" />
+          <p className="text-base font-medium text-gray-800">Could not load this order</p>
+          <p className="mt-1 text-sm text-gray-600">{error}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <button type="button" onClick={() => void load()} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#b9e0c9] px-4 text-sm font-medium text-[#1a7a4a] hover:bg-[#e8f5ee]"><RefreshCw size={14} /> Try again</button>
+            <Link href="/storefront-orders" className="inline-flex min-h-11 items-center px-4 text-sm text-[#1a7a4a] hover:underline">Back to online orders</Link>
           </div>
         </div>
       </div>
@@ -122,21 +127,45 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
   const refundable = refundablePayments(order);
   const hasOpenDecision = awaitingLate || refundable.length > 0 || order.paymentStatus === 'review';
 
+  const nextAction = canFulfil && (
+    <Section title="Fulfilment" className="order-2">
+      {targets.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {targets.map((t) => (
+            <button key={t} type="button" onClick={() => { setActionError(null); setPendingTarget(t); }} className={primaryButton}>
+              {fulfilmentAction(t, order.fulfilment.method).label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-700">
+          {order.paymentStatus !== 'paid' ? 'Fulfilment starts once the payment is verified. Staff cannot mark an order paid.' : 'No further fulfilment steps for this order.'}
+        </p>
+      )}
+    </Section>
+  );
+
   return (
-    <div className="min-h-screen bg-[#f0f2f0] p-6">
-      <Link href="/storefront-orders" className="inline-flex items-center gap-1.5 text-sm text-[#1a7a4a] hover:underline mb-4"><ArrowLeft size={14} /> Online orders</Link>
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900" data-testid="order-number">{order.orderNumber}</h1>
-        <OrderStatusBadge status={order.status} />
-        <PaymentStatusBadge status={order.paymentStatus} />
-        <button type="button" onClick={() => void load()} aria-label="Reload order" className="ml-auto text-gray-400 hover:text-gray-600"><RefreshCw size={16} /></button>
+    <div className="mx-auto w-full max-w-[80rem]">
+      <Link href="/storefront-orders" className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[#1a7a4a] hover:underline"><ArrowLeft size={16} /> Online orders</Link>
+      <div className="mb-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="break-all text-[28px] font-bold leading-tight tracking-tight text-[#0f4f2d] md:text-[32px]" data-testid="order-number">{order.orderNumber}</h1>
+          <button type="button" onClick={() => void load()} className="ml-auto inline-flex min-h-11 items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800 hover:bg-gray-50">
+            <RefreshCw size={16} aria-hidden="true" /> Refresh
+          </button>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 xl:hidden">
+          <LabelledBadge label="Order"><OrderStatusBadge status={order.status} /></LabelledBadge>
+          <LabelledBadge label="Payment"><PaymentStatusBadge status={order.paymentStatus} /></LabelledBadge>
+        </div>
       </div>
 
-      {notice && <p role="status" className="mb-4 rounded-lg border border-[#b9e0c9] bg-[#e8f5ee] px-4 py-2.5 text-sm text-[#14693f]">{notice}</p>}
+      {notice && <p role="status" className="mb-4 rounded-lg border border-[#b9e0c9] bg-[#e8f5ee] px-4 py-3 text-sm text-[#14693f]">{notice}</p>}
 
       {order.reviewReason && (
         <div role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p className="font-semibold flex items-center gap-2"><ShieldAlert size={16} aria-hidden="true" /> {REVIEW_REASON_LABEL[order.reviewReason]}: this order needs an administrator’s decision.</p>
+          <p className="flex items-start gap-2 font-semibold"><ShieldAlert size={16} className="mt-0.5 shrink-0" aria-hidden="true" /> <span>{REVIEW_REASON_LABEL[order.reviewReason]}: this order needs an administrator’s decision.</span></p>
           <p className="mt-1 text-red-700">
             {order.reviewReason === 'late_payment' && 'The customer paid after the payment window ended and the stock was returned to the shelf. Honouring it re-reserves the stock; otherwise record a refund.'}
             {order.reviewReason === 'duplicate_charge' && 'The customer was charged more than once for this order. Record a refund decision for the extra charge.'}
@@ -146,48 +175,98 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Section title="Items">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="text-left text-xs uppercase tracking-wide text-gray-400 border-b border-gray-100">
-                  <th scope="col" className="py-2 font-semibold">Product (as sold)</th><th scope="col" className="py-2 text-right font-semibold">Qty</th><th scope="col" className="py-2 text-right font-semibold">Unit price</th><th scope="col" className="py-2 text-right font-semibold">Line total</th>
-                </tr></thead>
-                <tbody>
-                  {order.items.map((i) => (
-                    <tr key={i.comboSlug} className="border-b border-gray-50">
-                      <td className="py-2.5">{i.comboName}<span className="block text-xs text-gray-400">/{i.comboSlug}</span></td>
-                      <td className="py-2.5 text-right">{i.quantity}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap">{formatNaira(i.unitPrice)}</td>
-                      <td className="py-2.5 text-right whitespace-nowrap font-medium">{formatNaira(i.lineTotal)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr><td colSpan={3} className="pt-3 text-right text-gray-500">Subtotal</td><td className="pt-3 text-right whitespace-nowrap">{formatNaira(order.subtotal)}</td></tr>
-                  {order.fulfilment.method === 'delivery' && (
-                    <tr><td colSpan={3} className="pt-1 text-right text-gray-500">Delivery fee</td><td className="pt-1 text-right whitespace-nowrap" data-testid="order-delivery-fee">{formatNaira(Number(order.fulfilment.deliveryFee ?? 0))}</td></tr>
-                  )}
-                  <tr><td colSpan={3} className="pt-1 text-right font-semibold">Total</td><td className="pt-1 text-right whitespace-nowrap text-base font-bold text-[#14693f]" data-testid="order-total">{formatNaira(order.total)}</td></tr>
-                </tfoot>
-              </table>
+      {/* One column below 1280px, in this reading order; two columns from 1280px (actions and facts on the right). */}
+      <div className="grid gap-4 sm:gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+        <div className="contents xl:col-start-2 xl:row-start-1 xl:flex xl:flex-col xl:gap-5">
+          <Section title="Status" className="hidden xl:block">
+            <div className="flex flex-col gap-2">
+              <LabelledBadge label="Order"><OrderStatusBadge status={order.status} /></LabelledBadge>
+              <LabelledBadge label="Payment"><PaymentStatusBadge status={order.paymentStatus} /></LabelledBadge>
             </div>
-            <p className="mt-3 text-xs text-gray-400">Names and prices are the snapshot taken when the order was placed. They do not change if the combo is edited later.</p>
+          </Section>
+          {nextAction}
+          {hasOpenDecision && (
+            <Section title="Payment decisions" className="order-3">
+              {canDecide ? (
+                awaitingLate ? (
+                  <button type="button" onClick={() => { setActionError(null); setDecision({ kind: 'honour' }); }} className={primaryButton}>
+                    Honour late payment
+                  </button>
+                ) : (
+                  <p className="text-sm text-gray-700">Use “Record refund decision” on the payment above where a refund is due.</p>
+                )
+              ) : (
+                <p className="text-sm text-gray-700">Honouring a late payment and recording refunds are administrator decisions. Ask an administrator.</p>
+              )}
+            </Section>
+          )}
+        </div>
+
+        <div className="contents xl:col-start-1 xl:row-start-1 xl:row-span-2 xl:flex xl:flex-col xl:gap-5">
+          <Section title="Items" className="order-4">
+            {phone ? (
+              <div>
+                <ul className="divide-y divide-gray-100">
+                  {order.items.map((i) => (
+                    <li key={i.comboSlug} className="py-3 first:pt-0">
+                      <p className="text-sm font-medium text-gray-900 [overflow-wrap:anywhere]">{i.comboName}</p>
+                      <p className="text-sm text-gray-600 [overflow-wrap:anywhere]">/{i.comboSlug}</p>
+                      <p className="mt-1 flex items-baseline justify-between gap-3 text-sm text-gray-700">
+                        <span>{i.quantity} × {formatNaira(i.unitPrice)}</span>
+                        <span className="font-medium text-gray-900">{formatNaira(i.lineTotal)}</span>
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                <dl className="mt-1 space-y-1 border-t border-gray-100 pt-3 text-sm">
+                  <div className="flex justify-between gap-3"><dt className="text-gray-600">Subtotal</dt><dd>{formatNaira(order.subtotal)}</dd></div>
+                  {order.fulfilment.method === 'delivery' && (
+                    <div className="flex justify-between gap-3"><dt className="text-gray-600">Delivery fee</dt><dd data-testid="order-delivery-fee">{formatNaira(Number(order.fulfilment.deliveryFee ?? 0))}</dd></div>
+                  )}
+                  <div className="flex justify-between gap-3"><dt className="font-semibold">Total</dt><dd className="text-base font-bold text-[#14693f]" data-testid="order-total">{formatNaira(order.total)}</dd></div>
+                </dl>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="border-b border-gray-200 text-left text-xs uppercase tracking-wide text-gray-600">
+                    <th scope="col" className="py-2 font-semibold">Product (as sold)</th><th scope="col" className="py-2 text-right font-semibold">Qty</th><th scope="col" className="py-2 text-right font-semibold">Unit price</th><th scope="col" className="py-2 text-right font-semibold">Line total</th>
+                  </tr></thead>
+                  <tbody>
+                    {order.items.map((i) => (
+                      <tr key={i.comboSlug} className="border-b border-gray-100">
+                        <td className="py-3">{i.comboName}<span className="block text-sm text-gray-600">/{i.comboSlug}</span></td>
+                        <td className="py-3 text-right">{i.quantity}</td>
+                        <td className="whitespace-nowrap py-3 text-right">{formatNaira(i.unitPrice)}</td>
+                        <td className="whitespace-nowrap py-3 text-right font-medium">{formatNaira(i.lineTotal)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr><td colSpan={3} className="pt-3 text-right text-gray-600">Subtotal</td><td className="whitespace-nowrap pt-3 text-right">{formatNaira(order.subtotal)}</td></tr>
+                    {order.fulfilment.method === 'delivery' && (
+                      <tr><td colSpan={3} className="pt-1 text-right text-gray-600">Delivery fee</td><td className="whitespace-nowrap pt-1 text-right" data-testid="order-delivery-fee">{formatNaira(Number(order.fulfilment.deliveryFee ?? 0))}</td></tr>
+                    )}
+                    <tr><td colSpan={3} className="pt-1 text-right font-semibold">Total</td><td className="whitespace-nowrap pt-1 text-right text-base font-bold text-[#14693f]" data-testid="order-total">{formatNaira(order.total)}</td></tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+            <p className="mt-3 text-sm text-gray-600">Names and prices are the snapshot taken when the order was placed. They do not change if the combo is edited later.</p>
           </Section>
 
-          <Section title="Payments">
+          <Section title="Payments" className="order-7">
             {order.payments.length === 0 ? (
-              <p className="text-sm text-gray-500">No payment has been started for this order.</p>
+              <p className="text-sm text-gray-700">No payment has been started for this order.</p>
             ) : (
               <ul className="space-y-4">
                 {order.payments.map((p) => {
                   const verified = p.capturedAt !== null && p.verifiedAmount !== null;
                   return (
-                    <li key={p.id} className="rounded-xl border border-gray-100 p-4" data-testid="payment-record">
-                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <li key={p.id} className="rounded-xl border border-gray-200 p-4" data-testid="payment-record">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
                         <PaymentRecordBadge status={p.status} />
-                        {p.reconciliation && <span className="inline-flex px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 text-[11px] font-medium">{RECONCILIATION_LABEL[p.reconciliation] ?? p.reconciliation}</span>}
+                        {p.reconciliation && <span className="inline-flex rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">{RECONCILIATION_LABEL[p.reconciliation] ?? p.reconciliation}</span>}
                         <span className="ml-auto text-sm font-semibold">{formatNaira(p.amount)}</span>
                       </div>
                       <dl>
@@ -195,14 +274,14 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
                         <Row label="Verification">
                           {verified
                             ? <>Verified with Flutterwave: {formatNaira(p.verifiedAmount ?? 0)} {p.verifiedCurrency}{p.providerTransactionId ? ` (transaction ${p.providerTransactionId})` : ''}</>
-                            : <span className="text-gray-500">{p.status === 'initiated' ? 'Not paid yet (waiting for verification)' : 'Not verified'}</span>}
+                            : <span className="text-gray-600">{p.status === 'initiated' ? 'Not paid yet (waiting for verification)' : 'Not verified'}</span>}
                         </Row>
                         <Row label="Captured">{formatLagosDateTime(p.capturedAt)}</Row>
                         {p.refundedAt && <Row label="Refund recorded">{formatLagosDateTime(p.refundedAt)}</Row>}
                         {p.resolutionNote && <Row label="Decision note">{p.resolutionNote}</Row>}
                       </dl>
                       {canDecide && refundable.some((r) => r.id === p.id) && (
-                        <button type="button" onClick={() => { setActionError(null); setDecision({ kind: 'refund', payment: p }); }} className="mt-3 rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50">
+                        <button type="button" onClick={() => { setActionError(null); setDecision({ kind: 'refund', payment: p }); }} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-red-200 px-4 text-sm font-medium text-red-700 hover:bg-red-50">
                           Record refund decision
                         </button>
                       )}
@@ -213,29 +292,29 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
             )}
             {order.paymentEvents.length > 0 && (
               <details className="mt-4 text-sm">
-                <summary className="cursor-pointer text-gray-500">Payment checks ({order.paymentEvents.length})</summary>
-                <ul className="mt-2 space-y-1 text-xs text-gray-600">
+                <summary className="flex min-h-11 cursor-pointer items-center text-gray-700">Payment checks ({order.paymentEvents.length})</summary>
+                <ul className="mt-2 space-y-1 text-sm text-gray-700">
                   {order.paymentEvents.map((e, i) => <li key={i}>{formatLagosDateTime(e.createdAt)} · {e.source}{e.eventType ? ` (${e.eventType})` : ''} → {e.outcome}</li>)}
                 </ul>
               </details>
             )}
           </Section>
 
-          <Section title="Timeline">
-            <ol className="space-y-3 border-l-2 border-gray-100 pl-4">
+          <Section title="Timeline" className="order-9">
+            <ol className="space-y-3 border-l-2 border-gray-200 pl-4">
               {order.history.map((h, i) => (
                 <li key={i} className="text-sm">
-                  <span className="font-medium text-gray-800">{HISTORY_EVENT_LABEL[h.event] ?? h.event}</span>
-                  <span className="ml-2 text-xs text-gray-400">{formatLagosDateTime(h.createdAt)} · {h.actorType === 'staff' ? 'staff' : h.actorType}</span>
-                  {h.note && <p className="text-xs text-gray-500 mt-0.5">“{h.note}”</p>}
+                  <span className="font-medium text-gray-900">{HISTORY_EVENT_LABEL[h.event] ?? h.event}</span>
+                  <span className="ml-2 text-sm text-gray-600">{formatLagosDateTime(h.createdAt)} · {h.actorType === 'staff' ? 'staff' : h.actorType}</span>
+                  {h.note && <p className="mt-0.5 text-sm text-gray-700">“{h.note}”</p>}
                 </li>
               ))}
             </ol>
           </Section>
         </div>
 
-        <div className="space-y-6">
-          <Section title="Customer">
+        <div className="contents xl:col-start-2 xl:row-start-2 xl:flex xl:flex-col xl:gap-5">
+          <Section title="Customer" className="order-5">
             <dl>
               <Row label="Name">{order.customer.name}</Row>
               <Row label="Phone">{order.customer.phone}</Row>
@@ -245,7 +324,7 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
           </Section>
 
           {(order.fulfilment.method === 'delivery' || order.fulfilment.method === 'pickup') && (
-            <Section title={order.fulfilment.method === 'delivery' ? 'Delivery' : 'Pickup'}>
+            <Section title={order.fulfilment.method === 'delivery' ? 'Delivery' : 'Pickup'} className="order-6">
               {order.fulfilment.method === 'delivery' && order.fulfilment.address ? (
                 <dl>
                   <Row label="Deliver to">{order.fulfilment.address.recipientName}</Row>
@@ -261,7 +340,7 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
             </Section>
           )}
 
-          <Section title="Order timing">
+          <Section title="Order timing" className="order-8">
             <dl>
               <Row label="Placed">{formatLagosDateTime(order.createdAt)}</Row>
               <Row label="Pay by">{formatLagosDateTime(order.expiresAt)}</Row>
@@ -269,40 +348,6 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
               <Row label="Stock">{order.stockRestoredAt ? `Returned to shelf ${formatLagosDateTime(order.stockRestoredAt)}` : 'Reserved for this order'}</Row>
             </dl>
           </Section>
-
-          {canFulfil && (
-            <Section title="Fulfilment">
-              {targets.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {targets.map((t) => (
-                    <button key={t} type="button" onClick={() => { setActionError(null); setPendingTarget(t); }} className="rounded-lg bg-[#1a7a4a] px-4 py-2 text-sm font-medium text-white hover:bg-[#145c37]">
-                      {fulfilmentAction(t, order.fulfilment.method).label}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  {order.paymentStatus !== 'paid' ? 'Fulfilment starts once the payment is verified. Staff cannot mark an order paid.' : 'No further fulfilment steps for this order.'}
-                </p>
-              )}
-            </Section>
-          )}
-
-          {hasOpenDecision && (
-            <Section title="Payment decisions">
-              {canDecide ? (
-                awaitingLate ? (
-                  <button type="button" onClick={() => { setActionError(null); setDecision({ kind: 'honour' }); }} className="rounded-lg bg-[#1a7a4a] px-4 py-2 text-sm font-medium text-white hover:bg-[#145c37]">
-                    Honour late payment
-                  </button>
-                ) : (
-                  <p className="text-sm text-gray-500">Use “Record refund decision” on the payment above where a refund is due.</p>
-                )
-              ) : (
-                <p className="text-sm text-gray-500">Honouring a late payment and recording refunds are administrator decisions. Ask an administrator.</p>
-              )}
-            </Section>
-          )}
         </div>
       </div>
 

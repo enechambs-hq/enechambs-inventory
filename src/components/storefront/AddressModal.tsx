@@ -53,11 +53,11 @@ export default function AddressModal({ labelledBy, onClose, children }: { labell
           type="button"
           onClick={close}
           aria-label="Close"
-          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-[#5d5645] transition hover:bg-white/70 hover:text-[#0f4f2d] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1a7a4a]"
+          className="absolute right-2 top-2 inline-flex h-11 w-11 items-center justify-center rounded-full text-[#5d5645] transition hover:bg-white/70 hover:text-[#0f4f2d] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#1a7a4a]"
         >
           <X size={18} aria-hidden="true" />
         </button>
-        <div className="pr-8">{children}</div>
+        <div className="pr-10">{children}</div>
       </div>
     </dialog>
   );

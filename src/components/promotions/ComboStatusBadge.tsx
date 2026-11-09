@@ -16,7 +16,7 @@ const DOTS: Record<ComboStatus, string> = {
 export default function ComboStatusBadge({ status }: { status: ComboStatus }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${STYLES[status]}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-sm font-medium ${STYLES[status]}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full ${DOTS[status]}`} aria-hidden="true" />
       {STATUS_LABELS[status]}

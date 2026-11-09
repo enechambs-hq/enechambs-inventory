@@ -7,6 +7,7 @@ import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authService } from "@/lib/services/auth.service";
 import { toast } from "sonner";
+import SetupPasswordView from "@/components/auth/SetupPasswordView";
 
 const setupPasswordSchema = z
   .object({
@@ -75,75 +76,15 @@ function SetupPasswordContent() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Validating link...</p>
+      <div className="flex min-h-dvh items-center justify-center bg-[#fbfaf6] px-4">
+        <p role="status" className="text-base text-[#5d5645]">Validating link...</p>
       </div>
     );
   }
 
   if (!isValidToken) return null;
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md p-8 rounded-xl border bg-card shadow-sm">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Set your password
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create a secure password for your account
-          </p>
-        </div>
-
-        <ul className="text-xs text-muted-foreground mb-6 space-y-1">
-          <li>• Minimum 8 characters</li>
-          <li>• At least one uppercase letter</li>
-          <li>• At least one lowercase letter</li>
-          <li>• At least one number or special character</li>
-        </ul>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-sm font-medium">New Password</label>
-            <input
-              {...register("password")}
-              type="password"
-              placeholder="••••••••"
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {errors.password && (
-              <p className="text-xs text-destructive">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium">Confirm Password</label>
-            <input
-              {...register("confirmPassword")}
-              type="password"
-              placeholder="••••••••"
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            {errors.confirmPassword && (
-              <p className="text-xs text-destructive">
-                {errors.confirmPassword.message}
-              </p>
-            )}
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isLoading ? "Setting password..." : "Set Password"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+  return <SetupPasswordView register={register} errors={errors} isLoading={isLoading} onSubmit={handleSubmit(onSubmit)} />;
 }
 
 export default function SetupPasswordPage() {

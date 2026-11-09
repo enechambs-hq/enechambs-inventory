@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Pencil, Trash2, Activity } from 'lucide-react';
+import { Pencil, Trash2, Activity, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +13,9 @@ import { useUsersStore } from '@/store/users.store';
 import { usersService } from '@/lib/services/users.service';
 import { User, UserPerformance, UserRole, ActivityLog } from '@/types';
 import { dashboardService } from '@/lib/services/dashboard.service';
+import { useMediaQuery } from '@/components/storefront/useMediaQuery';
+import ModalFrame from '@/components/users/ModalFrame';
+import { ActionTag } from '@/components/activity/ActivityParts';
 
 type ActiveTab = 'users' | 'performance';
 
@@ -25,8 +28,45 @@ const editUserSchema = z.object({
 
 type EditUserForm = z.infer<typeof editUserSchema>;
 
+const TAB_LABEL: Record<ActiveTab, string> = { users: 'Users', performance: 'Performance' };
+
+const btnBase =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a] disabled:cursor-not-allowed disabled:opacity-50';
+const btnGray = `${btnBase} border-gray-300 bg-white text-gray-800 hover:bg-gray-50`;
+const btnGreen = `${btnBase} border-[#b9e0c9] bg-white text-[#1a7a4a] hover:bg-[#e8f5ee]`;
+const btnRed = `${btnBase} border-red-200 bg-white text-red-700 hover:bg-red-50`;
+const iconBtn = 'inline-flex h-11 w-11 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a7a4a]';
+const fieldCls = 'block min-h-12 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 outline-none focus:border-[#1a7a4a] focus:ring-2 focus:ring-[#1a7a4a]/20';
+const pagerBtn = 'inline-flex min-h-11 items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40';
+
+const badge = 'inline-block rounded-full border px-2.5 py-0.5 text-sm font-medium';
+function RoleBadge({ role }: { role: UserRole }) {
+  return (
+    <span className={`${badge} capitalize ${role === UserRole.ADMIN ? 'border-[#b9e0c9] bg-[#e8f5ee] text-[#14693f]' : 'border-gray-200 bg-gray-100 text-gray-700'}`}>
+      {role}
+    </span>
+  );
+}
+function StatusBadge({ active }: { active: boolean }) {
+  return (
+    <span className={`${badge} ${active ? 'border-[#b9e0c9] bg-[#e8f5ee] text-[#14693f]' : 'border-red-200 bg-red-50 text-red-800'}`}>
+      {active ? 'Active' : 'Inactive'}
+    </span>
+  );
+}
+const Loading = ({ label }: { label: string }) => (
+  <div role="status" aria-label={label} className="flex justify-center rounded-2xl border border-gray-200 bg-white py-12">
+    <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1a7a4a] border-t-transparent" />
+  </div>
+);
+const Empty = ({ children }: { children: React.ReactNode }) => (
+  <div className="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center text-base text-gray-600">{children}</div>
+);
+
 export default function UsersPage() {
   useAuthGuard(UserRole.ADMIN);
+  const wide = useMediaQuery('(min-width: 1280px)');
+  const roomy = useMediaQuery('(min-width: 1024px)');
 
   const searchParams = useSearchParams();
   const { users, total, page, limit, totalPages, isLoading, setUsers, setLoading, setPage } =
@@ -145,394 +185,317 @@ export default function UsersPage() {
     }
   };
 
+  const lastLogin = (u: User) => (u.lastLoginAt ? format(new Date(u.lastLoginAt), 'MMM d, yyyy · h:mm a') : '—');
+  const joined = (u: User) => format(new Date(u.createdAt), 'MMM d, yyyy');
+  const name = (u: User) => `${u.firstName} ${u.lastName}`;
+  const openActivity = (user: User) => {
+    setActivityUser(user);
+    setActivityPage(1);
+    setActivityLogs([]);
+  };
+  const actions = (user: User, withText: boolean) => {
+    const n = name(user);
+    return (
+      <>
+        <button type="button" onClick={() => openActivity(user)} aria-label={`View activity for ${n}`} title="View activity"
+          className={withText ? btnGray : `${iconBtn} border-gray-300 bg-white text-gray-700 hover:bg-gray-50`}>
+          <Activity size={18} aria-hidden="true" />
+          {withText && 'View activity'}
+        </button>
+        <button type="button" onClick={() => openEdit(user)} aria-label={`Edit ${n}`} title="Edit"
+          className={withText ? btnGreen : `${iconBtn} border-[#b9e0c9] bg-white text-[#1a7a4a] hover:bg-[#e8f5ee]`}>
+          <Pencil size={18} aria-hidden="true" />
+          {withText && 'Edit'}
+        </button>
+        <button type="button" onClick={() => setDeleteUser(user)} aria-label={`Delete ${n}`} title="Delete"
+          className={withText ? btnRed : `${iconBtn} border-red-200 bg-white text-red-700 hover:bg-red-50`}>
+          <Trash2 size={18} aria-hidden="true" />
+          {withText && 'Delete'}
+        </button>
+      </>
+    );
+  };
+
+  const th = 'border-b border-gray-200 bg-gray-50 px-3 py-3 text-left text-sm font-semibold text-gray-700 first:rounded-tl-2xl first:pl-5 last:rounded-tr-2xl last:pr-5';
+  const tabKey = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next: ActiveTab = activeTab === 'users' ? 'performance' : 'users';
+    setActiveTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-        <p className="text-sm text-muted-foreground">Manage staff and admin accounts</p>
+    <div className="mx-auto w-full max-w-[80rem]">
+      <div className="mb-6">
+        <h1 className="text-[1.75rem] font-bold leading-8 text-[#0f4f2d] md:text-[2rem] md:leading-10">Users</h1>
+        <p className="mt-1 text-sm text-gray-600">Manage staff and admin accounts</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b">
+      <div role="tablist" aria-label="Users sections" onKeyDown={tabKey} className="mb-4 flex gap-1 border-b border-gray-200">
         {(['users', 'performance'] as const).map((tab) => (
           <button
             key={tab}
+            id={`tab-${tab}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`panel-${tab}`}
+            tabIndex={activeTab === tab ? 0 : -1}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
-              activeTab === tab
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
+            className={`-mb-px min-h-11 border-b-4 px-5 text-base font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#1a7a4a] ${
+              activeTab === tab ? 'border-[#1a7a4a] text-[#0f4f2d]' : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {TAB_LABEL[tab]}
           </button>
         ))}
       </div>
 
       {activeTab === 'users' ? (
-        <>
-          {/* Users table */}
-          <div className="rounded-xl border bg-card overflow-hidden">
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-175 text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  {['Name', 'Email', 'Role', 'Status', 'Last Login', 'Joined', 'Actions'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {isLoading ? (
+        <div role="tabpanel" id="panel-users" aria-labelledby="tab-users">
+          {isLoading ? (
+            <Loading label="Loading users" />
+          ) : users.length === 0 ? (
+            <Empty>No users found</Empty>
+          ) : wide ? (
+            <div className="rounded-2xl border border-gray-200 bg-white">
+              <table className="w-full text-sm">
+                <thead>
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center"><div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div></td>
+                    {['Name', 'Email', 'Role', 'Status', 'Last login', 'Joined', 'Actions'].map((h) => (
+                      <th key={h} scope="col" className={`sticky top-14 z-[1] ${th}`}>{h}</th>
+                    ))}
                   </tr>
-                ) : users.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No users found</td>
-                  </tr>
-                ) : (
-                  users.map((user) => (
-                    <tr key={user.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-medium">{user.firstName} {user.lastName}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                          user.role === UserRole.ADMIN
-                            ? 'bg-purple-500/10 text-purple-600'
-                            : 'bg-blue-500/10 text-blue-600'
-                        }`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          user.isActive
-                            ? 'bg-green-500/10 text-green-600'
-                            : 'bg-red-500/10 text-red-600'
-                        }`}>
-                          {user.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        {user.lastLoginAt
-                          ? format(new Date(user.lastLoginAt), 'MMM d, yyyy · h:mm a')
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        {format(new Date(user.createdAt), 'MMM d, yyyy')}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => { setActivityUser(user); setActivityPage(1); setActivityLogs([]); }}
-                            className="p-1.5 rounded-md bg-muted text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                            title="View activity"
-                          >
-                            <Activity size={13} />
-                          </button>
-                          <button
-                            onClick={() => openEdit(user)}
-                            className="p-1.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                          >
-                            <Pencil size={13} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteUser(user)}
-                            className="p-1.5 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id} className="min-h-16 border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                      <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d]">{name(user)}</td>
+                      <td className="break-all px-3 py-3 text-sm text-gray-700">{user.email}</td>
+                      <td className="px-3 py-3"><RoleBadge role={user.role} /></td>
+                      <td className="px-3 py-3"><StatusBadge active={user.isActive} /></td>
+                      <td className="px-3 py-3 text-sm text-gray-700">{lastLogin(user)}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-700">{joined(user)}</td>
+                      <td className="px-3 py-3 pr-5"><div className="flex gap-2">{actions(user, false)}</div></td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </div>
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              {users.map((user) => (
+                <li key={user.id} className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4">
+                  <p className="break-words text-base font-semibold text-[#0f4f2d]">{name(user)}</p>
+                  <p className="break-all text-sm text-gray-700">{user.email}</p>
+                  <p className="mt-2 flex flex-wrap gap-2">
+                    <RoleBadge role={user.role} />
+                    <StatusBadge active={user.isActive} />
+                  </p>
+                  <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+                    <div className="min-w-0">
+                      <dt className="text-sm text-gray-600">Last login</dt>
+                      <dd className="break-words text-sm text-gray-900">{lastLogin(user)}</dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-sm text-gray-600">Joined</dt>
+                      <dd className="text-sm text-gray-900">{joined(user)}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-3 flex flex-wrap gap-2 border-t border-gray-100 pt-3">{actions(user, true)}</div>
+                </li>
+              ))}
+            </ul>
+          )}
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Showing {users.length} of {total} users
-              </p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                  className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="text-sm">{page} / {totalPages}</span>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page === totalPages}
-                  className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-muted transition-colors"
-                >
-                  Next
-                </button>
+            <div className="mt-4 grid grid-cols-2 items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 sm:flex sm:justify-between">
+              <p className="order-1 col-span-2 sm:order-none">Showing {users.length} of {total} users</p>
+              <div className="contents sm:flex sm:items-center sm:gap-3">
+                <button type="button" onClick={() => setPage(page - 1)} disabled={page === 1} className={`order-3 sm:order-none ${pagerBtn}`}>Previous</button>
+                <span className="order-2 text-right sm:order-none">{page} / {totalPages}</span>
+                <button type="button" onClick={() => setPage(page + 1)} disabled={page === totalPages} className={`order-4 sm:order-none ${pagerBtn}`}>Next</button>
               </div>
             </div>
           )}
-        </>
+        </div>
       ) : (
-        /* Performance table */
-        <div className="rounded-xl border bg-card overflow-hidden">
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                {['Name', 'Email', 'Total Sales', 'Total Revenue'].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {perfLoading ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center"><div className="flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div></td>
-                </tr>
-              ) : performance.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">No performance data available</td>
-                </tr>
-              ) : (
-                performance.map((entry) => (
-                  <tr key={entry.user_id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium">{entry.user_firstName} {entry.user_lastName}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{entry.user_email}</td>
-                    <td className="px-4 py-3">{entry.totalsales}</td>
-                    <td className="px-4 py-3">₦{Number(entry.totalrevenue).toLocaleString()}</td>
+        <div role="tabpanel" id="panel-performance" aria-labelledby="tab-performance">
+          {perfLoading ? (
+            <Loading label="Loading performance" />
+          ) : performance.length === 0 ? (
+            <Empty>No performance data available</Empty>
+          ) : roomy ? (
+            <div className="rounded-2xl border border-gray-200 bg-white">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    {['Name', 'Email', 'Total sales', 'Total revenue'].map((h) => (
+                      <th key={h} scope="col" className={`sticky top-14 z-[1] ${th}`}>{h}</th>
+                    ))}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          </div>
+                </thead>
+                <tbody>
+                  {performance.map((entry) => (
+                    <tr key={entry.user_id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                      <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d]">{entry.user_firstName} {entry.user_lastName}</td>
+                      <td className="break-all px-3 py-3 text-sm text-gray-700">{entry.user_email}</td>
+                      <td className="px-3 py-3 text-base">{entry.totalsales}</td>
+                      <td className="px-3 py-3 pr-5 text-base font-semibold">₦{Number(entry.totalrevenue).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
+              {performance.map((entry) => (
+                <li key={entry.user_id} className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4">
+                  <p className="break-words text-base font-semibold text-[#0f4f2d]">{entry.user_firstName} {entry.user_lastName}</p>
+                  <p className="break-all text-sm text-gray-700">{entry.user_email}</p>
+                  <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-gray-100 pt-3">
+                    <div><dt className="text-sm text-gray-600">Total sales</dt><dd className="text-base text-gray-900">{entry.totalsales}</dd></div>
+                    <div className="min-w-0"><dt className="text-sm text-gray-600">Total revenue</dt><dd className="break-words text-base font-semibold text-gray-900">₦{Number(entry.totalrevenue).toLocaleString()}</dd></div>
+                  </dl>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 
-      {/* Delete confirmation modal */}
       {deleteUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-sm shadow-lg animate-in zoom-in-95 fade-in duration-500">
-            <h2 className="text-base font-semibold mb-1">Delete User</h2>
-            <p className="text-sm text-muted-foreground mb-5">
-              Are you sure you want to delete{' '}
-              <span className="font-medium text-foreground">
-                {deleteUser.firstName} {deleteUser.lastName}
-              </span>
-              ? This cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteUser(null)}
-                disabled={deleting}
-                className="px-4 py-2 rounded-md border text-sm hover:bg-muted transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex items-center gap-2 px-4 py-2 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 disabled:opacity-50 transition-colors"
-              >
-                {deleting && (
-                  <div className="h-4 w-4 rounded-full border-2 border-destructive-foreground border-t-transparent animate-spin" />
-                )}
-                {deleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Activity modal */}
-      {activityUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-xl border p-6 w-full max-w-6xl max-h-[85vh] flex flex-col animate-in zoom-in-95 fade-in duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-semibold">Activity — {activityUser.firstName} {activityUser.lastName}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">{activityUser.email}</p>
-              </div>
-              <button
-                onClick={() => { setActivityUser(null); setActivityLogs([]); }}
-                className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div
-              className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-1"
-              style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--border)) transparent' }}
+        <ModalFrame labelledBy="delete-user-title" onClose={() => setDeleteUser(null)} canClose={!deleting} widthClass="max-w-sm">
+          <h2 id="delete-user-title" className="mb-1 text-lg font-semibold text-gray-900">Delete User</h2>
+          <p className="mb-5 text-base text-gray-700">
+            Are you sure you want to delete{' '}
+            <span className="font-semibold text-gray-900">{deleteUser.firstName} {deleteUser.lastName}</span>
+            ? This cannot be undone.
+          </p>
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => setDeleteUser(null)} disabled={deleting} className={`${btnGray} min-h-12 text-base`}>Cancel</button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-red-700 px-5 text-base font-semibold text-white transition-colors hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {activityLoading ? (
-                <div className="p-8 flex justify-center"><div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>
-              ) : activityLogs.length === 0 ? (
-                <div className="p-8 text-center text-sm text-muted-foreground">No activity found</div>
-              ) : (
-                <div className="space-y-2 py-1">
-                  {activityLogs.map((log) => {
-                    const action = log.action ?? '';
-                    const badgeClass = action.includes('LOGIN') || action.includes('LOGOUT')
-                      ? 'bg-slate-500/10 text-slate-600 dark:text-slate-400'
-                      : action.includes('SALE')
-                      ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                      : action.includes('CREDIT')
-                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400'
-                      : action.includes('COLLECTION')
-                      ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
-                      : action.includes('DELETE') || action.includes('VOID')
-                      ? 'bg-red-500/10 text-red-700 dark:text-red-400'
-                      : 'bg-muted text-muted-foreground';
-
-                    return (
-                      <div
-                        key={log.id}
-                        className="flex items-start gap-4 rounded-lg border bg-background px-4 py-3 hover:bg-primary/5 hover:border-primary/20 hover:scale-[1.005] transition-all duration-150 cursor-default"
-                      >
-                        {/* Timestamp */}
-                        <div className="shrink-0 w-28 pt-0.5">
-                          <p className="text-xs font-medium text-foreground">
-                            {format(new Date(log.timestamp), 'MMM d, yyyy')}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {format(new Date(log.timestamp), 'h:mm a')}
-                          </p>
-                        </div>
-
-                        {/* Badge */}
-                        <div className="shrink-0 w-36 pt-0.5">
-                          <span className={`inline-block px-1.5 py-0.5 rounded-md text-[10px] font-semibold leading-tight tracking-wide uppercase ${badgeClass}`}>
-                            {action.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-
-                        {/* Description */}
-                        <p className="flex-1 text-sm text-muted-foreground leading-relaxed">{log.description}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {activityTotalPages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                <p className="text-xs text-muted-foreground">{activityTotal} total entries</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActivityPage((p) => p - 1)}
-                    disabled={activityPage === 1 || activityLoading}
-                    className="px-3 py-1.5 rounded-md border text-xs disabled:opacity-50 hover:bg-muted transition-colors"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-xs">{activityPage} / {activityTotalPages}</span>
-                  <button
-                    onClick={() => setActivityPage((p) => p + 1)}
-                    disabled={activityPage === activityTotalPages || activityLoading}
-                    className="px-3 py-1.5 rounded-md border text-xs disabled:opacity-50 hover:bg-muted transition-colors"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            )}
+              {deleting && <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
           </div>
-        </div>
+        </ModalFrame>
       )}
 
-      {/* Edit modal */}
-      {editUser && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="relative bg-card rounded-xl border p-6 w-full max-w-md animate-in zoom-in-95 fade-in duration-500">
-            {submitting && (
-              <div className="absolute inset-0 bg-card/80 rounded-xl flex items-center justify-center z-10">
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                  <span className="text-sm font-medium">Saving...</span>
-                </div>
-              </div>
-            )}
-            <h2 className="text-lg font-semibold mb-1">Edit User</h2>
-            <p className="text-sm text-muted-foreground mb-5">{editUser.email}</p>
-
-            <form onSubmit={handleSubmit(handleUpdate)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">First Name</label>
-                  <input
-                    {...register('firstName')}
-                    className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  {errors.firstName && (
-                    <p className="text-xs text-destructive">{errors.firstName.message}</p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Last Name</label>
-                  <input
-                    {...register('lastName')}
-                    className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  {errors.lastName && (
-                    <p className="text-xs text-destructive">{errors.lastName.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-sm font-medium">Role</label>
-                <select
-                  {...register('role')}
-                  className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value={UserRole.STAFF}>Staff</option>
-                  <option value={UserRole.ADMIN}>Admin</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <input
-                  {...register('isActive')}
-                  type="checkbox"
-                  id="isActive"
-                  className="h-4 w-4 rounded border"
-                />
-                <label htmlFor="isActive" className="text-sm font-medium">Active</label>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditUser(null)}
-                  className="px-4 py-2 rounded-md border text-sm hover:bg-muted transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
+      {activityUser && (
+        <ModalFrame
+          labelledBy="user-activity-title"
+          onClose={() => { setActivityUser(null); setActivityLogs([]); }}
+          widthClass="max-w-4xl"
+          column
+        >
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 id="user-activity-title" className="break-words text-lg font-semibold text-[#0f4f2d]">Activity — {activityUser.firstName} {activityUser.lastName}</h2>
+              <p className="break-all text-sm text-gray-600">{activityUser.email}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setActivityUser(null); setActivityLogs([]); }}
+              aria-label="Close activity"
+              className={`${iconBtn} shrink-0 border-gray-300 bg-white text-gray-700 hover:bg-gray-50`}
+            >
+              <X size={20} aria-hidden="true" />
+            </button>
           </div>
-        </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {activityLoading ? (
+              <div role="status" aria-label="Loading activity" className="flex justify-center p-8"><div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1a7a4a] border-t-transparent" /></div>
+            ) : activityLogs.length === 0 ? (
+              <div className="p-8 text-center text-base text-gray-600">No activity found</div>
+            ) : (
+              <ul className="space-y-2">
+                {activityLogs.map((log) => (
+                  <li key={log.id} className="grid gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 sm:grid-cols-[9rem_minmax(0,11rem)_minmax(0,1fr)] sm:gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{format(new Date(log.timestamp), 'MMM d, yyyy')}</p>
+                      <p className="text-sm text-gray-600">{format(new Date(log.timestamp), 'h:mm a')}</p>
+                    </div>
+                    <div><ActionTag action={log.action ?? ''} /></div>
+                    <p className="break-words text-sm text-gray-800 sm:text-base">{log.description}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {activityTotalPages > 1 && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
+              <p className="text-sm text-gray-700">{activityTotal} total entries</p>
+              <div className="flex items-center gap-3 text-sm">
+                <button type="button" onClick={() => setActivityPage((p) => p - 1)} disabled={activityPage === 1 || activityLoading} className={pagerBtn}>Previous</button>
+                <span>{activityPage} / {activityTotalPages}</span>
+                <button type="button" onClick={() => setActivityPage((p) => p + 1)} disabled={activityPage === activityTotalPages || activityLoading} className={pagerBtn}>Next</button>
+              </div>
+            </div>
+          )}
+        </ModalFrame>
+      )}
+
+      {editUser && (
+        <ModalFrame labelledBy="edit-user-title" onClose={() => setEditUser(null)} canClose={!submitting}>
+          {submitting && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/80">
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1a7a4a] border-t-transparent" />
+                <span className="text-base font-medium">Saving...</span>
+              </div>
+            </div>
+          )}
+          <h2 id="edit-user-title" className="mb-1 text-xl font-semibold text-[#0f4f2d]">Edit User</h2>
+          <p className="mb-5 break-all text-sm text-gray-600">{editUser.email}</p>
+
+          <form onSubmit={handleSubmit(handleUpdate)} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="edit-firstName" className="mb-1 block text-sm font-semibold text-gray-800">First Name</label>
+                <input id="edit-firstName" {...register('firstName')} aria-invalid={!!errors.firstName} className={fieldCls} />
+                {errors.firstName && <p role="alert" className="mt-1 text-sm font-medium text-red-700">{errors.firstName.message}</p>}
+              </div>
+              <div>
+                <label htmlFor="edit-lastName" className="mb-1 block text-sm font-semibold text-gray-800">Last Name</label>
+                <input id="edit-lastName" {...register('lastName')} aria-invalid={!!errors.lastName} className={fieldCls} />
+                {errors.lastName && <p role="alert" className="mt-1 text-sm font-medium text-red-700">{errors.lastName.message}</p>}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="edit-role" className="mb-1 block text-sm font-semibold text-gray-800">Role</label>
+              <select id="edit-role" {...register('role')} className={fieldCls}>
+                <option value={UserRole.STAFF}>Staff</option>
+                <option value={UserRole.ADMIN}>Admin</option>
+              </select>
+            </div>
+
+            <label htmlFor="isActive" className="flex min-h-11 cursor-pointer items-center gap-3 text-base font-semibold text-gray-800">
+              <input {...register('isActive')} type="checkbox" id="isActive" className="h-5 w-5 rounded border-gray-300 accent-[#1a7a4a]" />
+              Active
+            </label>
+
+            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
+              <button type="button" onClick={() => setEditUser(null)} className={`${btnGray} min-h-12 text-base`}>Cancel</button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-[#1a7a4a] px-5 text-base font-semibold text-white transition-colors hover:bg-[#145c37] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </ModalFrame>
       )}
     </div>
   );

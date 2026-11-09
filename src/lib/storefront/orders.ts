@@ -316,3 +316,90 @@ export function paymentSettled(order: Pick<CustomerOrder, 'state' | 'paymentStat
   if (order.paymentState === 'paid' || order.paymentState === 'under_review' || order.paymentState === 'refunded') return true;
   return order.state === 'cancelled' || order.state === 'expired';
 }
+
+export type PaymentReturnKind = 'paid' | 'under_review' | 'refunded' | 'closed' | 'failed' | 'timeout' | 'pending';
+export type PaymentReturnAction = 'view_order' | 'my_orders' | 'continue_shopping' | 'try_again' | 'check_again';
+export interface PaymentReturnOutcome {
+  kind: PaymentReturnKind;
+  tone: 'success' | 'info' | 'warn' | 'error';
+  headline: string;
+  body: string | null;
+  /** In display order; the first is the primary button. `try_again` appears only for an order that can still be paid. */
+  actions: PaymentReturnAction[];
+}
+
+/**
+ * What the payment-return page tells the customer. It is decided ONLY from the order our API returned (which the API
+ * verified with the provider by our own reference); the redirect's query string is never an input. The payment status
+ * and the order status are read independently: a refunded payment is described as refunded whatever stage the order is
+ * in, and nothing here can offer to pay again for a payment that was refunded, is under review or was captured.
+ *
+ * `polling` is the page's own progress: still asking, gave up after about a minute, or finished (settled).
+ */
+export function paymentReturnOutcome(order: CustomerOrder, polling: 'checking' | 'timeout' | 'done'): PaymentReturnOutcome {
+  if (order.paymentState === 'paid') {
+    return {
+      kind: 'paid',
+      tone: 'success',
+      headline: 'Payment confirmed',
+      // The next step follows the order's actual stage: "we will prepare it" only while it is still just paid.
+      body:
+        order.state === 'paid'
+          ? 'Thank you! Your order is confirmed and we will prepare it.'
+          : (stageMessage(order.state, order.fulfilmentMethod) ?? 'You can view your order for the latest updates.'),
+      actions: ['view_order', 'continue_shopping'],
+    };
+  }
+  if (order.paymentState === 'under_review') {
+    return {
+      kind: 'under_review',
+      tone: 'warn',
+      headline: 'We received your payment',
+      body: 'Something about it needs a quick check by our team. You do not need to pay again; we will update this order.',
+      actions: ['view_order', 'my_orders'],
+    };
+  }
+  if (order.paymentState === 'refunded') {
+    return {
+      kind: 'refunded',
+      tone: 'info',
+      headline: 'Your payment was refunded',
+      body: 'The payment for this order has been refunded. If you have any questions, please contact us with your order number.',
+      actions: ['view_order', 'continue_shopping'],
+    };
+  }
+  if (order.state === 'cancelled' || order.state === 'expired') {
+    return {
+      kind: 'closed',
+      tone: 'warn',
+      headline: order.state === 'expired' ? 'This order expired' : 'This order was cancelled',
+      body: 'If you were charged, please contact us with your order number and we will sort it out.',
+      actions: ['my_orders', 'continue_shopping'],
+    };
+  }
+  if (order.paymentState === 'failed') {
+    return {
+      kind: 'failed',
+      tone: 'error',
+      headline: 'Your payment did not go through',
+      body: 'You have not been charged for this order. You can try again.',
+      actions: order.canPay ? ['try_again', 'view_order'] : ['view_order', 'my_orders'],
+    };
+  }
+  if (polling === 'timeout') {
+    return {
+      kind: 'timeout',
+      tone: 'warn',
+      headline: 'Still waiting for confirmation',
+      body: 'We have not received confirmation yet. If you already paid, please do not pay again: check My orders in a few minutes.',
+      actions: order.canPay ? ['check_again', 'view_order', 'try_again'] : ['check_again', 'view_order'],
+    };
+  }
+  return {
+    kind: 'pending',
+    tone: 'info',
+    headline: 'Confirming your payment…',
+    body: 'This usually takes a few seconds. Please keep this page open.',
+    actions: [],
+  };
+}

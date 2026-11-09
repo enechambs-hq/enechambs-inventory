@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, Menu } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
@@ -15,69 +15,105 @@ export default function InventoryShell({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const [activityOpen, setActivityOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const activityButton = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  const skipRestore = useRef(false);
   const isActivityPage = pathname === '/activity';
   useEffect(() => {
     setMounted(true);
     api.get('/inventory?limit=1').catch(() => {});
   }, []);
 
-  // Close sidebar when navigating on tablet
+  // Close the drawer after navigating
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // While the drawer is open: Escape closes it and the page behind does not scroll.
+  // Reaching the desktop width (where the sidebar is always shown) also closes it.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    const onDesktop = (e: MediaQueryListEvent) => {
+      if (e.matches) setSidebarOpen(false);
+    };
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', onKeyDown);
+    desktop.addEventListener('change', onDesktop);
+    return () => {
+      document.body.style.overflow = overflow;
+      document.removeEventListener('keydown', onKeyDown);
+      desktop.removeEventListener('change', onDesktop);
+    };
+  }, [sidebarOpen]);
+
+  // When the drawer closes (Escape, close button, backdrop, navigation) focus goes back to the menu button,
+  // except when a dialog is taking over (the Password button), which looks after focus itself.
+  useEffect(() => {
+    if (wasOpen.current && !sidebarOpen) {
+      if (skipRestore.current) skipRestore.current = false;
+      else menuButton.current?.focus();
+    }
+    wasOpen.current = sidebarOpen;
+  }, [sidebarOpen]);
+
+  const closeForDialog = () => {
+    if (!sidebarOpen) return;
+    skipRestore.current = true;
+    setSidebarOpen(false);
+  };
 
   if (!mounted || !isAuthenticated) return null;
 
   return (
     <>
-      {/* Mobile block — shown on screens below md (768px) */}
-      <div className="flex md:hidden min-h-screen w-full flex-col items-center justify-center bg-background px-8 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-            <rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
-          </svg>
-        </div>
-        <h2 className="text-[18px] font-bold tracking-tight mb-2">Not available on mobile</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Enechambs is designed for tablets and desktops. Please open it on a device with a larger screen.
-        </p>
-      </div>
-
-      {/* App — hidden on mobile, visible on tablet and up */}
-      <div className="hidden md:flex min-h-screen w-full bg-background">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {/* The same app at every width: persistent sidebar from 1024px, slide-out drawer below. Width never decides access. */}
+      <div className="flex min-h-screen w-full bg-background">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onCloseForDialog={closeForDialog} menuButton={menuButton} />
         <div
+          // While the drawer is open the page behind cannot take focus.
+          inert={sidebarOpen}
           className={`flex-1 min-w-0 flex flex-col lg:ml-64 ${
             sidebarOpen ? 'md:ml-52' : 'ml-0'
           }`}
         >
-          <header className="h-14 border-b bg-card flex items-center gap-3 px-4 lg:px-8 sticky top-0 z-30">
-            {/* Hamburger — tablet only */}
+          <header className="h-14 border-b bg-card flex items-center gap-2 sm:gap-3 px-4 lg:px-8 sticky top-0 z-30">
+            {/* Menu button — below 1024px, where the sidebar is a drawer */}
             <button
+              ref={menuButton}
               onClick={() => setSidebarOpen((v) => !v)}
-              className="md:flex lg:hidden shrink-0 items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex lg:hidden shrink-0 items-center justify-center w-11 h-11 -ml-2 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               aria-label="Toggle sidebar"
+              aria-expanded={sidebarOpen}
+              aria-controls="admin-sidebar"
             >
-              <Menu size={18} />
+              <Menu size={20} />
             </button>
             <div className="flex-1 min-w-0">
               <GlobalSearch />
             </div>
             <button
+              ref={activityButton}
               onClick={() => setActivityOpen(true)}
-              className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
+              aria-label="Activity"
+              className={`shrink-0 flex items-center justify-center gap-2 min-h-11 max-sm:w-11 sm:px-3 rounded-md text-sm transition-colors ${
                 isActivityPage
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <Bell size={16} />
-              Activity
+              <span className="max-sm:hidden">Activity</span>
             </button>
           </header>
           <main className="flex-1 p-4 lg:p-8">{children}</main>
         </div>
-        <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
+        <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} triggerRef={activityButton} />
       </div>
     </>
   );
