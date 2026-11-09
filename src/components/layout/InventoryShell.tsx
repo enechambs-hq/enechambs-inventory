@@ -11,10 +11,9 @@ import api from '@/lib/api';
 import { canViewActivity } from '@/lib/admin/activity-access';
 
 export default function InventoryShell({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, user } = useAuthGuard();
+  const { status, user } = useAuthGuard();
   // The activity log is administrators-only on the API, so the control and panel follow that (a courtesy; the API is the control).
   const showActivity = canViewActivity(user?.role);
-  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const [activityOpen, setActivityOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,10 +22,11 @@ export default function InventoryShell({ children }: { children: React.ReactNode
   const wasOpen = useRef(false);
   const skipRestore = useRef(false);
   const isActivityPage = pathname === '/activity';
+  // Only once the person is known to be signed in: a warm-up request without a session would be a protected request
+  // firing before the guard has resolved.
   useEffect(() => {
-    setMounted(true);
-    api.get('/inventory?limit=1').catch(() => {});
-  }, []);
+    if (status === 'allowed') api.get('/inventory?limit=1').catch(() => {});
+  }, [status]);
 
   // Close the drawer after navigating
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function InventoryShell({ children }: { children: React.ReactNode
     setSidebarOpen(false);
   };
 
-  if (!mounted || !isAuthenticated) return null;
+  if (status !== 'allowed') return null;
 
   return (
     <>

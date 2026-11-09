@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AuthUser } from '@/types';
+import { signOutIntent } from '../lib/auth/sign-out-intent.ts';
 
 const setCookie = (name: string, value: string) => {
   document.cookie = `${name}=${value}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
@@ -40,6 +41,8 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   ...getStoredAuth(),
   setAuth: (user, token) => {
+    // Someone is signed in again, so any earlier deliberate sign-out is over.
+    signOutIntent.clear();
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(user));
     setCookie('token', token);

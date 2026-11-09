@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { UserRole, ActivityLog } from '@/types';
+import { ActivityLog } from '@/types';
 import { dashboardService } from '@/lib/services/dashboard.service';
 import { formatActivityDescription } from '@/lib/utils';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
@@ -12,7 +11,6 @@ import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
 import type { AppError } from '@/lib/errors/app-error';
 
 export default function ActivityPage() {
-  useAuthGuard(UserRole.ADMIN);
   const cards = useMediaQuery('(max-width: 1279px)');
 
   const [logs, setLogs] = useState<ActivityLog[]>([]);

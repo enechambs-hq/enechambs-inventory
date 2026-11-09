@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { useSearchParams } from 'next/navigation';
-import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { useUsersStore } from '@/store/users.store';
 import { usersService } from '@/lib/services/users.service';
 import { User, UserPerformance, UserRole, ActivityLog } from '@/types';
@@ -68,7 +67,6 @@ const Empty = ({ children }: { children: React.ReactNode }) => (
 );
 
 export default function UsersPage() {
-  useAuthGuard(UserRole.ADMIN);
   const wide = useMediaQuery('(min-width: 1280px)');
   const roomy = useMediaQuery('(min-width: 1024px)');
 

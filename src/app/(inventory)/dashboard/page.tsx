@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format, subDays } from "date-fns";
-import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { UserRole, UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct } from "@/types";
+import { UserPerformance, DailySummary, WeeklySummary, MonthlySummary, TopProduct } from "@/types";
 import type { ActivityLog } from "@/types";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
@@ -20,7 +19,6 @@ import RecentActivity from "@/components/dashboard/RecentActivity";
 import RegisterStaffModal from "@/components/dashboard/RegisterStaffModal";
 
 export default function DashboardPage() {
-  useAuthGuard(UserRole.ADMIN);
 
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);

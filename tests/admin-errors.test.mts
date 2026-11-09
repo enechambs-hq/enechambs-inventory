@@ -215,9 +215,7 @@ test('Sidebar logout uses the sequence and no longer swallows or claims success 
 
 // ── scope guard ──────────────────────────────────────────────────────────────
 
-test('Phase 3 left the authentication interceptor and the proxy alone', () => {
-  const api = read('src/lib/api.ts');
-  assert.match(api, /error\.response\?\.status === 401 && localStorage\.getItem\('token'\)/);
+test('the staff API proxy is still the bounded fetch (the interceptor is covered by session-access.test.mts)', () => {
   assert.match(read('src/app/api/v1/[...path]/route.ts'), /fetchBounded\(/);
 });
 

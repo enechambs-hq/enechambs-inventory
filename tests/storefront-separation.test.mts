@@ -46,11 +46,11 @@ test('the client shell that calls useAuthGuard() is rendered INSIDE the provider
   assert.match(shell, /useAuthGuard\(\)/);
 });
 
-test('the staff auth guard itself is unchanged: it still redirects unauthenticated users to /login and non-admins away', () => {
+test('the staff auth guard still sends unauthenticated users to /login and judges the role (non-admins now see a forbidden state)', () => {
   const guard = read('src/hooks/useAuthGuard.ts');
-  assert.match(guard, /if \(!isAuthenticated\) \{\s*router\.push\('\/login'\);/);
-  assert.match(guard, /requiredRole && user\?\.role !== requiredRole/);
-  assert.match(guard, /router\.push\('\/inventory'\)/);
+  assert.match(guard, /status === 'unauthenticated'/);
+  assert.match(guard, /router\.replace\(signOutIntent\.isActive\(\) \? '\/login' : signInUrl\(/);
+  assert.match(guard, /resolveAccess\(\{ hydrated, isAuthenticated, role: user\?\.role, requiredRole \}\)/);
 });
 
 test('every staff page still sits inside a group that has the provider', () => {

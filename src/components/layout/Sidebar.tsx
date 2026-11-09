@@ -31,6 +31,7 @@ import { z } from "zod";
 import { useAuthStore } from "@/store/auth.store";
 import { authService } from "@/lib/services/auth.service";
 import { toast } from "sonner";
+import { signOutIntent } from '@/lib/auth/sign-out-intent';
 import { performLogout } from "@/lib/admin/logout";
 import { cn } from "@/lib/utils";
 import { isLinkActive, linksForRole } from "@/lib/nav-config";
@@ -165,6 +166,7 @@ export default function Sidebar({
       setConfirmOpen(false);
       reset();
       setPendingData(null);
+      signOutIntent.begin();
       clearAuth();
       router.push('/login');
       toast.success("Password changed. Please sign in with your new password.");
@@ -181,6 +183,7 @@ export default function Sidebar({
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
+    signOutIntent.begin();
     // The person always leaves the signed-in interface on this device; if the server could not be told, they are told so.
     await performLogout({
       remote: () => authService.logout(),

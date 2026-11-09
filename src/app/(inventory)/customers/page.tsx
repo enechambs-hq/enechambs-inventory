@@ -6,8 +6,6 @@ import { Search, Mail, X, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { dashboardService } from "@/lib/services/dashboard.service";
 import { Customer } from "@/types";
-import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { UserRole } from "@/types";
 
 const LIMIT = 10;
 
@@ -150,7 +148,6 @@ function BroadcastModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function CustomersPage() {
-  useAuthGuard(UserRole.ADMIN);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: LIMIT, totalPages: 1 });

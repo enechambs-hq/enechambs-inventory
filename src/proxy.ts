@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { isStorefrontEnabled } from '@/lib/server/flags';
 import { isPublicPath } from '@/lib/route-access';
+import { signInUrl } from '@/lib/auth/return-path';
 
 /**
  * Staff route protection. A request without the staff `token` cookie is sent to
@@ -17,7 +18,8 @@ export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value;
 
   if (!token && !isPublicPath(pathname, { storefrontEnabled: isStorefrontEnabled() })) {
-    return NextResponse.redirect(new URL('/login', request.url));
+    // The page they asked for is remembered (validated as an in-app path) so sign-in can return them to it.
+    return NextResponse.redirect(new URL(signInUrl({ returnTo: `${pathname}${request.nextUrl.search}` }), request.url));
   }
   return NextResponse.next();
 }
