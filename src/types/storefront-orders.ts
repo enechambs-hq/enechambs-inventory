@@ -158,6 +158,8 @@ export interface AdminOrderFilters {
   status?: AdminOrderStatus | '';
   paymentStatus?: AdminPaymentStatus | '';
   needsReview?: boolean;
+  /** Only paid orders still awaiting fulfilment (the "new paid orders" alert). */
+  awaitingFulfilment?: boolean;
   /** Lagos calendar days, YYYY-MM-DD, both inclusive. */
   fromDate?: string;
   toDate?: string;

@@ -7,6 +7,8 @@ import ActionDialog from '@/components/promotions/ActionDialog';
 import SkeletonRow from '@/components/shared/SkeletonRow';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
 import { canManageOnlineOrders } from '@/lib/nav-config';
+import AdminAlerts from './AdminAlerts';
+import { refreshAdminAlerts } from '@/hooks/useAdminAlerts';
 import { useAuthStore } from '@/store/auth.store';
 import { LabelledBadge, ORDER_STYLES, OrderStatusBadge, PaymentStatusBadge, WarningChip } from './badges';
 import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
@@ -31,7 +33,7 @@ const STAFF_STEPS: FulfilmentTarget[] = ['processing', 'dispatched', 'completed'
 const HEADERS = ['Order', 'Customer', 'Placed', 'Total', 'Payment', 'Status'];
 
 
-export default function OrdersList() {
+export default function OrdersList({ initial = { awaitingFulfilment: false, needsReview: false } }: { initial?: { awaitingFulfilment: boolean; needsReview: boolean } }) {
   const [orders, setOrders] = useState<AdminOrderRow[]>([]);
   const [meta, setMeta] = useState<ListMeta | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +43,9 @@ export default function OrdersList() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<AdminOrderStatus | ''>('');
   const [paymentStatus, setPaymentStatus] = useState<AdminPaymentStatus | ''>('');
-  const [needsReview, setNeedsReview] = useState(false);
+  // Opened from an alert link: start with exactly those orders (see OrdersListRoute).
+  const [needsReview, setNeedsReview] = useState(initial.needsReview);
+  const [awaitingFulfilment, setAwaitingFulfilment] = useState(initial.awaitingFulfilment);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
@@ -60,6 +64,7 @@ export default function OrdersList() {
       const updated = await storefrontOrdersService.updateFulfilment(pending.order.orderNumber, pending.target);
       setOrders((rows) => rows.map((r) => (r.orderNumber === updated.orderNumber ? { ...r, status: updated.status } : r)));
       setPending(null);
+      refreshAdminAlerts();
     } catch (err) {
       // The dialog stays open with this message; nothing the person chose is discarded.
       setSaveError(appErrorFromStaff(err, { action: 'change', one: 'order' }).message);
@@ -87,7 +92,7 @@ export default function OrdersList() {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await storefrontOrdersService.list({ page, limit: ORDERS_PAGE_SIZE, search, status, paymentStatus, needsReview, fromDate, toDate });
+      const result = await storefrontOrdersService.list({ page, limit: ORDERS_PAGE_SIZE, search, status, paymentStatus, needsReview, awaitingFulfilment, fromDate, toDate });
       if (id !== requestId.current) return;
       setOrders(result.data);
       setMeta(result.meta);
@@ -97,18 +102,19 @@ export default function OrdersList() {
     } finally {
       if (id === requestId.current) setIsLoading(false);
     }
-  }, [page, search, status, paymentStatus, needsReview, fromDate, toDate]);
+  }, [page, search, status, paymentStatus, needsReview, awaitingFulfilment, fromDate, toDate]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const filtered = search !== '' || status !== '' || paymentStatus !== '' || needsReview || fromDate !== '' || toDate !== '';
+  const filtered = search !== '' || status !== '' || paymentStatus !== '' || needsReview || awaitingFulfilment || fromDate !== '' || toDate !== '';
   const reset = () => {
     setSearchInput('');
     appliedSearch.current = '';
     setSearch('');
     setStatus('');
+    setAwaitingFulfilment(false);
     setPaymentStatus('');
     setNeedsReview(false);
     setFromDate('');
@@ -170,6 +176,7 @@ export default function OrdersList() {
 
   return (
     <div className="mx-auto w-full max-w-[80rem]">
+      <AdminAlerts role={role} />
       <div className="mb-5">
         <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#0f4f2d] md:text-[32px]">Online orders</h1>
         <p className="mt-1 text-sm text-gray-600">
@@ -212,6 +219,10 @@ export default function OrdersList() {
             <label htmlFor="to-date" className={label}>To (Lagos)</label>
             <input id="to-date" type="date" value={toDate} min={fromDate || undefined} onChange={(e) => changed(setToDate)(e.target.value)} className={input} />
           </div>
+          <label className="col-span-2 flex min-h-11 cursor-pointer items-center gap-3 text-sm text-gray-800 md:col-span-1 md:self-end">
+            <input type="checkbox" className="h-5 w-5 shrink-0 accent-[#1a7a4a]" checked={awaitingFulfilment} onChange={(e) => changed(setAwaitingFulfilment)(e.target.checked)} />
+            New paid orders
+          </label>
           <label className="col-span-2 flex min-h-11 cursor-pointer items-center gap-3 text-sm text-gray-800 md:col-span-1 md:self-end">
             <input type="checkbox" className="h-5 w-5 shrink-0 accent-[#1a7a4a]" checked={needsReview} onChange={(e) => changed(setNeedsReview)(e.target.checked)} />
             Needs review

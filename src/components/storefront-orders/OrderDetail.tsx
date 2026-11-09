@@ -12,6 +12,7 @@ import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
 import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
 import type { AppError } from '@/lib/errors/app-error';
 import { canDecideStorefrontPayments, canManageOnlineOrders } from '@/lib/nav-config';
+import { refreshAdminAlerts } from '@/hooks/useAdminAlerts';
 import { cancellationPanel, createSubmitGuard, runDecision } from '@/lib/storefront-orders/cancellation';
 import { storefrontOrdersService } from '@/lib/services/storefront-orders.service';
 import {
@@ -104,6 +105,7 @@ export default function OrderDetail({ orderNumber }: { orderNumber: string }) {
         setOrder(updated);
         setNotice(success);
         close();
+        refreshAdminAlerts(); // the numbers in the header may have changed
       },
       onFailed: setActionError,
     });

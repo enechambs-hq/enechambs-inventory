@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { startTransition, useEffect } from 'react';
 import { RotateCcw, TriangleAlert } from 'lucide-react';
+import { reportBoundaryError } from '@/lib/monitoring/report';
 
 interface Props {
   /** The error Next.js caught. Its message is NEVER shown: it can be technical or come from a backend. */
@@ -34,9 +35,10 @@ export default function ErrorPanel({ error, reset, homeHref, homeLabel, layout =
       reset();
     });
   useEffect(() => {
-    // Browser console only (so developers see it locally); nothing is sent anywhere.
+    // Browser console for developers; and, when monitoring is configured, one scrubbed incident report.
     console.error(error);
-  }, [error]);
+    reportBoundaryError(error, layout === 'page' ? 'page' : 'segment');
+  }, [error, layout]);
 
   return (
     <div className={layout === 'page' ? 'flex min-h-dvh items-center justify-center bg-[#fbf7ef] px-4 py-10' : 'flex justify-center px-4 py-16'}>

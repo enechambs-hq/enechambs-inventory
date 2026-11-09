@@ -46,6 +46,7 @@ export function buildOrderListParams(input: AdminOrderFilters = {}): Record<stri
   if (input.status) params.status = input.status;
   if (input.paymentStatus) params.paymentStatus = input.paymentStatus;
   if (input.needsReview) params.needsReview = true;
+  if (input.awaitingFulfilment) params.awaitingFulfilment = true;
   const search = (input.search ?? '').trim().slice(0, MAX_SEARCH_LENGTH);
   if (search) params.search = search;
   const { from, to } = lagosRangeToInstants(input.fromDate, input.toDate);
@@ -121,6 +122,9 @@ export function createStorefrontOrdersApi(http: HttpClient) {
       const res = (await http.get<AdminOrderListResponse>(ORDERS, { params: buildOrderListParams(filters) })).data;
       return { ...res, data: (res.data ?? []).map(normaliseRow) };
     },
+
+    /** Staff and administrators. Staff never receive the payment-review part (the API sends null). */
+    alerts: async (): Promise<unknown> => (await http.get<unknown>(`${ORDERS}/alerts`)).data,
 
     get: async (orderNumber: string): Promise<AdminOrderDetail> =>
       normaliseDetail((await http.get<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}`)).data),

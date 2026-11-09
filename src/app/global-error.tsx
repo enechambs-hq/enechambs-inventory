@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { startTransition, useEffect } from 'react';
+import { reportBoundaryError } from '@/lib/monitoring/report';
 
 /**
  * The last resort: it replaces the ROOT layout, so it supplies its own <html> and <body> and cannot rely on the app's
@@ -12,6 +13,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const router = useRouter();
   useEffect(() => {
     console.error(error);
+    reportBoundaryError(error, 'global');
   }, [error]);
   // reset() alone only re-renders the client tree; a failure that came from the server also needs fresh page data.
   const retry = () =>

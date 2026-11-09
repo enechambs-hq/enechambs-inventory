@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchBounded } from '../../../../lib/server/staff-upstream.ts';
 import { STAFF_PROXY_UPSTREAM_TIMEOUT_MS } from '../../../../lib/timeouts.ts';
+import { REQUEST_ID_HEADER, resolveRequestId, responseRequestId } from '../../../../lib/request-id.ts';
 
 const BACKEND =
   process.env.BACKEND_URL ?? 'https://enechambs-api.onrender.com';
@@ -20,10 +21,10 @@ const NO_BODY_HEADERS = ['content-type', 'etag', 'cache-control', 'last-modified
  * The same JSON shape the API itself uses for errors ({ success, message, code }), so the browser handles a proxy
  * failure like any other API failure instead of choking on an HTML error page. Only the path (never the query string).
  */
-function failure(req: NextRequest, status: 502 | 504, message: string, code: string) {
+function failure(req: NextRequest, status: 502 | 504, message: string, code: string, requestId: string) {
   return NextResponse.json(
-    { success: false, message, code, timestamp: new Date().toISOString(), path: req.nextUrl.pathname },
-    { status },
+    { success: false, status, message, code, timestamp: new Date().toISOString(), path: req.nextUrl.pathname, requestId },
+    { status, headers: { [REQUEST_ID_HEADER]: requestId } },
   );
 }
 
@@ -35,7 +36,9 @@ async function proxy(req: NextRequest, { params }: { params: Params }) {
     url.searchParams.set(key, value);
   });
 
-  const headers = new Headers();
+  // One id for this request, sent to the API and returned to the browser (the API's own id wins when it reports one).
+  const requestId = resolveRequestId(req.headers.get(REQUEST_ID_HEADER));
+  const headers = new Headers({ [REQUEST_ID_HEADER]: requestId });
   const auth = req.headers.get('authorization');
   if (auth) headers.set('authorization', auth);
   const contentType = req.headers.get('content-type');
@@ -57,8 +60,8 @@ async function proxy(req: NextRequest, { params }: { params: Params }) {
   } catch (error) {
     const timedOut = error instanceof Error && error.name === 'TimeoutError';
     return timedOut
-      ? failure(req, 504, 'The service took too long to respond', 'UPSTREAM_TIMEOUT')
-      : failure(req, 502, 'Service unavailable', 'UPSTREAM_UNAVAILABLE');
+      ? failure(req, 504, 'The service took too long to respond', 'UPSTREAM_TIMEOUT', requestId)
+      : failure(req, 502, 'Service unavailable', 'UPSTREAM_UNAVAILABLE', requestId);
   }
 
   // 204, 205 and 304 must not carry a body: the Fetch API refuses to build such
@@ -67,7 +70,7 @@ async function proxy(req: NextRequest, { params }: { params: Params }) {
   // and only the end-to-end headers that mean something without one (no
   // hop-by-hop headers such as Connection or Transfer-Encoding).
   if (NO_BODY_STATUSES.has(upstream.status)) {
-    const headers = new Headers();
+    const headers = new Headers({ [REQUEST_ID_HEADER]: responseRequestId(upstream.headers, requestId) });
     for (const name of NO_BODY_HEADERS) {
       const value = upstream.headers.get(name);
       if (value) headers.set(name, value);
@@ -79,6 +82,7 @@ async function proxy(req: NextRequest, { params }: { params: Params }) {
     status: upstream.status,
     headers: {
       'content-type': upstream.headers.get('content-type') ?? 'application/json',
+      [REQUEST_ID_HEADER]: responseRequestId(upstream.headers, requestId),
     },
   });
 }

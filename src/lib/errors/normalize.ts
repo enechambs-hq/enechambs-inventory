@@ -242,6 +242,7 @@ export interface StoreFailureLike {
   status: number;
   code?: string;
   message: string;
+  requestId?: string;
 }
 
 /** The storefront's own friendly wording for API codes, passed in by the adapter so this module does not import it. */
@@ -268,7 +269,7 @@ export function fromStoreFailure(failure: StoreFailureLike, options: NormalizeOp
   const code = safeCode(failure.code);
   const trusted = code ? codeMessage?.(failure) : undefined;
   return build(
-    { kind, status: status > 0 ? status : undefined, code, trusted, serverText: failure.message },
+    { kind, status: status > 0 ? status : undefined, code, trusted, serverText: failure.message, correlationId: findCorrelationId(undefined, { requestId: failure.requestId }) },
     options,
   );
 }

@@ -22,6 +22,7 @@ import {
   signedClientIpHeaders,
 } from './bff.ts';
 import { isStorefrontEnabled } from './flags.ts';
+import { REQUEST_ID_HEADER, resolveRequestId, responseRequestId } from '../request-id.ts';
 
 export interface StoreBffDeps {
   env: Record<string, string | undefined>;
@@ -71,7 +72,7 @@ export function redactAccessToken(body: ArrayBuffer, contentType: string): Array
   ).buffer as ArrayBuffer;
 }
 
-const json = (body: unknown, status: number, extra: HeadersInit = {}) =>
+const jsonBody = (body: unknown, status: number, extra: HeadersInit = {}) =>
   Response.json(body, {
     status,
     headers: { 'cache-control': 'no-store', ...extra },
@@ -87,6 +88,10 @@ export async function handleStoreRequest(
   options: StoreRequestOptions = {},
 ): Promise<Response> {
   const { env } = deps;
+  // One id per request: forwarded to the API, returned to the browser, and included in any error this layer produces.
+  const requestId = resolveRequestId(req.headers.get(REQUEST_ID_HEADER));
+  const json = (payload: Record<string, unknown>, status: number, extra: HeadersInit = {}) =>
+    jsonBody({ ...payload, requestId }, status, { [REQUEST_ID_HEADER]: requestId, ...extra });
 
   if (!isStorefrontEnabled(env)) {
     return json({ message: 'Not found' }, 404);
@@ -158,7 +163,7 @@ export async function handleStoreRequest(
 
   const url = new URL(`/api/v1/${path}${rawQuery}`, backend);
 
-  const headers = new Headers({ accept: 'application/json' });
+  const headers = new Headers({ accept: 'application/json', [REQUEST_ID_HEADER]: requestId });
   if (hasBody) headers.set('content-type', 'application/json');
   if (idempotencyKey) headers.set('idempotency-key', idempotencyKey);
 
@@ -216,6 +221,7 @@ export async function handleStoreRequest(
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff',
     'content-type': upstream.headers.get('content-type') ?? 'application/json',
+    [REQUEST_ID_HEADER]: responseRequestId(upstream.headers, requestId),
   };
   const retryAfter = upstream.headers.get('retry-after');
   if (retryAfter) responseHeaders['retry-after'] = retryAfter;

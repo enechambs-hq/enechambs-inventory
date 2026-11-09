@@ -7,6 +7,7 @@ import { useAuthGuard } from '@/hooks/useAuthGuard';
 import Sidebar from '@/components/layout/Sidebar';
 import ActivityPanel from '@/components/layout/ActivityPanel';
 import GlobalSearch from '@/components/layout/GlobalSearch';
+import AdminAlerts from '@/components/storefront-orders/AdminAlerts';
 import api from '@/lib/api';
 import { canViewActivity } from '@/lib/admin/activity-access';
 
@@ -100,6 +101,7 @@ export default function InventoryShell({ children }: { children: React.ReactNode
             <div className="flex-1 min-w-0">
               <GlobalSearch />
             </div>
+            <AdminAlerts role={user?.role} compact />
             {showActivity && (
               <button
                 ref={activityButton}
