@@ -8,9 +8,12 @@ import Sidebar from '@/components/layout/Sidebar';
 import ActivityPanel from '@/components/layout/ActivityPanel';
 import GlobalSearch from '@/components/layout/GlobalSearch';
 import api from '@/lib/api';
+import { canViewActivity } from '@/lib/admin/activity-access';
 
 export default function InventoryShell({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthGuard();
+  const { isAuthenticated, user } = useAuthGuard();
+  // The activity log is administrators-only on the API, so the control and panel follow that (a courtesy; the API is the control).
+  const showActivity = canViewActivity(user?.role);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const [activityOpen, setActivityOpen] = useState(false);
@@ -97,23 +100,25 @@ export default function InventoryShell({ children }: { children: React.ReactNode
             <div className="flex-1 min-w-0">
               <GlobalSearch />
             </div>
-            <button
-              ref={activityButton}
-              onClick={() => setActivityOpen(true)}
-              aria-label="Activity"
-              className={`shrink-0 flex items-center justify-center gap-2 min-h-11 max-sm:w-11 sm:px-3 rounded-md text-sm transition-colors ${
-                isActivityPage
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <Bell size={16} />
-              <span className="max-sm:hidden">Activity</span>
-            </button>
+            {showActivity && (
+              <button
+                ref={activityButton}
+                onClick={() => setActivityOpen(true)}
+                aria-label="Activity"
+                className={`shrink-0 flex items-center justify-center gap-2 min-h-11 max-sm:w-11 sm:px-3 rounded-md text-sm transition-colors ${
+                  isActivityPage
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <Bell size={16} />
+                <span className="max-sm:hidden">Activity</span>
+              </button>
+            )}
           </header>
           <main className="flex-1 p-4 lg:p-8">{children}</main>
         </div>
-        <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} triggerRef={activityButton} />
+        <ActivityPanel open={activityOpen && showActivity} onClose={() => setActivityOpen(false)} triggerRef={activityButton} canView={showActivity} />
       </div>
     </>
   );

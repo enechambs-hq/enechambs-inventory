@@ -7,6 +7,9 @@ import { dashboardService } from '@/lib/services/dashboard.service';
 import { formatActivityDescription } from '@/lib/utils';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
 import { ActionTag, formatEventTime } from '@/components/activity/ActivityParts';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 
 export default function ActivityPage() {
   useAuthGuard(UserRole.ADMIN);
@@ -17,18 +20,22 @@ export default function ActivityPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  // A failed request is shown as a failure, never as an empty history.
+  const [error, setError] = useState<AppError | null>(null);
 
   const limit = 25;
 
   const fetchLogs = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const data = await dashboardService.getAllActivity(page, limit);
       setLogs(data.data);
       setTotal(data.meta.total);
       setTotalPages(data.meta.totalPages);
-    } catch {
-      // fail silently
+    } catch (err) {
+      setLogs([]);
+      setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'the activity log' }));
     } finally {
       setIsLoading(false);
     }
@@ -43,13 +50,15 @@ export default function ActivityPage() {
     <div className="mx-auto w-full max-w-[80rem]">
       <div className="mb-6">
         <h1 className="text-[1.75rem] font-bold leading-8 text-[#0f4f2d] md:text-[2rem] md:leading-10">Activity Log</h1>
-        <p className="mt-1 text-sm text-gray-600">{total} total events</p>
+        {!error && <p className="mt-1 text-sm text-gray-600">{total} total events</p>}
       </div>
 
       {isLoading ? (
         <div role="status" aria-label="Loading activity" className="flex justify-center rounded-2xl border border-gray-200 bg-white py-12">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1a7a4a] border-t-transparent" />
         </div>
+      ) : error ? (
+        <LoadErrorPanel error={error} onRetry={() => void fetchLogs()} title="Could not load the activity log" />
       ) : logs.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white px-6 py-12 text-center text-base text-gray-600">No activity found</div>
       ) : cards ? (
@@ -83,10 +92,10 @@ export default function ActivityPage() {
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id} className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50">
-                  <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d]">{actor(log)}</td>
+                  <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d] [overflow-wrap:anywhere]">{actor(log)}</td>
                   <td className="px-3 py-3 text-sm capitalize text-gray-700">{log.user ? log.user.role : '—'}</td>
                   <td className="px-3 py-3"><ActionTag action={log.action} /></td>
-                  <td className="break-words px-3 py-3 text-sm text-gray-800">{formatActivityDescription(log.description)}</td>
+                  <td className="px-3 py-3 text-sm text-gray-800 [overflow-wrap:anywhere]">{formatActivityDescription(log.description)}</td>
                   <td className="whitespace-nowrap px-3 py-3 pr-5 text-sm text-gray-700">{formatEventTime(log.timestamp)}</td>
                 </tr>
               ))}
@@ -95,7 +104,7 @@ export default function ActivityPage() {
         </div>
       )}
 
-      {totalPages > 1 && (
+      {totalPages > 1 && !error && (
         <div className="mt-4 grid grid-cols-2 items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 sm:flex sm:justify-between">
           <p className="order-1 col-span-2 sm:order-none">Page {page} of {totalPages}</p>
           <div className="contents sm:flex sm:gap-2">

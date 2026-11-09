@@ -16,6 +16,10 @@ import { dashboardService } from '@/lib/services/dashboard.service';
 import { useMediaQuery } from '@/components/storefront/useMediaQuery';
 import ModalFrame from '@/components/users/ModalFrame';
 import { ActionTag } from '@/components/activity/ActivityParts';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import ErrorNotice from '@/components/errors/ErrorNotice';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
 
 type ActiveTab = 'users' | 'performance';
 
@@ -75,6 +79,13 @@ export default function UsersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(
     searchParams.get('tab') === 'performance' ? 'performance' : 'users'
   );
+  // A failed request is its own state, never an empty list: these hold the error until a retry succeeds.
+  const [usersError, setUsersError] = useState<AppError | null>(null);
+  const [perfError, setPerfError] = useState<AppError | null>(null);
+  const [activityError, setActivityError] = useState<AppError | null>(null);
+  // Failures of Save / Delete are shown inside their dialog, which stays open with what was entered.
+  const [editError, setEditError] = useState<AppError | null>(null);
+  const [deleteError, setDeleteError] = useState<AppError | null>(null);
   const [performance, setPerformance] = useState<UserPerformance[]>([]);
   const [perfLoading, setPerfLoading] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -98,10 +109,11 @@ export default function UsersPage() {
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
+      setUsersError(null);
       const data = await usersService.getAll({ page, limit });
       setUsers(data.data, data.meta);
-    } catch {
-      // fail silently
+    } catch (err) {
+      setUsersError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'users' }));
     } finally {
       setLoading(false);
     }
@@ -110,10 +122,11 @@ export default function UsersPage() {
   const fetchPerformance = useCallback(async () => {
     try {
       setPerfLoading(true);
+      setPerfError(null);
       const data = await usersService.getPerformance();
       setPerformance(data);
-    } catch {
-      // fail silently
+    } catch (err) {
+      setPerfError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'user performance' }));
     } finally {
       setPerfLoading(false);
     }
@@ -122,12 +135,15 @@ export default function UsersPage() {
   const fetchActivityForUser = useCallback(async (userId: string, pg: number) => {
     try {
       setActivityLoading(true);
+      setActivityError(null);
       const data = await dashboardService.getActivityByUser(userId, pg, 15);
       setActivityLogs(data.data);
       setActivityTotal(data.meta.total);
       setActivityTotalPages(data.meta.totalPages);
-    } catch {
-      // fail silently
+    } catch (err) {
+      // Never show the previous page's events (or "No activity found") for a request that failed.
+      setActivityLogs([]);
+      setActivityError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'this user\'s activity' }));
     } finally {
       setActivityLoading(false);
     }
@@ -143,6 +159,7 @@ export default function UsersPage() {
   }, [activeTab, fetchUsers, fetchPerformance]);
 
   const openEdit = (user: User) => {
+    setEditError(null);
     setEditUser(user);
     reset({
       firstName: user.firstName,
@@ -156,15 +173,14 @@ export default function UsersPage() {
     if (!editUser) return;
     try {
       setSubmitting(true);
+      setEditError(null);
       await usersService.update(editUser.id, data);
       toast.success('User updated successfully');
       setEditUser(null);
       fetchUsers();
     } catch (error) {
-      const message =
-        (error as { response?: { data?: { message?: string | string[] } } })
-          .response?.data?.message || 'Failed to update user';
-      toast.error(Array.isArray(message) ? message[0] : message);
+      // The dialog stays open with the entered values and says what happened. Nothing is reported as saved.
+      setEditError(appErrorFromStaff(error, { action: 'change', one: 'user' }));
     } finally {
       setSubmitting(false);
     }
@@ -174,12 +190,13 @@ export default function UsersPage() {
     if (!deleteUser) return;
     try {
       setDeleting(true);
+      setDeleteError(null);
       await usersService.delete(deleteUser.id);
       toast.success('User deleted');
       setDeleteUser(null);
       fetchUsers();
-    } catch {
-      toast.error('Failed to delete user');
+    } catch (error) {
+      setDeleteError(appErrorFromStaff(error, { action: 'change', one: 'user' }));
     } finally {
       setDeleting(false);
     }
@@ -192,6 +209,7 @@ export default function UsersPage() {
     setActivityUser(user);
     setActivityPage(1);
     setActivityLogs([]);
+    setActivityError(null);
   };
   const actions = (user: User, withText: boolean) => {
     const n = name(user);
@@ -207,7 +225,7 @@ export default function UsersPage() {
           <Pencil size={18} aria-hidden="true" />
           {withText && 'Edit'}
         </button>
-        <button type="button" onClick={() => setDeleteUser(user)} aria-label={`Delete ${n}`} title="Delete"
+        <button type="button" onClick={() => { setDeleteError(null); setDeleteUser(user); }} aria-label={`Delete ${n}`} title="Delete"
           className={withText ? btnRed : `${iconBtn} border-red-200 bg-white text-red-700 hover:bg-red-50`}>
           <Trash2 size={18} aria-hidden="true" />
           {withText && 'Delete'}
@@ -256,6 +274,8 @@ export default function UsersPage() {
         <div role="tabpanel" id="panel-users" aria-labelledby="tab-users">
           {isLoading ? (
             <Loading label="Loading users" />
+          ) : usersError ? (
+            <LoadErrorPanel error={usersError} onRetry={() => void fetchUsers()} title="Could not load users" />
           ) : users.length === 0 ? (
             <Empty>No users found</Empty>
           ) : wide ? (
@@ -271,7 +291,7 @@ export default function UsersPage() {
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="min-h-16 border-b border-gray-100 last:border-0 hover:bg-gray-50">
-                      <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d]">{name(user)}</td>
+                      <td className="px-3 py-3 pl-5 text-base font-semibold text-[#0f4f2d] [overflow-wrap:anywhere]">{name(user)}</td>
                       <td className="break-all px-3 py-3 text-sm text-gray-700">{user.email}</td>
                       <td className="px-3 py-3"><RoleBadge role={user.role} /></td>
                       <td className="px-3 py-3"><StatusBadge active={user.isActive} /></td>
@@ -309,7 +329,7 @@ export default function UsersPage() {
             </ul>
           )}
 
-          {totalPages > 1 && (
+          {totalPages > 1 && !usersError && (
             <div className="mt-4 grid grid-cols-2 items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-sm text-gray-700 sm:flex sm:justify-between">
               <p className="order-1 col-span-2 sm:order-none">Showing {users.length} of {total} users</p>
               <div className="contents sm:flex sm:items-center sm:gap-3">
@@ -324,6 +344,8 @@ export default function UsersPage() {
         <div role="tabpanel" id="panel-performance" aria-labelledby="tab-performance">
           {perfLoading ? (
             <Loading label="Loading performance" />
+          ) : perfError ? (
+            <LoadErrorPanel error={perfError} onRetry={() => void fetchPerformance()} title="Could not load performance" />
           ) : performance.length === 0 ? (
             <Empty>No performance data available</Empty>
           ) : roomy ? (
@@ -373,6 +395,7 @@ export default function UsersPage() {
             <span className="font-semibold text-gray-900">{deleteUser.firstName} {deleteUser.lastName}</span>
             ? This cannot be undone.
           </p>
+          {deleteError && <div className="mb-4"><ErrorNotice error={deleteError} /></div>}
           <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setDeleteUser(null)} disabled={deleting} className={`${btnGray} min-h-12 text-base`}>Cancel</button>
             <button
@@ -410,28 +433,30 @@ export default function UsersPage() {
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
             {activityLoading ? (
               <div role="status" aria-label="Loading activity" className="flex justify-center p-8"><div className="h-6 w-6 animate-spin rounded-full border-2 border-[#1a7a4a] border-t-transparent" /></div>
+            ) : activityError ? (
+              <LoadErrorPanel error={activityError} onRetry={() => activityUser && void fetchActivityForUser(activityUser.id, activityPage)} title="Could not load activity" />
             ) : activityLogs.length === 0 ? (
               <div className="p-8 text-center text-base text-gray-600">No activity found</div>
             ) : (
               <ul className="space-y-2">
                 {activityLogs.map((log) => (
-                  <li key={log.id} className="grid gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 sm:grid-cols-[9rem_minmax(0,11rem)_minmax(0,1fr)] sm:gap-4">
-                    <div>
+                  <li key={log.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 sm:grid-cols-[9rem_minmax(0,11rem)_minmax(0,1fr)] sm:gap-4">
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900">{format(new Date(log.timestamp), 'MMM d, yyyy')}</p>
                       <p className="text-sm text-gray-600">{format(new Date(log.timestamp), 'h:mm a')}</p>
                     </div>
-                    <div><ActionTag action={log.action ?? ''} /></div>
-                    <p className="break-words text-sm text-gray-800 sm:text-base">{log.description}</p>
+                    <div className="min-w-0"><ActionTag action={log.action ?? ''} /></div>
+                    <p className="min-w-0 text-sm text-gray-800 [overflow-wrap:anywhere] sm:text-base">{log.description}</p>
                   </li>
                 ))}
               </ul>
             )}
           </div>
 
-          {activityTotalPages > 1 && (
+          {activityTotalPages > 1 && !activityError && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-4">
               <p className="text-sm text-gray-700">{activityTotal} total entries</p>
               <div className="flex items-center gap-3 text-sm">
@@ -484,6 +509,7 @@ export default function UsersPage() {
               Active
             </label>
 
+            {editError && <ErrorNotice error={editError} />}
             <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:justify-end">
               <button type="button" onClick={() => setEditUser(null)} className={`${btnGray} min-h-12 text-base`}>Cancel</button>
               <button

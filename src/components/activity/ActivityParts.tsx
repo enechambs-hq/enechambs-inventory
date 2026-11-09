@@ -19,7 +19,7 @@ function tagClass(action: string): string {
 /** The coloured action label. Text is shown as the API gives it (underscores become spaces). */
 export function ActionTag({ action }: { action: string }) {
   return (
-    <span className={`inline-block max-w-full break-words rounded-full border px-2.5 py-0.5 text-sm font-medium first-letter:uppercase ${tagClass(action)}`}>
+    <span className={`inline-block max-w-full rounded-full [overflow-wrap:anywhere] border px-2.5 py-0.5 text-sm font-medium first-letter:uppercase ${tagClass(action)}`}>
       {action.replace(/_/g, ' ')}
     </span>
   );

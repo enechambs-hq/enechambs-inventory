@@ -31,6 +31,7 @@ import { z } from "zod";
 import { useAuthStore } from "@/store/auth.store";
 import { authService } from "@/lib/services/auth.service";
 import { toast } from "sonner";
+import { performLogout } from "@/lib/admin/logout";
 import { cn } from "@/lib/utils";
 import { isLinkActive, linksForRole } from "@/lib/nav-config";
 
@@ -179,16 +180,14 @@ export default function Sidebar({
   };
 
   const handleLogout = async () => {
-    try {
-      setIsLoggingOut(true);
-      await authService.logout();
-    } catch {
-      // fail silently, clear anyway
-    } finally {
-      clearAuth();
-      router.push("/login");
-      toast.success("Logged out successfully");
-    }
+    setIsLoggingOut(true);
+    // The person always leaves the signed-in interface on this device; if the server could not be told, they are told so.
+    await performLogout({
+      remote: () => authService.logout(),
+      clearLocal: clearAuth,
+      leave: () => router.push("/login"),
+      notify: (kind, message) => (kind === "success" ? toast.success(message) : toast.warning(message)),
+    });
   };
 
   return (

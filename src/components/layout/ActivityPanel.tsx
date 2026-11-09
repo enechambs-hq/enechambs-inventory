@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { ActivityLog } from '@/types';
@@ -9,30 +9,55 @@ import { formatActivityDescription } from '@/lib/utils';
 import { useModalBehavior } from '@/hooks/useModalBehavior';
 import { ActionTag } from '@/components/activity/ActivityParts';
 import { format } from 'date-fns';
+import LoadErrorPanel from '@/components/errors/LoadErrorPanel';
+import { appErrorFromStaff } from '@/lib/errors/staff-adapter';
+import type { AppError } from '@/lib/errors/app-error';
+import { ACTIVITY_ADMIN_ONLY_MESSAGE } from '@/lib/admin/activity-access';
+import { createLatest } from '@/lib/admin/latest';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   /** The top-bar Activity button; focus returns to it when the panel closes. */
   triggerRef?: RefObject<HTMLElement | null>;
+  /** Whether this person may read the activity log (administrators only, like the API). Without it nothing is requested. */
+  canView: boolean;
 }
 
-export default function ActivityPanel({ open, onClose, triggerRef }: Props) {
+export default function ActivityPanel({ open, onClose, triggerRef, canView }: Props) {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useModalBehavior({ open, onClose, containerRef: panelRef, returnFocusRef: triggerRef });
 
-  useEffect(() => {
-    if (!open) return;
+  const [error, setError] = useState<AppError | null>(null);
+  const latest = useRef(createLatest());
+
+  const load = useCallback(() => {
+    const ticket = latest.current.next();
     setIsLoading(true);
+    setError(null);
     dashboardService
       .getRecentActivity(5)
-      .then(setActivities)
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
-  }, [open]);
+      .then((rows) => {
+        if (latest.current.isCurrent(ticket)) setActivities(rows);
+      })
+      .catch((err) => {
+        // A failed request is not "no recent activity": say so, and never keep an earlier list on screen as if current.
+        if (!latest.current.isCurrent(ticket)) return;
+        setActivities([]);
+        setError(appErrorFromStaff(err, { method: 'GET', action: 'load', what: 'recent activity' }));
+      })
+      .finally(() => {
+        if (latest.current.isCurrent(ticket)) setIsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    // Only people who may read the log ask for it; everyone else gets an explanation, not a request that would be refused.
+    if (open && canView) load();
+  }, [open, canView, load]);
 
   return (
     <>
@@ -65,8 +90,14 @@ export default function ActivityPanel({ open, onClose, triggerRef }: Props) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-2">
-          {isLoading ? (
+          {!canView ? (
+            <p role="status" className="py-3 text-base text-gray-700">{ACTIVITY_ADMIN_ONLY_MESSAGE}</p>
+          ) : isLoading ? (
             <p className="py-3 text-base text-gray-600">Loading...</p>
+          ) : error ? (
+            <div className="py-3">
+              <LoadErrorPanel error={error} onRetry={load} title="Could not load recent activity" />
+            </div>
           ) : activities.length === 0 ? (
             <p className="py-3 text-base text-gray-600">No recent activity</p>
           ) : (
@@ -90,6 +121,7 @@ export default function ActivityPanel({ open, onClose, triggerRef }: Props) {
           )}
         </div>
 
+        {canView && (
         <div className="border-t border-gray-200 p-4">
           <Link
             href="/activity"
@@ -99,6 +131,7 @@ export default function ActivityPanel({ open, onClose, triggerRef }: Props) {
             View all activity
           </Link>
         </div>
+        )}
       </div>
     </>
   );
