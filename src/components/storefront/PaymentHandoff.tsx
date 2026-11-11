@@ -15,10 +15,17 @@ const SLOW_AFTER_MS = 15000;
  * and cannot be dismissed. If it drags on, it offers the order page instead:
  * by then the order exists and the cart has been spent.
  */
-export default function PaymentHandoff({ orderNumber }: { orderNumber?: string }) {
+export default function PaymentHandoff({ orderNumber, onShown }: { orderNumber?: string; onShown?: (shown: boolean) => void }) {
   const [visible, setVisible] = useState(false);
   const [slow, setSlow] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
+
+  // Lets the page know while the dialog is on screen (the mobile payment bar hides meanwhile). Timing is unchanged.
+  useEffect(() => {
+    if (!visible) return;
+    onShown?.(true);
+    return () => onShown?.(false);
+  }, [visible, onShown]);
 
   useEffect(() => {
     const show = window.setTimeout(() => setVisible(true), SHOW_AFTER_MS);

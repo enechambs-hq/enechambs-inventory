@@ -7,7 +7,7 @@ import { AlertCircle, ArrowLeft, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import ActionDialog from '@/components/promotions/ActionDialog';
 import AdminOnly from '@/components/promotions/AdminOnly';
-import ComboForm from '@/components/promotions/ComboForm';
+import ComboForm, { FormActionBar, ValidationSummary, focusFirstInvalid, hasFieldErrors } from '@/components/promotions/ComboForm';
 import ComboImages from '@/components/promotions/ComboImages';
 import ComboStatusBadge from '@/components/promotions/ComboStatusBadge';
 import { combosService } from '@/lib/services/combos.service';
@@ -61,10 +61,10 @@ function EditCombo({ id }: { id: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f0] p-6" aria-busy="true">
-        <div className="max-w-3xl space-y-4">
-          <div className="h-8 w-64 rounded-md bg-gray-200 animate-pulse" />
-          <div className="h-80 rounded-2xl bg-gray-200/70 animate-pulse" />
+      <div className="mx-auto w-full max-w-[45rem]" aria-busy="true">
+        <div className="space-y-4">
+          <div className="h-8 w-64 animate-pulse rounded-md bg-gray-200" />
+          <div className="h-80 animate-pulse rounded-2xl bg-gray-200/70" />
         </div>
       </div>
     );
@@ -72,21 +72,21 @@ function EditCombo({ id }: { id: string }) {
 
   if (loadError || !combo || !values) {
     return (
-      <div className="min-h-screen bg-[#f0f2f0] p-6">
-        <Link href="/promotions/combos" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
-          <ArrowLeft size={14} />
+      <div className="mx-auto w-full max-w-[45rem]">
+        <Link href="/promotions/combos" className="mb-2 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-gray-700 hover:text-[#1a7a4a]">
+          <ArrowLeft size={16} aria-hidden="true" />
           All combos
         </Link>
-        <div role="alert" className="bg-white rounded-2xl border border-gray-100 shadow-sm flex flex-col items-center text-center py-16 px-6">
-          <AlertCircle size={28} className="text-red-400 mb-3" />
-          <p className="text-sm font-medium text-gray-800">Could not load this combo</p>
-          <p className="text-sm text-gray-500 mt-1 max-w-md">{loadError}</p>
+        <div role="alert" className="flex flex-col items-center rounded-2xl border border-gray-200 bg-white px-6 py-14 text-center">
+          <AlertCircle size={28} className="mb-3 text-red-500" />
+          <p className="text-base font-semibold text-gray-900">Could not load this combo</p>
+          <p className="mt-1 max-w-md text-base text-gray-600">{loadError}</p>
           <button
             type="button"
             onClick={() => void load()}
-            className="mt-4 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1a7a4a] border border-[#b9e0c9] rounded-lg hover:bg-[#e8f5ee]"
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-[#b9e0c9] bg-white px-4 text-sm font-semibold text-[#1a7a4a] hover:bg-[#e8f5ee]"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={16} />
             Try again
           </button>
         </div>
@@ -106,6 +106,7 @@ function EditCombo({ id }: { id: string }) {
     const result = validateUpdate(values, combo);
     if (!result.ok) {
       setErrors(result.errors);
+      focusFirstInvalid(result.errors, values);
       return;
     }
     setErrors({});
@@ -156,76 +157,76 @@ function EditCombo({ id }: { id: string }) {
   const published = combo.status === 'published';
 
   return (
-    <div className="min-h-screen bg-[#f0f2f0] p-6">
-      <Link href="/promotions/combos" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
-        <ArrowLeft size={14} />
+    <div className="mx-auto w-full max-w-[45rem]">
+      <Link href="/promotions/combos" className="mb-2 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-gray-700 hover:text-[#1a7a4a]">
+        <ArrowLeft size={16} aria-hidden="true" />
         All combos
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-6 max-w-5xl">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900 truncate">{combo.name}</h1>
+          <h1 className="break-words text-[1.75rem] font-bold leading-8 text-[#0f4f2d] md:text-[2rem] md:leading-10">{combo.name}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <ComboStatusBadge status={combo.status} />
-          </div>
-          <p className="text-sm text-gray-500 mt-0.5">/{combo.slug}</p>
+            <span className="break-all text-sm text-gray-600">/{combo.slug}</span>
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          {published ? (
-            <button
-              type="button"
-              onClick={() => setAction('unpublish')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-amber-700 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors"
-            >
-              <EyeOff size={16} />
-              Unpublish
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setAction('publish')}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#1a7a4a] text-white text-sm font-medium rounded-lg hover:bg-[#145c37] transition-colors shadow-sm"
-            >
-              <Eye size={16} />
-              Publish
-            </button>
-          )}
-        </div>
+        {published ? (
+          <button
+            type="button"
+            onClick={() => setAction('unpublish')}
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-5 text-sm font-semibold text-amber-800 transition-colors hover:bg-amber-50 sm:w-auto"
+          >
+            <EyeOff size={18} aria-hidden="true" />
+            Unpublish
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAction('publish')}
+            className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-[#1a7a4a] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#145c37] sm:w-auto"
+          >
+            <Eye size={18} aria-hidden="true" />
+            Publish
+          </button>
+        )}
       </div>
 
-      <div className="max-w-5xl space-y-6">
-        <form onSubmit={onSave} noValidate className="bg-white rounded-2xl shadow-sm border border-gray-100">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="text-base font-semibold text-gray-900">Details</h2>
-          </div>
-          <div className="p-6">
-            <ComboForm
-              mode="edit"
-              values={values}
-              errors={errors}
-              slugFrozen={slugFrozen}
-              allocatedQuantity={combo.allocatedQuantity}
-              remainingQuantity={combo.remainingQuantity}
-              disabled={saving}
-              onChange={(patch) => setValues((v) => (v ? { ...v, ...patch } : v))}
-            />
-            {saveError && (
-              <div role="alert" className="flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700 mt-5">
-                <AlertCircle size={16} className="shrink-0 mt-0.5" />
-                <span>{saveError}</span>
-              </div>
-            )}
-          </div>
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
-            <button
-              type="submit"
-              disabled={saving || !dirty}
-              className="px-5 py-2.5 bg-[#1a7a4a] text-white text-sm font-medium rounded-lg hover:bg-[#145c37] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-            {dirty && !saving && <span className="text-xs text-gray-500">You have unsaved changes.</span>}
-          </div>
+      <div className="space-y-4">
+        <form onSubmit={onSave} noValidate className="space-y-4">
+          <ComboForm
+            mode="edit"
+            values={values}
+            errors={errors}
+            slugFrozen={slugFrozen}
+            allocatedQuantity={combo.allocatedQuantity}
+            remainingQuantity={combo.remainingQuantity}
+            disabled={saving}
+            onChange={(patch) => setValues((v) => (v ? { ...v, ...patch } : v))}
+          />
+          {(hasFieldErrors(errors) || saveError) && (
+            <div className="space-y-3">
+              <ValidationSummary errors={errors} />
+              {saveError && (
+                <div role="alert" className="flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-base text-red-800">
+                  <AlertCircle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  <span>{saveError}</span>
+                </div>
+              )}
+            </div>
+          )}
+          <FormActionBar>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+              <button
+                type="submit"
+                disabled={saving || !dirty}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#1a7a4a] px-5 text-base font-semibold text-white transition-colors hover:bg-[#145c37] disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+              >
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+              {dirty && !saving && <span className="text-center text-sm text-gray-700 md:text-left">You have unsaved changes.</span>}
+            </div>
+          </FormActionBar>
         </form>
 
         <ComboImages combo={combo} onImagesChange={onImagesChange} />
@@ -245,6 +246,7 @@ function EditCombo({ id }: { id: string }) {
             )}
           </>
         }
+        large
         confirmLabel="Publish"
         busyLabel="Publishing…"
         isLoading={acting}
@@ -261,6 +263,7 @@ function EditCombo({ id }: { id: string }) {
             customers. Its stock and images are kept, and you can publish it again at any time.
           </>
         }
+        large
         confirmLabel="Unpublish"
         busyLabel="Unpublishing…"
         tone="warning"

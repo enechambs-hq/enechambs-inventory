@@ -18,6 +18,7 @@
  */
 import { CUSTOMER_COOKIE, sanitizeBearerToken } from './bff.ts';
 import { handleStoreRequest, type StoreBffDeps } from './store-bff.ts';
+import { REQUEST_ID_HEADER, isValidRequestId } from '../request-id.ts';
 
 export type SessionAction = 'login' | 'verify-email' | 'logout';
 
@@ -122,8 +123,10 @@ const noStore = {
   'x-content-type-options': 'nosniff',
 };
 
-function jsonResponse(body: unknown, status: number, cookie?: string): Response {
+function jsonResponse(body: unknown, status: number, cookie?: string, requestId?: string | null): Response {
   const headers = new Headers({ ...noStore, 'content-type': 'application/json' });
+  // The request id of the exchange (the BFF's, or the API's), so a failed login can be traced.
+  if (isValidRequestId(requestId)) headers.set(REQUEST_ID_HEADER, requestId);
   // Only ever a cookie this module built. An upstream Set-Cookie is never
   // copied: the response below is constructed from scratch.
   if (cookie) headers.append('set-cookie', cookie);
@@ -167,6 +170,7 @@ export async function handleStoreSessionRequest(
           ok ? { message: 'Signed out' } : await safeJson(upstream),
           ok ? 200 : upstream.status,
           clear,
+          upstream.headers.get(REQUEST_ID_HEADER),
         )
       : upstream;
   }
@@ -194,7 +198,7 @@ export async function handleStoreSessionRequest(
     // API's answer minus anything token-shaped, and set NO cookie.
     const body = parsed ? withoutToken(parsed) : { message: 'Unexpected response' };
     const status = upstream.status >= 200 && upstream.status < 300 ? 502 : upstream.status;
-    const response = jsonResponse(body, status);
+    const response = jsonResponse(body, status, undefined, upstream.headers.get(REQUEST_ID_HEADER));
     const retryAfter = upstream.headers.get('retry-after');
     if (retryAfter) response.headers.set('retry-after', retryAfter);
     return response;
@@ -204,12 +208,13 @@ export async function handleStoreSessionRequest(
   if (maxAge === null) {
     // The API issued a token that is already expired: a session that cannot
     // work. Set no cookie and report a safe error; the token is not relayed.
-    return jsonResponse({ message: 'Unable to start a session. Please try again.' }, 502);
+    return jsonResponse({ message: 'Unable to start a session. Please try again.' }, 502, undefined, upstream.headers.get(REQUEST_ID_HEADER));
   }
   return jsonResponse(
     withoutToken(parsed),
     upstream.status,
     buildSessionCookie(token, maxAge, deps.env),
+    upstream.headers.get(REQUEST_ID_HEADER),
   );
 }
 

@@ -176,32 +176,6 @@
     -moz-appearance: textfield;
   }
 }
-/* ── Storefront hero (M2b): CSS-only depth, no images required ─────────────── */
-.ene-scene {
-  perspective: 1400px;
-}
-.ene-stage {
-  transform-style: preserve-3d;
-  transform: rotateX(9deg) rotateY(-17deg);
-  transition: transform 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.ene-scene:hover .ene-stage {
-  transform: rotateX(5deg) rotateY(-9deg);
-}
-.ene-layer {
-  transform-style: preserve-3d;
-}
-@keyframes ene-float {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -10px; }
-}
-.ene-float {
-  animation: ene-float 6s ease-in-out infinite;
-}
-.ene-float-slow {
-  animation: ene-float 8s ease-in-out infinite;
-  animation-delay: -2s;
-}
 /* Sign-in modal: a frosted "liquid glass" card over a blurred, tinted backdrop. */
 @keyframes ene-backdrop-in {
   from { opacity: 0; }
@@ -236,7 +210,5 @@
   animation: ene-modal-out 180ms ease-in forwards;
 }
 @media (prefers-reduced-motion: reduce) {
-  .ene-stage { transition: none; }
-  .ene-float, .ene-float-slow { animation: none; }
   .ene-modal::backdrop, .ene-modal-card { animation: none; }
 }

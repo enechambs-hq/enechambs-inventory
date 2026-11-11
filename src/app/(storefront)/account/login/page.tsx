@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { LoginForm } from '@/components/storefront/AuthForms';
-import { PageShell } from '@/components/storefront/ui';
+import { AuthFrame, LoginForm } from '@/components/storefront/AuthForms';
 import { isStorefrontEnabled } from '@/lib/server/flags';
 
 export const dynamic = 'force-dynamic';
@@ -14,8 +13,8 @@ export default async function Page({ searchParams }: { searchParams: SearchParam
   const raw = (await searchParams).next;
   const next = Array.isArray(raw) ? raw[0] : raw;
   return (
-    <PageShell title="Sign in" narrow>
+    <AuthFrame title="Sign in">
       <LoginForm next={next} />
-    </PageShell>
+    </AuthFrame>
   );
 }

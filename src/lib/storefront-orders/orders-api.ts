@@ -13,6 +13,7 @@
  */
 import type {
   AdminCustomerListResponse,
+  AdminCancellation,
   AdminCustomerRow,
   AdminOrderDetail,
   AdminOrderFilters,
@@ -45,6 +46,7 @@ export function buildOrderListParams(input: AdminOrderFilters = {}): Record<stri
   if (input.status) params.status = input.status;
   if (input.paymentStatus) params.paymentStatus = input.paymentStatus;
   if (input.needsReview) params.needsReview = true;
+  if (input.awaitingFulfilment) params.awaitingFulfilment = true;
   const search = (input.search ?? '').trim().slice(0, MAX_SEARCH_LENGTH);
   if (search) params.search = search;
   const { from, to } = lagosRangeToInstants(input.fromDate, input.toDate);
@@ -82,8 +84,14 @@ function normaliseCustomer(c: AdminCustomerRow): AdminCustomerRow {
 }
 
 function normaliseRow(r: AdminOrderRow): AdminOrderRow {
-  return { ...r, total: num(r.total), itemCount: num(r.itemCount), chargeCount: num(r.chargeCount) };
+  return { ...r, total: num(r.total), itemCount: num(r.itemCount), chargeCount: num(r.chargeCount), cancellationPending: r.cancellationPending === true };
 }
+
+export const NO_CANCELLATION: AdminCancellation = {
+  state: 'none', requestedAt: null, reason: null, requestedBy: null, refundAmount: null, refund: null,
+  refundStartedAt: null, refundStartedBy: null,
+  canRequest: false, canWithdraw: false, canStartRefund: false, canRecordRefund: false, canRecordFailedRefund: false, blockedReason: null,
+};
 
 function normaliseDetail(d: AdminOrderDetail): AdminOrderDetail {
   return {
@@ -96,6 +104,9 @@ function normaliseDetail(d: AdminOrderDetail): AdminOrderDetail {
       amount: num(p.amount),
       verifiedAmount: p.verifiedAmount === null || p.verifiedAmount === undefined ? null : num(p.verifiedAmount),
     })),
+    cancellation: d.cancellation
+      ? { ...NO_CANCELLATION, ...d.cancellation, refundAmount: d.cancellation.refundAmount === null || d.cancellation.refundAmount === undefined ? null : num(d.cancellation.refundAmount) }
+      : NO_CANCELLATION,
     history: d.history ?? [],
     paymentEvents: d.paymentEvents ?? [],
     fulfilment: d.fulfilment ? { ...d.fulfilment, ...(d.fulfilment.deliveryFee !== undefined ? { deliveryFee: num(d.fulfilment.deliveryFee) } : {}) } : {},
@@ -111,6 +122,9 @@ export function createStorefrontOrdersApi(http: HttpClient) {
       const res = (await http.get<AdminOrderListResponse>(ORDERS, { params: buildOrderListParams(filters) })).data;
       return { ...res, data: (res.data ?? []).map(normaliseRow) };
     },
+
+    /** Staff and administrators. Staff never receive the payment-review part (the API sends null). */
+    alerts: async (): Promise<unknown> => (await http.get<unknown>(`${ORDERS}/alerts`)).data,
 
     get: async (orderNumber: string): Promise<AdminOrderDetail> =>
       normaliseDetail((await http.get<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}`)).data),
@@ -128,6 +142,32 @@ export function createStorefrontOrdersApi(http: HttpClient) {
       normaliseDetail(
         (await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/payments/${id(paymentId)}/record-refund`, { note: trimNote(note) })).data,
       ),
+
+    /**
+     * Admin only. Asks to cancel a PAID order that has not been dispatched. Nothing is refunded and no stock is
+     * released yet; the order cannot be dispatched until this is completed or withdrawn. A written reason is mandatory.
+     */
+    requestCancellation: async (orderNumber: string, reason: string): Promise<AdminOrderDetail> =>
+      normaliseDetail((await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/request-cancellation`, { reason: trimNote(reason) })).data),
+
+    /** Admin only. Marks the manual refund as STARTED (do this before opening Flutterwave). From then on the cancellation cannot be withdrawn. */
+    startCancellationRefund: async (orderNumber: string): Promise<AdminOrderDetail> =>
+      normaliseDetail((await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/start-cancellation-refund`, {})).data),
+
+    /** Admin only. Records that Flutterwave CONFIRMS the started refund did not complete. Releases nothing. */
+    recordFailedCancellationRefund: async (orderNumber: string, note: string): Promise<AdminOrderDetail> =>
+      normaliseDetail((await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/record-failed-cancellation-refund`, { note: trimNote(note) })).data),
+
+    /**
+     * Admin only. Records that the FULL refund was made in the Flutterwave dashboard, with its reference. There is no
+     * amount parameter: the backend derives the full amount from the captured payment.
+     */
+    recordCancellationRefund: async (orderNumber: string, refundReference: string): Promise<AdminOrderDetail> =>
+      normaliseDetail((await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/record-cancellation-refund`, { refundReference: refundReference.trim() })).data),
+
+    /** Admin only. Withdraws a cancellation; the backend refuses once the refund has been started. */
+    withdrawCancellation: async (orderNumber: string, note: string): Promise<AdminOrderDetail> =>
+      normaliseDetail((await http.post<AdminOrderDetail>(`${ORDERS}/${id(orderNumber)}/withdraw-cancellation`, { note: trimNote(note) })).data),
 
     /** Admin only: people with an online account, with order count and money paid. */
     customers: async (filters: { page?: number; limit?: number; search?: string } = {}): Promise<AdminCustomerListResponse> => {

@@ -24,7 +24,7 @@ const PAYMENT_STYLES: Record<AdminPaymentStatus, string> = {
   failed: 'bg-red-50 text-red-700 border-red-200',
 };
 
-const base = 'inline-flex items-center px-2.5 py-1 rounded-full border text-xs font-medium whitespace-nowrap';
+const base = 'inline-flex items-center px-2.5 py-0.5 rounded-full border text-sm font-medium whitespace-nowrap';
 
 export function OrderStatusBadge({ status }: { status: AdminOrderStatus }) {
   return <span className={`${base} ${ORDER_STYLES[status]}`}>{ORDER_STATUS_LABEL[status]}</span>;
@@ -35,7 +35,7 @@ export function PaymentStatusBadge({ status }: { status: AdminPaymentStatus }) {
 }
 
 export function WarningChip({ warning }: { warning: OrderWarning }) {
-  return <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 text-[11px] font-medium whitespace-nowrap">{warning.label}</span>;
+  return <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-red-50 text-red-700 border border-red-200 text-xs font-medium whitespace-nowrap">{warning.label}</span>;
 }
 
 const RECORD_STYLES: Record<string, string> = {
@@ -48,4 +48,19 @@ const RECORD_STYLES: Record<string, string> = {
 
 export function PaymentRecordBadge({ status }: { status: string }) {
   return <span className={`${base} ${RECORD_STYLES[status] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>{PAYMENT_RECORD_LABEL[status] ?? status}</span>;
+}
+
+/** A badge with its meaning spelled out ("Order" or "Payment"), so the two statuses are never confused. */
+export function LabelledBadge({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-gray-600">
+      <span>{label}:</span>
+      {children}
+    </span>
+  );
+}
+
+/** Shown beside the badges while a paid order is being cancelled and its refund is not recorded yet. */
+export function CancellationChip() {
+  return <span className={`${base} border-amber-300 bg-amber-50 text-amber-800`}>Cancellation pending</span>;
 }

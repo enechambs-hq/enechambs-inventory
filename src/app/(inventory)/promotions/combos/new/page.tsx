@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowLeft, Info } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import AdminOnly from '@/components/promotions/AdminOnly';
-import ComboForm from '@/components/promotions/ComboForm';
+import ComboForm, { FormActionBar, ValidationSummary, focusFirstInvalid, hasFieldErrors } from '@/components/promotions/ComboForm';
 import { combosService } from '@/lib/services/combos.service';
 import { describeApiError, explainProblem } from '@/lib/combos/errors';
 import { emptyComboForm, validateCreate, type ComboFieldErrors, type ComboFormValues } from '@/lib/combos/form';
@@ -24,6 +24,7 @@ function NewCombo() {
     const result = validateCreate(values);
     if (!result.ok) {
       setErrors(result.errors);
+      focusFirstInvalid(result.errors, values);
       return;
     }
     setErrors({});
@@ -39,57 +40,64 @@ function NewCombo() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f0f2f0] p-6">
+    <div className="mx-auto w-full max-w-[45rem]">
       <Link
         href="/promotions/combos"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4"
+        className="mb-2 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-gray-700 hover:text-[#1a7a4a]"
       >
-        <ArrowLeft size={14} />
+        <ArrowLeft size={16} aria-hidden="true" />
         All combos
       </Link>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">New combo</h1>
-        <p className="text-sm text-gray-500 mt-0.5">It starts as a draft. Nothing is visible to customers until you publish it.</p>
+        <h1 className="text-[1.75rem] font-bold leading-8 text-[#0f4f2d] md:text-[2rem] md:leading-10">New combo</h1>
+        <p className="mt-1 text-sm text-gray-600">It starts as a draft. Nothing is visible to customers until you publish it.</p>
       </div>
 
-      <form onSubmit={onSubmit} noValidate className="max-w-3xl space-y-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <ComboForm
-            mode="create"
-            values={values}
-            errors={errors}
-            disabled={saving}
-            onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
-          />
-        </div>
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
+        <ComboForm
+          mode="create"
+          values={values}
+          errors={errors}
+          disabled={saving}
+          onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+        />
 
-        <div className="flex gap-2 rounded-lg border border-blue-100 bg-blue-50 px-3.5 py-3 text-sm text-blue-800">
-          <Info size={16} className="shrink-0 mt-0.5" />
-          <span>You can add images once the draft is created, on the next screen.</span>
-        </div>
+        <section aria-labelledby="section-images" className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+          <h2 id="section-images" className="mb-2 text-lg font-semibold text-[#0f4f2d]">
+            Images
+          </h2>
+          <p className="text-base text-gray-700">You can add images once the draft is created, on the next screen.</p>
+        </section>
 
-        {submitError && (
-          <div role="alert" className="flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
-            <AlertCircle size={16} className="shrink-0 mt-0.5" />
-            <span>{submitError}</span>
+        {(hasFieldErrors(errors) || submitError) && (
+          <div className="space-y-3">
+            <ValidationSummary errors={errors} />
+            {submitError && (
+              <div role="alert" className="flex gap-2 rounded-lg border border-red-200 bg-red-50 px-3.5 py-3 text-base text-red-800">
+                <AlertCircle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
+                <span>{submitError}</span>
+              </div>
+            )}
           </div>
         )}
 
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-5 py-2.5 bg-[#1a7a4a] text-white text-sm font-medium rounded-lg hover:bg-[#145c37] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? 'Creating…' : 'Create combo'}
-          </button>
-          <Link
-            href="/promotions/combos"
-            className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
-          >
-            Cancel
-          </Link>
-        </div>
+        <FormActionBar>
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex min-h-12 flex-1 items-center justify-center rounded-lg bg-[#1a7a4a] px-5 text-base font-semibold text-white transition-colors hover:bg-[#145c37] disabled:cursor-not-allowed disabled:opacity-60 md:flex-none"
+            >
+              {saving ? 'Creating…' : 'Create combo'}
+            </button>
+            <Link
+              href="/promotions/combos"
+              className="inline-flex min-h-12 items-center justify-center rounded-lg border border-gray-300 bg-white px-5 text-base font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </Link>
+          </div>
+        </FormActionBar>
       </form>
     </div>
   );

@@ -75,7 +75,7 @@ test('src/proxy.ts decides with isPublicPath + the server-side flag, and still r
   const source = readFileSync(new URL('../src/proxy.ts', import.meta.url), 'utf8');
   assert.match(source, /isPublicPath\(pathname, \{ storefrontEnabled: isStorefrontEnabled\(\) \}\)/);
   assert.match(source, /!token && !isPublicPath/);
-  assert.match(source, /NextResponse\.redirect\(new URL\('\/login'/);
+  assert.match(source, /NextResponse\.redirect\(new URL\(signInUrl\(\{ returnTo: /); // still redirects to /login, now remembering the page
   assert.doesNotMatch(source, /startsWith\(r\)/); // the old prefix check is gone
   assert.match(source, /api\//); // matcher still excludes API routes (they enforce their own checks)
 });

@@ -62,9 +62,9 @@ test('report params and custom range validation', () => {
 });
 
 // ── the API surface ───────────────────────────────────────────────────────────
-test('the client exposes ONLY list, get, fulfilment, honour, refund, report and the read-only customers list: no way to mark paid or edit money', () => {
+test('the client exposes ONLY list, get, fulfilment, honour, refund, the five cancellation steps, report and the read-only customers list: no way to mark paid or edit money', () => {
   const api = createStorefrontOrdersApi(fakeHttp().http);
-  assert.deepEqual(Object.keys(api).sort(), ['customers', 'get', 'honourLatePayment', 'list', 'recordRefund', 'report', 'updateFulfilment']);
+  assert.deepEqual(Object.keys(api).sort(), ['alerts', 'customers', 'get', 'honourLatePayment', 'list', 'recordCancellationRefund', 'recordFailedCancellationRefund', 'recordRefund', 'report', 'requestCancellation', 'startCancellationRefund', 'updateFulfilment', 'withdrawCancellation']);
 });
 
 test('each call goes to the right backend route with the right verb and body', async () => {

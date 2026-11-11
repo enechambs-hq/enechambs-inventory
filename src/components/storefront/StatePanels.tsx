@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { AlertCircle, PackageOpen, SearchX } from 'lucide-react';
 import type { FailureKind } from '@/lib/storefront/catalogue-client';
+import { fromCatalogueFailure } from '@/lib/errors/normalize';
+import type { ErrorKind } from '@/lib/errors/app-error';
 
 function Panel({ icon, title, children }: { icon: React.ReactNode; title: string; children?: React.ReactNode }) {
   return (
@@ -47,24 +49,33 @@ export function PageOutOfRange({ href }: { href: string }) {
   );
 }
 
-const ERROR_COPY: Record<FailureKind, { title: string; body: string }> = {
+/** What the shop says for each kind of read failure. Wording for the original four cases is unchanged. */
+const ERROR_COPY: Partial<Record<ErrorKind, { title: string; body: string }>> & { unexpected: { title: string; body: string } } = {
   rate_limited: { title: 'Too many requests', body: 'Please wait a moment, then try again.' },
   unavailable: { title: 'The shop is temporarily unavailable', body: 'We could not load the combos just now. Please try again in a moment.' },
-  disabled: { title: 'The shop is not open yet', body: 'Please check back soon.' },
+  network: { title: 'We could not reach the shop', body: 'Please check your connection and try again.' },
+  timeout: { title: 'The shop is taking too long to answer', body: 'Please try again in a moment.' },
   not_found: { title: 'We could not find that', body: 'It may have been removed or is not available.' },
-  error: { title: 'Something went wrong', body: 'We could not load the combos. Please try again.' },
+  unexpected: { title: 'Something went wrong', body: 'We could not load the combos. Please try again.' },
 };
+const DISABLED_COPY = { title: 'The shop is not open yet', body: 'Please check back soon.' };
 
-/** A server-rendered error state; "Try again" is a plain link back to the same URL. */
-export function LoadError({ kind, retryHref }: { kind: FailureKind; retryHref: string }) {
-  const copy = ERROR_COPY[kind];
+/**
+ * A server-rendered error state; "Try again" is a plain link back to the same URL. The failure is classified by the shared
+ * error model, so a retry link is offered only when repeating this read is reasonable (not for a missing page or a rate limit).
+ */
+export function LoadError({ kind, status = 500, retryHref }: { kind: FailureKind; status?: number; retryHref: string }) {
+  const error = fromCatalogueFailure({ kind, status });
+  const copy = kind === 'disabled' ? DISABLED_COPY : (ERROR_COPY[error.kind] ?? ERROR_COPY.unexpected);
   return (
     <div role="alert">
       <Panel icon={<AlertCircle size={26} />} title={copy.title}>
         <p>{copy.body}</p>
-        <Link href={retryHref} className={linkClass}>
-          Try again
-        </Link>
+        {error.retryable && (
+          <Link href={retryHref} className={linkClass}>
+            Try again
+          </Link>
+        )}
       </Panel>
     </div>
   );

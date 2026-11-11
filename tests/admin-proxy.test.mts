@@ -164,3 +164,132 @@ test('removing an image: backend 204 through the proxy is a client success, with
   assert.equal(calls[0].init.method, 'DELETE');
   assert.equal(new URL(calls[0].url).pathname, '/api/v1/admin/combos/c1/images/i1');
 });
+
+// ── Phase 1C: bounded upstream, structured failures, no duplicate requests ────
+import { STAFF_API_CLIENT_TIMEOUT_MS, STAFF_PROXY_UPSTREAM_TIMEOUT_MS } from '../src/lib/timeouts.ts';
+import { describeApiError } from '../src/lib/combos/errors.ts';
+import { createServer } from 'node:http';
+import axios from 'axios';
+const routeModule = await import('../src/app/api/v1/[...path]/route.ts');
+
+function failingBackend(error: unknown) {
+  const calls: Array<{ url: string; init: RequestInit }> = [];
+  globalThis.fetch = (async (url: URL | string, init: RequestInit) => {
+    calls.push({ url: String(url), init });
+    throw error;
+  }) as typeof fetch;
+  return calls;
+}
+
+test('the upstream request is given a signal and a 25s deadline timer (no AbortSignal.any, which can lose its timeout)', async () => {
+  const delays: number[] = [];
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((fn: () => void, ms?: number, ...rest: unknown[]) => {
+    if (typeof ms === 'number') delays.push(ms);
+    return realSetTimeout(fn, ms, ...rest);
+  }) as typeof setTimeout;
+  try {
+    const calls = stubBackend({ status: 200, body: '{}', headers: { 'content-type': 'application/json' } });
+    await GET(req('GET', '/api/v1/users'), ctx('users'));
+    assert.ok(delays.includes(STAFF_PROXY_UPSTREAM_TIMEOUT_MS), `deadline timer of ${STAFF_PROXY_UPSTREAM_TIMEOUT_MS}ms was set`);
+    assert.ok((calls[0].init.signal as AbortSignal) instanceof AbortSignal);
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+});
+
+test('timeout levels are ordered: upstream < function budget < browser', () => {
+  assert.ok(STAFF_PROXY_UPSTREAM_TIMEOUT_MS < routeModule.maxDuration * 1000);
+  assert.ok(routeModule.maxDuration * 1000 < STAFF_API_CLIENT_TIMEOUT_MS);
+});
+
+test('an upstream timeout becomes a JSON 504 with a stable code', async () => {
+  const calls = failingBackend(new DOMException('The operation was aborted due to timeout', 'TimeoutError'));
+  const res = await GET(req('GET', '/api/v1/users?secret=1'), ctx('users'));
+  assert.equal(res.status, 504);
+  assert.match(res.headers.get('content-type') ?? '', /application\/json/);
+  const body = await res.json();
+  assert.equal(body.success, false);
+  assert.equal(body.code, 'UPSTREAM_TIMEOUT');
+  assert.equal(body.message, 'The service took too long to respond');
+  assert.equal(body.path, '/api/v1/users', 'the path only, never the query string');
+  assert.equal(calls.length, 1, 'no retry');
+});
+
+test('a network failure becomes a JSON 502 with a stable code', async () => {
+  const calls = failingBackend(new TypeError('fetch failed'));
+  const res = await POST(req('POST', '/api/v1/auth/login', { body: '{"a":1}', headers: { 'content-type': 'application/json' } }), ctx('auth', 'login'));
+  assert.equal(res.status, 502);
+  const body = await res.json();
+  assert.deepEqual([body.success, body.code, body.message], [false, 'UPSTREAM_UNAVAILABLE', 'Service unavailable']);
+  assert.equal(calls.length, 1, 'a failed POST is never repeated');
+});
+
+test('a stalled response body is cut off too, as a 504, without a second request', async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    const stalled = new Response('x');
+    stalled.arrayBuffer = () => Promise.reject(new DOMException('timeout', 'TimeoutError'));
+    return stalled;
+  }) as typeof fetch;
+  const res = await PATCH(req('PATCH', '/api/v1/users/1', { body: '{}' }), ctx('users', '1'));
+  assert.equal(res.status, 504);
+  assert.equal(calls, 1);
+});
+
+for (const status of [400, 401, 403, 404, 409, 429, 500, 503]) {
+  test(`an upstream ${status} is passed through unchanged (never turned into 502/504)`, async () => {
+    stubBackend({ status, body: JSON.stringify({ message: `upstream ${status}`, code: 'X' }), headers: { 'content-type': 'application/json' } });
+    const res = await GET(req('GET', '/api/v1/users', { headers: { authorization: 'Bearer t' } }), ctx('users'));
+    assert.equal(res.status, status);
+    assert.deepEqual(await res.json(), { message: `upstream ${status}`, code: 'X' });
+  });
+}
+
+test('successful requests keep method, authorization, body and content type, in one upstream call', async () => {
+  const calls = stubBackend({ status: 201, body: '{"id":"1"}', headers: { 'content-type': 'application/json' } });
+  const res = await POST(
+    req('POST', '/api/v1/admin/combos?x=1', { body: '{"name":"A"}', headers: { authorization: 'Bearer tok', 'content-type': 'application/json' } }),
+    ctx('admin', 'combos'),
+  );
+  assert.equal(res.status, 201);
+  assert.deepEqual(await res.json(), { id: '1' });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(new Headers(calls[0].init.headers).get('authorization'), 'Bearer tok');
+  assert.equal(calls[0].init.body, '{"name":"A"}');
+  assert.match(calls[0].url, /\/api\/v1\/admin\/combos\?x=1$/);
+});
+
+test('the staff axios client waits longer than the proxy and hands back the proxy 504 as a normal API failure', async () => {
+  const { default: api } = await import('../src/lib/api.ts');
+  assert.equal(api.defaults.timeout, STAFF_API_CLIENT_TIMEOUT_MS);
+  assert.ok((api.defaults.timeout ?? 0) > STAFF_PROXY_UPSTREAM_TIMEOUT_MS);
+
+  const calls = failingBackend(new DOMException('timeout', 'TimeoutError'));
+  // A real HTTP server in front of the REAL route handler, and a real axios call to it.
+  const server = createServer(async (incoming, outgoing) => {
+    const res = await GET(new NextRequest(`http://admin.test${incoming.url}`), ctx('users'));
+    outgoing.writeHead(res.status, { 'content-type': res.headers.get('content-type') ?? 'application/json' });
+    outgoing.end(await res.text());
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const { port } = server.address() as { port: number };
+    const client = axios.create({ baseURL: `http://127.0.0.1:${port}`, timeout: api.defaults.timeout, adapter: 'http' });
+    const error = await client.get('/api/v1/users').then(
+      () => null,
+      (e) => e,
+    );
+    assert.equal(error.code === 'ECONNABORTED', false, 'the browser did not give up first');
+    assert.equal(error.response.status, 504);
+    assert.equal(error.response.data.code, 'UPSTREAM_TIMEOUT');
+    const problem = describeApiError(error);
+    assert.equal(problem.status, 504);
+    assert.equal(problem.message, 'The service took too long to respond');
+    assert.equal(calls.length, 1, 'one upstream attempt for one browser request');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
